@@ -101,14 +101,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStudentLogin, onAdmi
               className="w-auto object-contain select-none filter drop-shadow-sm hover:scale-102 transition-transform duration-300"
             />
             {/* Title matching SLIP logo theme */}
-            <div className="flex items-center gap-0 text-center leading-none mt-1">
-              <span className="text-[13px] sm:text-[15px] font-black tracking-[0.18em] uppercase text-blue-900">
-                SISTEM LATIHAN INDUSTRI&nbsp;
-              </span>
-              <span className="text-[13px] sm:text-[15px] font-black tracking-[0.18em] uppercase text-red-600">
-                PELAJAR
-              </span>
-            </div>
+            <h2 className="text-center font-black tracking-wider sm:tracking-[0.18em] uppercase text-xs sm:text-[14px] leading-snug mt-1">
+              <span className="text-blue-900">SISTEM LATIHAN INDUSTRI </span>
+              <span className="text-red-600">PELAJAR</span>
+            </h2>
             <p className="text-slate-600 text-sm font-medium leading-relaxed max-w-xs mx-auto">
               Permohonan Latihan Industri kini lebih mudah &amp; pantas.
             </p>
