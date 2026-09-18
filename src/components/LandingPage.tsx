@@ -108,37 +108,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStudentLogin, onAdmi
           </p>
         </div>
 
-        {/* Laptop / Checklist Graphic Card */}
-        <div className="w-full bg-white rounded-3xl p-6 shadow-xl border border-slate-200/80 mb-8 relative overflow-hidden group">
-          <div className="bg-gradient-to-b from-slate-100 to-slate-50 rounded-2xl border border-slate-200 p-6 shadow-inner relative">
-            {/* Top laptop window bar */}
-            <div className="flex items-center gap-1.5 mb-4 border-b border-slate-200 pb-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-            </div>
-
-            {/* Checklist elements */}
-            <div className="space-y-3 max-w-[200px] mx-auto text-left">
-              <div className="flex items-center gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200 shadow-xs">
-                <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
-                <div className="h-2.5 bg-slate-200 rounded-full w-full"></div>
-              </div>
-              <div className="flex items-center gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200 shadow-xs">
-                <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
-                <div className="h-2.5 bg-slate-200 rounded-full w-3/4"></div>
-              </div>
-            </div>
-
-            {/* Green Check Badge */}
-            <div className="absolute right-4 bottom-2 bg-emerald-600 text-white rounded-full p-3 shadow-lg border-2 border-white animate-pulse">
-              <CheckCircle2 className="w-7 h-7" />
-            </div>
-          </div>
-        </div>
-
         {/* Action Buttons */}
-        <div className="w-full space-y-3.5">
+        <div className="w-full space-y-3.5 mt-2">
           <button
             onClick={() => setIsStudentModalOpen(true)}
             className="w-full py-4 px-6 bg-blue-900 hover:bg-blue-800 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 uppercase tracking-wide cursor-pointer"
