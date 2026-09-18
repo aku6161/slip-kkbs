@@ -68,7 +68,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStudentLogin, onAdmi
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-between font-sans">
       {/* Top Navbar */}
       <header className="w-full max-w-5xl px-4 py-4 flex items-center justify-between border-b border-slate-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-30">
-        <Logo size="sm" showSubtitle={false} />
+        <Logo size="sm" showSubtitle={true} />
         
         <div className="flex items-center gap-2">
           <button
