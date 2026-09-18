@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Logo } from './Logo';
+import { DynamicWaveBackground } from './DynamicWaveBackground';
 import logo3d from '../logo.png';
-import { ShieldCheck, User, Lock, Laptop, CheckCircle2, AlertCircle, X, ChevronRight, GraduationCap } from 'lucide-react';
+import { ShieldCheck, User, Lock, CheckCircle2, AlertCircle, X, ChevronRight, GraduationCap } from 'lucide-react';
 
 interface LandingPageProps {
   onStudentLogin: (icNumber: string) => void;
@@ -65,15 +66,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStudentLogin, onAdmi
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-between font-sans">
+    <div className="min-h-screen relative overflow-x-hidden flex flex-col items-center justify-between font-sans selection:bg-blue-500 selection:text-white">
+      {/* Dynamic Wave Animated Background */}
+      <DynamicWaveBackground />
+
       {/* Top Navbar */}
-      <header className="w-full max-w-5xl px-4 py-4 flex items-center justify-between border-b border-slate-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-30">
-        <Logo size="sm" showSubtitle={true} />
+      <header className="w-full max-w-5xl px-4 py-3.5 mx-auto flex items-center justify-between border-b border-white/10 bg-slate-950/40 backdrop-blur-xl sticky top-0 z-30 sm:rounded-b-2xl shadow-2xl transition-all">
+        <Logo size="sm" showSubtitle={true} darkTheme={true} />
         
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsAdminModalOpen(true)}
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+            className="px-3.5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-black rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-lg backdrop-blur-md hover:scale-105 active:scale-95"
           >
             <Lock className="w-3.5 h-3.5 text-amber-400" />
             <span>Admin</span>
@@ -82,54 +86,57 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStudentLogin, onAdmi
       </header>
 
       {/* Hero Section */}
-      <main className="w-full max-w-md px-5 py-8 flex-1 flex flex-col items-center justify-center text-center">
-        {/* Main Banner Heading */}
-        <div className="flex flex-col items-center space-y-4 mb-8">
-          <p className="text-slate-500 text-sm font-semibold uppercase tracking-widest">
-            Selamat Datang
-          </p>
-          <img
-            src={logo3d}
-            alt="Logo SLIP"
-            style={{ height: '160px', mixBlendMode: 'multiply' }}
-            className="w-auto object-contain select-none"
-          />
-          {/* Title matching SLIP logo theme */}
-          <div className="flex items-center gap-0 text-center leading-none mt-1">
-            <span className="text-[13px] sm:text-[15px] font-black tracking-[0.18em] uppercase text-blue-900">
-              SISTEM LATIHAN INDUSTRI&nbsp;
+      <main className="w-full max-w-lg px-4 py-8 sm:py-12 flex-1 flex flex-col items-center justify-center text-center relative z-10">
+        {/* Floating Glassmorphism Hero Card */}
+        <div className="w-full bg-white/95 backdrop-blur-2xl rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/80 ring-1 ring-slate-950/10 transition-all">
+          {/* Main Banner Heading */}
+          <div className="flex flex-col items-center space-y-4 mb-7">
+            <span className="px-3.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 text-xs font-black uppercase tracking-widest shadow-xs">
+              Selamat Datang
             </span>
-            <span className="text-[13px] sm:text-[15px] font-black tracking-[0.18em] uppercase text-red-600">
-              PELAJAR
-            </span>
+            <img
+              src={logo3d}
+              alt="Logo SLIP"
+              style={{ height: '150px' }}
+              className="w-auto object-contain select-none filter drop-shadow-sm hover:scale-102 transition-transform duration-300"
+            />
+            {/* Title matching SLIP logo theme */}
+            <div className="flex items-center gap-0 text-center leading-none mt-1">
+              <span className="text-[13px] sm:text-[15px] font-black tracking-[0.18em] uppercase text-blue-900">
+                SISTEM LATIHAN INDUSTRI&nbsp;
+              </span>
+              <span className="text-[13px] sm:text-[15px] font-black tracking-[0.18em] uppercase text-red-600">
+                PELAJAR
+              </span>
+            </div>
+            <p className="text-slate-600 text-sm font-medium leading-relaxed max-w-xs mx-auto">
+              Permohonan Latihan Industri kini lebih mudah &amp; pantas.
+            </p>
           </div>
-          <p className="text-slate-600 text-sm font-medium leading-relaxed max-w-xs mx-auto mt-1">
-            Permohonan Latihan Industri kini lebih mudah &amp; pantas.
-          </p>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="w-full space-y-3.5 mt-2">
-          <button
-            onClick={() => setIsStudentModalOpen(true)}
-            className="w-full py-4 px-6 bg-blue-900 hover:bg-blue-800 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 uppercase tracking-wide cursor-pointer"
-          >
-            <User className="w-5 h-5" />
-            <span>Log Masuk Pelajar</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="w-full space-y-3">
+            <button
+              onClick={() => setIsStudentModalOpen(true)}
+              className="w-full py-4 px-6 bg-gradient-to-r from-blue-900 to-blue-800 hover:from-blue-800 hover:to-blue-700 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 uppercase tracking-wide cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+            >
+              <User className="w-5 h-5" />
+              <span>Log Masuk Pelajar</span>
+            </button>
 
-          <button
-            onClick={() => setIsLecturerModalOpen(true)}
-            className="w-full py-4 px-6 bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 uppercase tracking-wide cursor-pointer"
-          >
-            <GraduationCap className="w-5 h-5 text-amber-400" />
-            <span>Log Masuk Pensyarah Pemantau</span>
-          </button>
+            <button
+              onClick={() => setIsLecturerModalOpen(true)}
+              className="w-full py-4 px-6 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 uppercase tracking-wide cursor-pointer border border-slate-700 hover:scale-[1.01] active:scale-[0.99]"
+            >
+              <GraduationCap className="w-5 h-5 text-amber-400" />
+              <span>Log Masuk Pensyarah Pemantau</span>
+            </button>
+          </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="w-full py-4 text-center text-xs text-slate-400 border-t border-slate-200/60 bg-white">
+      <footer className="w-full py-4 text-center text-xs text-slate-300 border-t border-white/10 bg-slate-950/50 backdrop-blur-xl relative z-10">
         © 2026 Kolej Komuniti Beaufort Sabah. Hak Cipta Terpelihara.
       </footer>
 
