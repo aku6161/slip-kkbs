@@ -22,6 +22,8 @@ app.use(express.json());
 
 // In-memory data store seeded with initial students from Google Sheet
 let studentsData: Student[] = [...INITIAL_STUDENTS];
+let markahData: any[] = [];
+let markahHeaders: string[] = [];
 
 // System configuration for Sesi, Tarikh, Tempoh
 let systemConfig = {
@@ -30,8 +32,13 @@ let systemConfig = {
   tempoh: '4 BULAN (16 MINGGU)',
   tarikhAkhirJawapan: '15 OKTOBER 2026',
   namaPpia: 'SHAMSUDDIN BIN AMIN',
-  noTelefonPpia: '012-2455616'
+  noTelefonPpia: '012-2455616',
+  tarikhPemantauan: '15 JANUARI 2027 HINGGA 15 FEBRUARI 2027',
+  tarikhPembentangan: '22 MAC 2027 HINGGA 26 MAC 2027',
+  tarikhKeputusan: '5 APRIL 2027'
 };
+
+const getTodayMalay = () => new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' });
 
 // Initialize Gemini Client
 const apiKey = process.env.GEMINI_API_KEY;
@@ -46,6 +53,8 @@ if (apiKey) {
     },
   });
 }
+
+
 
 // Helper: Parse raw CSV text from Google Sheet robustly
 function parseCsv(csvText: string): string[][] {
@@ -138,8 +147,12 @@ function parseCsvToStudents(csvText: string): Student[] {
         bjpliData = JSON.parse(bjpliStr);
       } catch (e) {}
     }
-    const rujukanSurat = cols[25] || `KKBS/LI/2026/${progCode}/${String(i).padStart(3, '0')}`;
-    const tarikhSurat = cols[26] || '15 Mac 2026';
+    let rujukanSurat = cols[25] || '';
+    if (!rujukanSurat || !rujukanSurat.startsWith('KKBS - ')) {
+      rujukanSurat = `KKBS - ${noMatrik}`;
+    }
+    const tarikhSurat = cols[26] || getTodayMalay();
+    const kelas = cols[27] || '';
 
     const existing = studentsData.find(s => s.noMatrik === noMatrik || s.emelPelajar === emelPelajar);
 
@@ -171,6 +184,7 @@ function parseCsvToStudents(csvText: string): Student[] {
       status: existing?.status || status,
       rujukanSurat: existing?.rujukanSurat || rujukanSurat,
       tarikhSurat: existing?.tarikhSurat || tarikhSurat,
+      kelas: existing?.kelas || kelas,
       tempohLatihan: '20 Minggu (5 Bulan)',
       tarikhLatihanMula: '2026-07-01',
       tarikhLatihanTamat: '2026-11-15',
@@ -183,7 +197,8 @@ function parseCsvToStudents(csvText: string): Student[] {
 function mapAppsScriptToStudents(rawStudents: any[]): Student[] {
   return rawStudents.map((s, idx) => {
     const timestamp = s["Timestamp"] || '';
-    const email = s["KELAS"] || '';
+    const email = s["Email Address"] || s["Email"] || s["email"] || '';
+    const kelas = s["KELAS"] || s["kelas"] || '';
     const sesi = s["SESI LATIHAN INDUSTRI"] || '';
     const namaPelajar = s["NAMA PELAJAR"] || '';
     const noIc = s["NO. KAD PENGENALAN"] || '';
@@ -222,8 +237,11 @@ function mapAppsScriptToStudents(rawStudents: any[]): Student[] {
       progCode = 'SKU';
     }
     
-    const rujukanSurat = s["RUJUKAN_SURAT"] || `KKBS/LI/2026/${progCode}/${String(idx + 1).padStart(3, '0')}`;
-    const tarikhSurat = s["TARIKH_SURAT"] || '15 Mac 2026';
+    let rujukanSurat = s["RUJUKAN_SURAT"] || '';
+    if (!rujukanSurat || !rujukanSurat.startsWith('KKBS - ')) {
+      rujukanSurat = `KKBS - ${noMatrik}`;
+    }
+    const tarikhSurat = s["TARIKH_SURAT"] || getTodayMalay();
 
     return {
       id: `SLIP-2026-${String(idx + 1).padStart(3, '0')}`,
@@ -251,6 +269,7 @@ function mapAppsScriptToStudents(rawStudents: any[]): Student[] {
       namaSyarikat,
       emelHrSyarikat,
       status,
+      kelas,
       tempohLatihan: '20 Minggu (5 Bulan)',
       tarikhLatihanMula: '2026-07-01',
       tarikhLatihanTamat: '2026-11-15',
@@ -259,6 +278,22 @@ function mapAppsScriptToStudents(rawStudents: any[]): Student[] {
       tarikhSurat
     };
   });
+}
+
+function cleanConfigDate(val: any): string {
+  if (!val) return '';
+  const str = String(val).trim();
+  if (str.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(str)) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      const day = d.getDate();
+      const monthNames = ['JANUARI', 'FEBRUARI', 'MAC', 'APRIL', 'MEI', 'JUN', 'JULAI', 'OGOS', 'SEPTEMBER', 'OKTOBER', 'NOVEMBER', 'DISEMBER'];
+      const month = monthNames[d.getMonth()];
+      const year = d.getFullYear();
+      return `${day} ${month} ${year}`;
+    }
+  }
+  return str;
 }
 
 // API Routes
@@ -276,10 +311,26 @@ app.get('/api/students', async (req: Request, res: Response) => {
           if (payload.students) {
             studentsData = mapAppsScriptToStudents(payload.students);
           }
-          if (payload.config) {
-            systemConfig = payload.config;
+          if (payload.markah) {
+            markahData = payload.markah;
           }
-          return res.json({ students: studentsData, config: systemConfig, sheetUrl: SHEET_URL });
+          if (payload.markahHeaders) {
+            markahHeaders = payload.markahHeaders;
+          }
+          if (payload.config) {
+            systemConfig = {
+              sesi: cleanConfigDate(payload.config.sesi) || systemConfig.sesi,
+              tarikh: cleanConfigDate(payload.config.tarikh) || systemConfig.tarikh,
+              tempoh: cleanConfigDate(payload.config.tempoh) || systemConfig.tempoh,
+              tarikhAkhirJawapan: cleanConfigDate(payload.config.tarikhAkhirJawapan) || systemConfig.tarikhAkhirJawapan,
+              namaPpia: cleanConfigDate(payload.config.namaPpia) || systemConfig.namaPpia,
+              noTelefonPpia: cleanConfigDate(payload.config.noTelefonPpia) || systemConfig.noTelefonPpia,
+              tarikhPemantauan: cleanConfigDate(payload.config.tarikhPemantauan) || systemConfig.tarikhPemantauan,
+              tarikhPembentangan: cleanConfigDate(payload.config.tarikhPembentangan) || systemConfig.tarikhPembentangan,
+              tarikhKeputusan: cleanConfigDate(payload.config.tarikhKeputusan) || systemConfig.tarikhKeputusan
+            };
+          }
+          return res.json({ students: studentsData, config: systemConfig, markah: markahData, markahHeaders: markahHeaders, sheetUrl: SHEET_URL });
         }
       }
     } catch (err) {
@@ -315,7 +366,7 @@ app.get('/api/students', async (req: Request, res: Response) => {
   } catch (err) {
     console.warn('Failed to fetch live sheet, returning in-memory state:', err);
   }
-  res.json({ students: studentsData, config: systemConfig, sheetUrl: SHEET_URL });
+  res.json({ students: studentsData, config: systemConfig, markah: markahData, markahHeaders: markahHeaders, sheetUrl: SHEET_URL });
 });
 
 // GET /api/config - Get active system configuration
@@ -334,9 +385,12 @@ app.post('/api/config', async (req: Request, res: Response) => {
     sesi: newConfig.sesi.toUpperCase(),
     tarikh: newConfig.tarikh.toUpperCase(),
     tempoh: newConfig.tempoh.toUpperCase(),
-    tarikhAkhirJawapan: newConfig.tarikhAkhirJawapan.toUpperCase(),
+    tarikhAkhirJawapan: cleanConfigDate(newConfig.tarikhAkhirJawapan).toUpperCase(),
     namaPpia: newConfig.namaPpia.toUpperCase(),
-    noTelefonPpia: newConfig.noTelefonPpia.toUpperCase()
+    noTelefonPpia: newConfig.noTelefonPpia.toUpperCase(),
+    tarikhPemantauan: cleanConfigDate(newConfig.tarikhPemantauan || '').toUpperCase(),
+    tarikhPembentangan: cleanConfigDate(newConfig.tarikhPembentangan || '').toUpperCase(),
+    tarikhKeputusan: cleanConfigDate(newConfig.tarikhKeputusan || '').toUpperCase()
   };
 
   // Sync to Google Sheet via Google Apps Script Web App if URL is defined
@@ -363,6 +417,7 @@ const getAppsScriptUrl = (req: Request) => {
 // 2. POST /api/students - Add new application
 app.post('/api/students', async (req: Request, res: Response) => {
   const newStudentData = req.body;
+  const todayMalay = getTodayMalay();
   
   let progCode = 'SOP';
   const programStr = newStudentData.program || '';
@@ -381,6 +436,8 @@ app.post('/api/students', async (req: Request, res: Response) => {
     studentToSave = {
       ...studentsData[existingIdx],
       ...newStudentData,
+      rujukanSurat: `KKBS - ${newStudentData.noMatrik || studentsData[existingIdx].noMatrik}`,
+      tarikhSurat: todayMalay,
       status: newStudentData.status || 'Memohon',
       timestamp: new Date().toLocaleString()
     };
@@ -391,8 +448,8 @@ app.post('/api/students', async (req: Request, res: Response) => {
       id: newId,
       timestamp: new Date().toLocaleString(),
       status: newStudentData.status || 'Memohon',
-      rujukanSurat: newStudentData.rujukanSurat || `KKBS/LI/2026/${progCode}/${String(studentsData.length + 1).padStart(3, '0')}`,
-      tarikhSurat: newStudentData.tarikhSurat || new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }),
+      rujukanSurat: newStudentData.rujukanSurat || `KKBS - ${newStudentData.noMatrik || ''}`,
+      tarikhSurat: todayMalay,
       tempohLatihan: '20 Minggu (5 Bulan)',
       tarikhLatihanMula: '2026-07-01',
       tarikhLatihanTamat: '2026-11-15'
@@ -511,6 +568,62 @@ app.put('/api/students/:id', async (req: Request, res: Response) => {
     message: scriptResult?.message || 'Maklumat permohonan dikemaskini.',
     emailError: scriptResult?.emailError
   });
+});
+
+// 3.1. POST /api/students/mark - Update lecturer assessment mark for student
+app.post('/api/students/mark', async (req: Request, res: Response) => {
+  const { noMatrik, marks } = req.body;
+  const appsScriptUrl = getAppsScriptUrl(req);
+  if (!appsScriptUrl) {
+    return res.status(400).json({ error: 'Konfigurasi URL Google Apps Script tidak ditemui.' });
+  }
+
+  try {
+    const scriptRes = await fetch(appsScriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_student_mark',
+        noMatrik,
+        marks
+      })
+    });
+    
+    const responseText = await scriptRes.text();
+    console.log('Apps Script Mark response:', responseText);
+    
+    let result: any;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
+        return res.status(400).json({
+          error: 'Penyimpanan markah berjaya di Google Sheets, namun sambungan API web mengembalikan paparan halaman keselamatan Google. Sila pastikan Apps Script telah di-deploy semula dengan akses "Anyone" dan di-authorize.'
+        });
+      }
+      return res.status(400).json({ error: `Ralat respon Google Sheets: ${responseText.substring(0, 100)}` });
+    }
+    
+    if (result.success) {
+      // Local sync in memory for markahData
+      const idx = markahData.findIndex(m => {
+        const matrikKey = Object.keys(m).find(k => k.toUpperCase().trim() === 'NO. MATRIK' || k.toUpperCase().trim() === 'NO MATRIK' || k.toUpperCase().trim() === 'NO PENDAFTARAN');
+        return matrikKey && String(m[matrikKey]).trim() === String(noMatrik).trim();
+      });
+      if (idx !== -1) {
+        const realHeaders = ["FLI02-C1", "FLI02-C2", "TOTAL7", "FLI02-C3", "FLI02-C4", "TOTAL8", "FLI02-C5", "FLI02-C6", "TOTAL9", "GRAN TOTAL2", "FLI02-ULASAN"];
+        const limit = Math.min(marks.length, realHeaders.length);
+        for (let i = 0; i < limit; i++) {
+          markahData[idx][realHeaders[i]] = marks[i];
+        }
+      }
+      res.json({ success: true, message: 'Markah pemantauan berjaya dikemaskini!' });
+    } else {
+      res.status(500).json({ error: result.error || 'Gagal mengemaskini markah.' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Ralat semasa menghubungi pelayan Google Apps Script.' });
+  }
 });
 
 // 3.5. POST /api/send-email - Send cover letter / documents to HR via Apps Script

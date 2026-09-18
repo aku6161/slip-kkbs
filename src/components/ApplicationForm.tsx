@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Student, SystemConfig } from '../types';
 import { UserPlus, Send, User, Building, Award, BookOpen } from 'lucide-react';
 
@@ -6,11 +6,25 @@ interface ApplicationFormProps {
   students?: Student[];
   config: SystemConfig;
   appsScriptUrl?: string;
-  onSuccess: (newStudent: Student, message?: string, emailError?: string) => void;
-  onCancel: () => void;
+  onSuccess?: (newStudent: Student, message?: string, emailError?: string) => void;
+  onCancel?: () => void;
+  onSaveStudent?: (studentData: Partial<Student>) => Promise<{ success: boolean; student?: Student }>;
+  onSelectStudentForDoc?: (student: Student, docType: any) => void;
+  initialIc?: string;
+  onSuccessSubmit?: () => void;
 }
 
-export const ApplicationForm: React.FC<ApplicationFormProps> = ({ students = [], config, appsScriptUrl = '', onSuccess, onCancel }) => {
+export const ApplicationForm: React.FC<ApplicationFormProps> = ({ 
+  students = [], 
+  config, 
+  appsScriptUrl = '', 
+  onSuccess, 
+  onCancel,
+  onSaveStudent,
+  onSelectStudentForDoc,
+  initialIc,
+  onSuccessSubmit
+}) => {
   const [icSearchInput, setIcSearchInput] = useState('');
   const [searchStatus, setSearchStatus] = useState<{ found: boolean; message: string } | null>(null);
 
@@ -36,11 +50,34 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ students = [],
     emelPa: '',
     emelHrSyarikat: '',
     namaSyarikat: '',
+    kelas: '',
     status: 'Memohon',
   });
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Gunakan ref untuk pastikan form hanya diisi sekali sahaja (tidak reset bila students refresh)
+  const hasInitialized = useRef(false);
+
+  React.useEffect(() => {
+    if (initialIc && !hasInitialized.current) {
+      const found = students.find(s => (s.noIc || '').replace(/\D/g, '') === initialIc.replace(/\D/g, ''));
+      if (found) {
+        hasInitialized.current = true;
+        setFormData({ ...found });
+      } else if (students.length > 0) {
+        // students sudah diload tapi tiada rekod — tetapkan IC sahaja, jangan reset lagi
+        hasInitialized.current = true;
+        setFormData(prev => ({ ...prev, noIc: formatIc(initialIc) }));
+      }
+    }
+  }, [initialIc, students]);
+
+  // Reset hasInitialized bila initialIc bertukar (pelajar baru log masuk)
+  React.useEffect(() => {
+    hasInitialized.current = false;
+  }, [initialIc]);
 
   // Format Helpers
   const formatIc = (val: string) => {
@@ -76,7 +113,11 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ students = [],
     });
 
     if (foundStudent) {
-      setFormData({ ...foundStudent });
+      setFormData(prev => ({
+        ...foundStudent,
+        // Jika pelajar sudah pilih program baharu, kekalkan pilihan baharu tersebut
+        program: prev.program && prev.program !== '' ? prev.program : (foundStudent.program || '')
+      }));
       setSearchStatus({
         found: true,
         message: `Rekod dijumpai untuk ${foundStudent.namaPelajar}! Data permohonan telah dimuatkan.`
@@ -108,6 +149,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ students = [],
       namaPelajar: cleanUpper(formData.namaPelajar),
       noMatrik: cleanUpper(formData.noMatrik),
       program: formData.program?.trim(), // Program names from selection
+      kelas: cleanUpper(formData.kelas),
       sesi: config.sesi, // Force the student's Sesi to the active session configured in the system
       alamat: cleanUpper(formData.alamat),
       namaSekolahMenengah: cleanUpper(formData.namaSekolahMenengah),
@@ -127,22 +169,33 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ students = [],
     };
 
     try {
-      const res = await fetch('/api/students', {
+      if (onSaveStudent) {
+        const result = await onSaveStudent(cleanedData);
+        if (result.success && result.student) {
+          onSuccess?.(result.student, 'Permohonan latihan industri berjaya dihantar!');
+          onSuccessSubmit?.();
+          return;
+        }
+      }
+
+      const url = appsScriptUrl 
+        ? `/api/students?appsScriptUrl=${encodeURIComponent(appsScriptUrl)}`
+        : '/api/students';
+
+      const res = await fetch(url, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-apps-script-url': appsScriptUrl
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cleanedData),
       });
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Gagal menambah permohonan baru');
+        throw new Error(errData.error || 'Gagal menyimpan permohonan');
       }
 
       const data = await res.json();
-      onSuccess(data.student, data.message, data.emailError);
+      onSuccess?.(data.student, data.message || 'Permohonan latihan industri berjaya dihantar!', data.emailError);
+      onSuccessSubmit?.();
     } catch (err: any) {
       setErrorMessage(err.message || 'Ralat berlaku semasa menghantar permohonan.');
     } finally {
@@ -163,38 +216,40 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ students = [],
         </p>
       </div>
 
-      {/* Carian Kad Pengenalan */}
-      <div className="bg-slate-50 border border-slate-300 rounded-xl p-4 mb-6 space-y-3">
-        <label className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-1.5">
-          <User className="w-4 h-4 text-blue-900" />
-          CARIAN KAD PENGENALAN (PERMOHONAN/KEMASKINI)
-        </label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Masukkan No. Kad Pengenalan (contoh: 060503-12-0288)..."
-            value={icSearchInput}
-            onChange={(e) => setIcSearchInput(formatIc(e.target.value))}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearchIc(); } }}
-            className="flex-1 px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-900/20 focus:outline-none font-mono"
-          />
-          <button
-            type="button"
-            onClick={handleSearchIc}
-            className="px-4 py-2.5 bg-blue-950 hover:bg-blue-900 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
-          >
-            Cari Kad Pengenalan
-          </button>
-        </div>
-
-        {searchStatus && (
-          <div className={`p-3 rounded-xl text-xs font-bold border ${
-            searchStatus.found ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-amber-50 border-amber-300 text-amber-900'
-          }`}>
-            {searchStatus.message}
+      {/* Carian Kad Pengenalan (Hanya jika tidak dipanggil dari portal pelajar) */}
+      {!initialIc && (
+        <div className="bg-slate-50 border border-slate-300 rounded-xl p-4 mb-6 space-y-3">
+          <label className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-1.5">
+            <User className="w-4 h-4 text-blue-900" />
+            CARIAN KAD PENGENALAN (PERMOHONAN/KEMASKINI)
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Masukkan No. Kad Pengenalan (contoh: 060503-12-0288)..."
+              value={icSearchInput}
+              onChange={(e) => setIcSearchInput(formatIc(e.target.value))}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearchIc(); } }}
+              className="flex-1 px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-900/20 focus:outline-none font-mono"
+            />
+            <button
+              type="button"
+              onClick={handleSearchIc}
+              className="px-4 py-2.5 bg-blue-950 hover:bg-blue-900 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              Cari Kad Pengenalan
+            </button>
           </div>
-        )}
-      </div>
+
+          {searchStatus && (
+            <div className={`p-3 rounded-xl text-xs font-bold border ${
+              searchStatus.found ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-amber-50 border-amber-300 text-amber-900'
+            }`}>
+              {searchStatus.message}
+            </div>
+          )}
+        </div>
+      )}
 
       {errorMessage && (
         <div className="bg-rose-50 border border-rose-300 text-rose-900 p-3 rounded-lg text-xs font-bold mb-6">
@@ -228,10 +283,13 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ students = [],
               <input
                 type="text"
                 required
+                readOnly={!!initialIc}
                 placeholder="Contoh: 060503-12-0288"
                 value={formData.noIc}
                 onChange={e => setFormData({ ...formData, noIc: formatIc(e.target.value) })}
-                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none font-mono text-slate-900 bg-white font-bold"
+                className={`w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none font-mono text-slate-900 font-bold ${
+                  initialIc ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-white'
+                }`}
               />
             </div>
 
@@ -259,6 +317,24 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({ students = [],
                 <option value="SIJIL KULINARI">SIJIL KULINARI</option>
                 <option value="SIJIL OPERASI PERHOTELAN">SIJIL OPERASI PERHOTELAN</option>
                 <option value="SIJIL TEKNOLOGI ELEKTRIK">SIJIL TEKNOLOGI ELEKTRIK</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">KELAS: *</label>
+              <select
+                value={formData.kelas || ''}
+                required
+                onChange={e => setFormData({ ...formData, kelas: e.target.value })}
+                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none font-bold text-slate-900 bg-white uppercase"
+              >
+                <option value="">-- SILA PILIH KELAS --</option>
+                <option value="SKU4A">SKU4A</option>
+                <option value="SKU4B">SKU4B</option>
+                <option value="SOP4A">SOP4A</option>
+                <option value="SOP4B">SOP4B</option>
+                <option value="SKE4A">SKE4A</option>
+                <option value="SKE4B">SKE4B</option>
               </select>
             </div>
 

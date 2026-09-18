@@ -54,6 +54,7 @@ export interface Student {
   emelPa: string;
   emelHrSyarikat: string;
   namaSyarikat?: string;
+  kelas?: string;
   status: ApplicationStatus;
   tarikhLatihanMula?: string;
   tarikhLatihanTamat?: string;
@@ -91,4 +92,7 @@ export interface SystemConfig {
   tarikhAkhirJawapan: string;
   namaPpia: string;
   noTelefonPpia: string;
+  tarikhPemantauan?: string;
+  tarikhPembentangan?: string;
+  tarikhKeputusan?: string;
 }

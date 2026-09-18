@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Latihan Industri Pelajar (SLIP)",
+  "description": "Sistem permohonan latihan industri pelajar untuk menghantar Surat Permohonan, Resume, Borang BJPLI, dan Skop Latihan kepada pihak industri dengan pengurusan data Google Sheets dan bantuan AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
