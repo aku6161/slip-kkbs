@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Logo } from './Logo';
 import logo3d from '../logo.png';
 import { ShieldCheck, User, Lock, Laptop, CheckCircle2, AlertCircle, X, ChevronRight, GraduationCap } from 'lucide-react';
 
@@ -67,9 +68,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStudentLogin, onAdmi
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-between font-sans">
       {/* Top Navbar */}
       <header className="w-full max-w-5xl px-4 py-4 flex items-center justify-between border-b border-slate-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-30">
-        <div className="flex items-center gap-2 select-none">
-          <img src={logo3d} alt="Logo SLIP" className="h-9 w-auto object-contain" />
-        </div>
+        <Logo size="sm" showSubtitle={false} />
         
         <div className="flex items-center gap-2">
           <button
