@@ -33,6 +33,10 @@ export const STUDENTS_COLLECTION = 'students';
 export const MARKAH_COLLECTION = 'markah';
 export const CONFIG_COLLECTION = 'config';
 
+export function removeUndefined<T extends Record<string, any>>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj, (k, v) => (v === undefined ? null : v)));
+}
+
 /**
  * Real-time listener for students collection
  */
@@ -56,7 +60,7 @@ export function subscribeStudents(callback: (students: Student[]) => void, onErr
 export async function saveStudentToFirebase(student: Student): Promise<void> {
   // Use student.id or clean noMatrik as the document ID
   const docId = student.id || student.noMatrik?.replace(/\//g, '_') || `student_${Date.now()}`;
-  const studentWithId = { ...student, id: docId, updatedAt: new Date().toISOString() };
+  const studentWithId = removeUndefined({ ...student, id: docId, updatedAt: new Date().toISOString() });
   await setDoc(doc(db, STUDENTS_COLLECTION, docId), studentWithId, { merge: true });
 }
 
