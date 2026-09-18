@@ -15,6 +15,16 @@ import { StudentPortal } from './components/StudentPortal';
 import { LecturerPortal } from './components/LecturerPortal';
 import { RefreshCw, Lock, ShieldCheck, X, AlertCircle } from 'lucide-react';
 
+import { 
+  subscribeStudents, 
+  saveStudentToFirebase, 
+  subscribeMarkah, 
+  saveMarkahToFirebase, 
+  subscribeSystemConfig, 
+  saveSystemConfigToFirebase,
+  seedFirebaseIfEmpty 
+} from './firebase';
+
 export default function App() {
   const [userRole, setUserRole] = useState<'landing' | 'student' | 'admin' | 'lecturer'>('landing');
   const [studentIc, setStudentIc] = useState<string>('');
@@ -44,7 +54,7 @@ export default function App() {
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Apps Script configuration (stored in localStorage)
+  // Apps Script configuration for Document Generation & Drive Templates (stored in localStorage)
   const [appsScriptUrl, setAppsScriptUrl] = useState<string>(() => localStorage.getItem('APPS_SCRIPT_URL') || '');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -53,43 +63,49 @@ export default function App() {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [adminAuthError, setAdminAuthError] = useState('');
 
-  // Load students from backend API on mount & auto-refresh every 5 seconds
-  const fetchStudents = async (targetUrl = appsScriptUrl) => {
-    setIsSyncing(true);
-    try {
-      const url = targetUrl
-        ? `/api/students?appsScriptUrl=${encodeURIComponent(targetUrl)}`
-        : '/api/students';
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.students) {
-          setStudents(data.students);
-        }
-        if (data.markah) {
-          setMarkah(data.markah);
-        }
-        if (data.markahHeaders) {
-          setMarkahHeaders(data.markahHeaders);
-        }
-        if (data.config) {
-          setConfig(data.config);
-        }
-      }
-    } catch (err) {
-      console.warn('Backend sync warning, using local initial state:', err);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
+  // 1. Firebase Firestore Real-Time Subscriptions (Students, Config, Markah)
   useEffect(() => {
-    fetchStudents(appsScriptUrl);
-    const interval = setInterval(() => {
-      fetchStudents(appsScriptUrl);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [appsScriptUrl]);
+    setIsSyncing(true);
+
+    // Initial seeding if Firestore is empty
+    seedFirebaseIfEmpty(INITIAL_STUDENTS, config).catch(() => {});
+
+    // Subscribe to students collection in real-time
+    const unsubscribeStudents = subscribeStudents(
+      (firebaseStudents) => {
+        if (firebaseStudents && firebaseStudents.length > 0) {
+          setStudents(firebaseStudents);
+        }
+        setIsSyncing(false);
+      },
+      (err) => {
+        console.warn('Firebase students sync note:', err);
+        setIsSyncing(false);
+      }
+    );
+
+    // Subscribe to system config in real-time
+    const unsubscribeConfig = subscribeSystemConfig((firebaseConfig) => {
+      if (firebaseConfig) {
+        setConfig(firebaseConfig);
+      }
+    });
+
+    // Subscribe to markah in real-time
+    const unsubscribeMarkah = subscribeMarkah((firebaseMarkah) => {
+      if (firebaseMarkah && firebaseMarkah.length > 0) {
+        setMarkah(firebaseMarkah);
+        const headers = Array.from(new Set(firebaseMarkah.flatMap(m => Object.keys(m))));
+        setMarkahHeaders(headers);
+      }
+    });
+
+    return () => {
+      unsubscribeStudents();
+      unsubscribeConfig();
+      unsubscribeMarkah();
+    };
+  }, []);
 
   // Admin login handler
   const handleAdminLoginSubmit = (e: React.FormEvent) => {
@@ -114,51 +130,63 @@ export default function App() {
 
   const handleUpdateStudent = async (id: string, updatedData: Partial<Student>) => {
     // Update local state immediately
+    const target = students.find(s => s.id === id);
+    if (!target) return;
+    const updated = { ...target, ...updatedData };
+
     setStudents(prev =>
-      prev.map(s => (s.id === id ? { ...s, ...updatedData } : s))
+      prev.map(s => (s.id === id ? updated : s))
     );
 
     if (selectedStudent && selectedStudent.id === id) {
       setSelectedStudent(prev => (prev ? { ...prev, ...updatedData } : null));
     }
 
-    // Sync with server backend
+    // Save directly to Firebase Firestore
     try {
-      await fetch(`/api/students/${id}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-apps-script-url': appsScriptUrl
-        },
-        body: JSON.stringify(updatedData),
-      });
+      await saveStudentToFirebase(updated);
     } catch (err) {
-      console.error('Failed to sync update to server:', err);
+      console.error('Failed to sync update to Firebase:', err);
     }
   };
 
   const handleSaveStudentAsync = async (studentData: Partial<Student>) => {
     try {
-      const url = appsScriptUrl 
-        ? `/api/students?appsScriptUrl=${encodeURIComponent(appsScriptUrl)}`
-        : '/api/students';
+      const docId = studentData.id || studentData.noMatrik?.replace(/\//g, '_') || `student_${Date.now()}`;
+      const fullStudent: Student = {
+        id: docId,
+        timestamp: new Date().toLocaleString('ms-MY'),
+        email: studentData.email || studentData.emelPelajar || '',
+        namaPelajar: studentData.namaPelajar || '',
+        noIc: studentData.noIc || '',
+        noMatrik: studentData.noMatrik || '',
+        program: studentData.program || '',
+        sesi: studentData.sesi || config.sesi || '',
+        noTelefon: studentData.noTelefon || '',
+        emelPelajar: studentData.emelPelajar || '',
+        alamat: studentData.alamat || '',
+        namaSekolahMenengah: studentData.namaSekolahMenengah || '',
+        jawatanKkbs: studentData.jawatanKkbs || '',
+        programKkbs1: studentData.programKkbs1 || '',
+        programKkbs2: studentData.programKkbs2 || '',
+        programKkbs3: studentData.programKkbs3 || '',
+        pencapaian1: studentData.pencapaian1 || '',
+        pencapaian2: studentData.pencapaian2 || '',
+        pencapaian3: studentData.pencapaian3 || '',
+        namaPa: studentData.namaPa || '',
+        noTelefonPa: studentData.noTelefonPa || '',
+        emelPa: studentData.emelPa || '',
+        emelHrSyarikat: studentData.emelHrSyarikat || '',
+        namaSyarikat: studentData.namaSyarikat || '',
+        status: (studentData.status || 'Permohonan Dihantar') as any,
+        ...studentData
+      };
 
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(studentData),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.student) {
-          setStudents(prev => [data.student, ...prev.filter(s => s.id !== data.student.id)]);
-          return { success: true, student: data.student };
-        }
-      }
-      return { success: false };
+      await saveStudentToFirebase(fullStudent);
+      setStudents(prev => [fullStudent, ...prev.filter(s => s.id !== docId)]);
+      return { success: true, student: fullStudent };
     } catch (err) {
-      console.error('Failed to save student:', err);
+      console.error('Failed to save student to Firebase:', err);
       return { success: false };
     }
   };
@@ -180,31 +208,18 @@ export default function App() {
   const handleNewStudentCreated = (newStudent: Student, message?: string, emailError?: string) => {
     setStudents(prev => [newStudent, ...prev]);
     if (emailError) {
-      alert(`Permohonan telah disimpan di Google Sheets, tetapi penghantaran emel GAGAL: ${emailError}. Sila semak semula emel HR atau laporkan kepada pentadbir.`);
+      alert(`Permohonan telah disimpan, tetapi penghantaran emel GAGAL: ${emailError}. Sila semak semula emel HR atau laporkan kepada pentadbir.`);
     } else {
-      alert('Permohonan telah dihantar. Sila semak emel anda!');
+      alert('Permohonan telah berjaya disimpan ke Firebase. Sila semak emel anda!');
     }
   };
 
   const handleSaveStudentMark = async (noMatrik: string, marks: any[]) => {
     try {
-      const url = appsScriptUrl 
-        ? `/api/students/mark?appsScriptUrl=${encodeURIComponent(appsScriptUrl)}`
-        : '/api/students/mark';
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ noMatrik, marks })
-      });
-      if (res.ok) {
-        fetchStudents(appsScriptUrl);
-        return { success: true };
-      } else {
-        const err = await res.json().catch(() => ({ error: 'Gagal menyimpan markah.' }));
-        return { success: false, message: err.error || 'Gagal menyimpan markah.' };
-      }
+      await saveMarkahToFirebase(noMatrik, { marks });
+      return { success: true };
     } catch (e: any) {
-      return { success: false, message: e.message || 'Ralat pelayan semasa menghantar markah.' };
+      return { success: false, message: e.message || 'Ralat semasa menyimpan markah ke Firebase.' };
     }
   };
 

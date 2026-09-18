@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, Save, ShieldCheck, Settings } from 'lucide-react';
 import { SystemConfig } from '../types';
+import { saveSystemConfigToFirebase } from '../firebase';
 
 interface ConfigPanelProps {
   config: SystemConfig;
@@ -69,28 +70,13 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, appsScriptUrl,
     setLoading(true);
     setMessage('');
     setError('');
-
     try {
-      const res = await fetch('/api/config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-apps-script-url': appsScriptUrl
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Gagal mengemaskini tetapan latihan');
-      }
-
-      const data = await res.json();
+      await saveSystemConfigToFirebase(formData);
       setIsDirty(false);
-      setMessage('Tetapan maklumat latihan industri berjaya disimpan & disegerak!');
-      onSaveSuccess(data.config || formData);
+      setMessage('Tetapan maklumat latihan industri berjaya disimpan ke Firebase!');
+      onSaveSuccess(formData);
     } catch (err: any) {
-      setError(err.message || 'Ralat berlaku semasa menyimpan tetapan.');
+      setError(err.message || 'Ralat berlaku semasa menyimpan tetapan ke Firebase.');
     } finally {
       setLoading(false);
     }
