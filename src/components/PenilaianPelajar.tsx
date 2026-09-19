@@ -201,7 +201,7 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
             Pengurusan &amp; Pemantauan Penilaian Pelajar
           </div>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight uppercase">
-            Penilaian Pelajar (FLI 01, FLI 02, FLI 03, FLI 04)
+            PENILAIAN PELAJAR
           </h2>
           <p className="text-slate-300 text-xs sm:text-sm mt-2 leading-relaxed">
             Pantau dan masukkan markah Penilaian Industri (60%), Pemantauan Temubual (20%), Laporan Akhir (20%) dan Rumusan Keseluruhan (100%).
@@ -308,10 +308,10 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
         <div className="p-5 border-b border-slate-150 bg-slate-50/70 flex items-center justify-between">
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
             <Award className="w-4 h-4 text-blue-900" />
-            Senarai Penilaian Pelajar ({filteredStudents.length} Pelajar)
+            Senarai Penilaian Pelajar
           </h3>
           <span className="text-[11px] text-slate-500 font-semibold">
-            Klik pada mana-mana kad (FLI 01, 02, 03, 04) untuk mengisi markah
+            Klik pada mana-mana kad (FLI 01, FLI 02, FLI 03, FLI 04) untuk mengisi markah
           </span>
         </div>
 
@@ -333,135 +333,67 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
               return (
                 <div
                   key={student.id || student.noMatrik}
-                  className="p-5 sm:p-6 hover:bg-slate-50/80 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-5"
+                  className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
-                  {/* Left: Student Profile & Details */}
-                  <div className="space-y-1.5 max-w-sm">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-blue-900 font-extrabold text-[11px] px-2 py-0.5 bg-blue-50 border border-blue-200 rounded-md">
-                        {student.noMatrik || 'TIADA MATRIK'}
-                      </span>
-                      {student.kelas && (
-                        <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-bold text-[10px] uppercase">
-                          {student.kelas}
-                        </span>
-                      )}
-                      <span className="text-[10px] text-slate-400 font-semibold">
-                        {student.sesi || config.sesi}
-                      </span>
-                    </div>
-
-                    <h4 className="font-black text-slate-900 text-sm uppercase leading-snug">
-                      {student.namaPelajar}
+                  {/* Left: Student Name Only */}
+                  <div className="space-y-0.5">
+                    <h4 className="font-black text-slate-900 text-sm uppercase tracking-wide">
+                      {student.namaPelajar || student['NAMA PELAJAR']}
                     </h4>
-
-                    <p className="text-[11px] font-bold text-slate-600 uppercase">
-                      {student.program || 'SIJIL KKBS'}
-                    </p>
-
-                    {student.namaSyarikat && (
-                      <p className="text-[11px] text-slate-500 line-clamp-1 italic">
-                        📍 {student.namaSyarikat}
-                      </p>
-                    )}
                   </div>
 
-                  {/* Right: 4 Interactive Evaluation Cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full lg:w-auto shrink-0">
-                    {/* Kad FLI 01: Penilaian Industri (60%) */}
+                  {/* Right: 4 Interactive Evaluation Cards (Clean: Name Only + Red/Green status) */}
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    {/* Kad FLI 01 */}
                     <button
                       type="button"
                       onClick={() => setActiveModal({ type: 'fli01', student, markData })}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between group shadow-xs ${
+                      className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs border ${
                         fli01.completed
-                          ? 'bg-emerald-50/90 border-emerald-300 hover:bg-emerald-100 text-emerald-950'
-                          : 'bg-rose-50/90 border-rose-300 hover:bg-rose-100 text-rose-950'
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-emerald-600/20'
+                          : 'bg-rose-600 hover:bg-rose-700 text-white border-rose-700 shadow-rose-600/20'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider">FLI 01</span>
-                        <span className={`w-2.5 h-2.5 rounded-full ${fli01.completed ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                      </div>
-                      <p className="text-[11px] font-bold">Industri (60%)</p>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                          fli01.completed ? 'bg-emerald-200/80 text-emerald-900' : 'bg-rose-200/80 text-rose-900'
-                        }`}>
-                          {fli01.completed ? `${fli01.score.toFixed(2)}%` : 'Belum Diisi'}
-                        </span>
-                      </div>
+                      FLI 01
                     </button>
 
-                    {/* Kad FLI 02: Penilaian Pemantauan (20%) */}
+                    {/* Kad FLI 02 */}
                     <button
                       type="button"
                       onClick={() => setActiveModal({ type: 'fli02', student, markData })}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between group shadow-xs ${
+                      className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs border ${
                         fli02.completed
-                          ? 'bg-emerald-50/90 border-emerald-300 hover:bg-emerald-100 text-emerald-950'
-                          : 'bg-rose-50/90 border-rose-300 hover:bg-rose-100 text-rose-950'
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-emerald-600/20'
+                          : 'bg-rose-600 hover:bg-rose-700 text-white border-rose-700 shadow-rose-600/20'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider">FLI 02</span>
-                        <span className={`w-2.5 h-2.5 rounded-full ${fli02.completed ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                      </div>
-                      <p className="text-[11px] font-bold">Pemantauan (20%)</p>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                          fli02.completed ? 'bg-emerald-200/80 text-emerald-900' : 'bg-rose-200/80 text-rose-900'
-                        }`}>
-                          {fli02.completed ? `${fli02.score.toFixed(2)}%` : 'Belum Diisi'}
-                        </span>
-                      </div>
+                      FLI 02
                     </button>
 
-                    {/* Kad FLI 03: Penilaian Laporan Akhir (20%) */}
+                    {/* Kad FLI 03 */}
                     <button
                       type="button"
                       onClick={() => setActiveModal({ type: 'fli03', student, markData })}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between group shadow-xs ${
+                      className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs border ${
                         fli03.completed
-                          ? 'bg-emerald-50/90 border-emerald-300 hover:bg-emerald-100 text-emerald-950'
-                          : 'bg-rose-50/90 border-rose-300 hover:bg-rose-100 text-rose-950'
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-emerald-600/20'
+                          : 'bg-rose-600 hover:bg-rose-700 text-white border-rose-700 shadow-rose-600/20'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider">FLI 03</span>
-                        <span className={`w-2.5 h-2.5 rounded-full ${fli03.completed ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                      </div>
-                      <p className="text-[11px] font-bold">Laporan (20%)</p>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                          fli03.completed ? 'bg-emerald-200/80 text-emerald-900' : 'bg-rose-200/80 text-rose-900'
-                        }`}>
-                          {fli03.completed ? `${fli03.score.toFixed(2)}%` : 'Belum Diisi'}
-                        </span>
-                      </div>
+                      FLI 03
                     </button>
 
-                    {/* Kad FLI 04: Rumusan Penilaian (100%) */}
+                    {/* Kad FLI 04 */}
                     <button
                       type="button"
                       onClick={() => setActiveModal({ type: 'fli04', student, markData })}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between group shadow-xs ${
+                      className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs border ${
                         fli04.completed
-                          ? 'bg-emerald-50/90 border-emerald-300 hover:bg-emerald-100 text-emerald-950'
-                          : 'bg-rose-50/90 border-rose-300 hover:bg-rose-100 text-rose-950'
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-emerald-600/20'
+                          : 'bg-rose-600 hover:bg-rose-700 text-white border-rose-700 shadow-rose-600/20'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider">FLI 04</span>
-                        <span className={`w-2.5 h-2.5 rounded-full ${fli04.completed ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                      </div>
-                      <p className="text-[11px] font-bold">Rumusan (100%)</p>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                          fli04.completed ? 'bg-emerald-200/80 text-emerald-900' : 'bg-rose-200/80 text-rose-900'
-                        }`}>
-                          {fli04.completed ? `${fli04.total.toFixed(2)}%` : 'Belum Lengkap'}
-                        </span>
-                      </div>
+                      FLI 04
                     </button>
                   </div>
                 </div>
