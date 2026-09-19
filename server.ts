@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { INITIAL_STUDENTS, SHEET_URL } from './src/data/initialData.js';
-import { Student } from './src/types.js';
+import { Student, ApplicationStatus } from './src/types.js';
 
 let __filename = '';
 let __dirname = '';
@@ -181,7 +181,7 @@ function parseCsvToStudents(csvText: string): Student[] {
       emelPa,
       emelHrSyarikat,
       namaSyarikat: existing?.namaSyarikat || namaSyarikat,
-      status: existing?.status || status,
+      status: (existing?.status || status) as ApplicationStatus,
       rujukanSurat: existing?.rujukanSurat || rujukanSurat,
       tarikhSurat: existing?.tarikhSurat || tarikhSurat,
       kelas: existing?.kelas || kelas,
