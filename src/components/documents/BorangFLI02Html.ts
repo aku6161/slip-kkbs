@@ -96,7 +96,7 @@ export function renderBorangFLI02Html(row: any): string {
       body { padding: 0; }
       .no-print { display: none !important; }
       @page { 
-        margin: 6mm 10mm 6mm 10mm; 
+        margin: 8mm 14mm 8mm 14mm; 
         size: A4 portrait; 
       }
     }

@@ -25,9 +25,10 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
     return num.toFixed(2);
   };
 
-  const ccms = (val: number | string): string => {
-    const num = parseFloat(String(val)) || 0;
-    return (num / 100).toFixed(2);
+  const calcCCMS = (mark: number | string, weight: number): string => {
+    const num = parseFloat(String(mark)) || 0;
+    if (!weight || weight <= 0) return '0.00';
+    return ((num / weight) * 100).toFixed(2);
   };
 
   // FLI 01 Breakdown
@@ -115,22 +116,22 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
             <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl">
               <span className="text-[10px] font-bold text-blue-800 uppercase tracking-wide">1. Industri (FLI 01)</span>
               <h4 className="text-lg font-black text-blue-950 mt-0.5">{f2(total_fli01)} / 60%</h4>
-              <p className="text-[10px] font-mono text-blue-700 mt-0.5">CCMS: {ccms(total_fli01)}</p>
+              <p className="text-[10px] font-mono text-blue-700 mt-0.5">CCMS: {calcCCMS(total_fli01, 60)}</p>
             </div>
             <div className="p-3.5 bg-indigo-50 border border-indigo-200 rounded-2xl">
               <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-wide">2. Pemantauan (FLI 02)</span>
               <h4 className="text-lg font-black text-indigo-950 mt-0.5">{f2(total_fli02)} / 20%</h4>
-              <p className="text-[10px] font-mono text-indigo-700 mt-0.5">CCMS: {ccms(total_fli02)}</p>
+              <p className="text-[10px] font-mono text-indigo-700 mt-0.5">CCMS: {calcCCMS(total_fli02, 20)}</p>
             </div>
             <div className="p-3.5 bg-teal-50 border border-teal-200 rounded-2xl">
               <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wide">3. Laporan (FLI 03)</span>
               <h4 className="text-lg font-black text-teal-950 mt-0.5">{f2(total_fli03)} / 20%</h4>
-              <p className="text-[10px] font-mono text-teal-700 mt-0.5">CCMS: {ccms(total_fli03)}</p>
+              <p className="text-[10px] font-mono text-teal-700 mt-0.5">CCMS: {calcCCMS(total_fli03, 20)}</p>
             </div>
             <div className="p-3.5 bg-slate-900 text-white rounded-2xl shadow-md">
               <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wide">Jumlah Keseluruhan</span>
               <h4 className="text-lg font-black text-amber-400 mt-0.5">{f2(grand_total)} / 100</h4>
-              <p className="text-[10px] font-mono text-amber-300 mt-0.5">CCMS: {ccms(grand_total)}</p>
+              <p className="text-[10px] font-mono text-amber-300 mt-0.5">CCMS: {calcCCMS(grand_total, 100)}</p>
             </div>
           </div>
 
@@ -144,7 +145,7 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <th className="py-2.5 px-3 text-center w-16">CLO</th>
                   <th className="py-2.5 px-3 text-center w-20">Pemberat</th>
                   <th className="py-2.5 px-3 text-center w-24">Markah (%)</th>
-                  <th className="py-2.5 px-3 text-center w-28 bg-slate-900 text-amber-300">CCMS [Markah/100]</th>
+                  <th className="py-2.5 px-3 text-center w-36 bg-slate-900 text-amber-300">CCMS [Markah (%)/pemberat*100]</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150">
@@ -161,7 +162,7 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <td className="py-1.5 px-3 text-center font-bold text-slate-700">1</td>
                   <td className="py-1.5 px-3 text-center text-slate-600">30%</td>
                   <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli01_a1_pct)}%</td>
-                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli01_a1_pct)}</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{calcCCMS(fli01_a1_pct, 30)}</td>
                 </tr>
                 <tr>
                   <td className="py-1.5 px-3 text-center text-slate-500">2</td>
@@ -169,7 +170,7 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <td className="py-1.5 px-3 text-center font-bold text-slate-700">2</td>
                   <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
                   <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli01_a2_pct)}%</td>
-                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli01_a2_pct)}</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{calcCCMS(fli01_a2_pct, 5)}</td>
                 </tr>
                 <tr>
                   <td className="py-1.5 px-3 text-center text-slate-500">3</td>
@@ -177,7 +178,7 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <td className="py-1.5 px-3 text-center font-bold text-slate-700">3</td>
                   <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
                   <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli01_a3_pct)}%</td>
-                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli01_a3_pct)}</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{calcCCMS(fli01_a3_pct, 5)}</td>
                 </tr>
                 <tr>
                   <td className="py-1.5 px-3 text-center text-slate-500">4</td>
@@ -185,7 +186,7 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <td className="py-1.5 px-3 text-center font-bold text-slate-700">4</td>
                   <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
                   <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli01_a4_pct)}%</td>
-                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli01_a4_pct)}</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{calcCCMS(fli01_a4_pct, 5)}</td>
                 </tr>
                 <tr>
                   <td className="py-1.5 px-3 text-center text-slate-500">5</td>
@@ -193,7 +194,7 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <td className="py-1.5 px-3 text-center font-bold text-slate-700">5</td>
                   <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
                   <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli01_a5_pct)}%</td>
-                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli01_a5_pct)}</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{calcCCMS(fli01_a5_pct, 5)}</td>
                 </tr>
                 <tr className="bg-slate-50/70 font-bold text-slate-700">
                   <td colSpan={6} className="py-1 px-3 text-[9.5px]">BAHAGIAN B: BUKU LOG LI (10%)</td>
@@ -204,13 +205,13 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <td className="py-1.5 px-3 text-center font-bold text-slate-700">1</td>
                   <td className="py-1.5 px-3 text-center text-slate-600">10%</td>
                   <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli01_b_pct)}%</td>
-                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli01_b_pct)}</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{calcCCMS(fli01_b_pct, 10)}</td>
                 </tr>
                 <tr className="bg-blue-50/60 font-black text-blue-900">
                   <td colSpan={3} className="py-1.5 px-3 text-right uppercase text-[10px]">Jumlah Penilaian Industri (FLI 01):</td>
                   <td className="py-1.5 px-3 text-center">60%</td>
                   <td className="py-1.5 px-3 text-center font-mono">{f2(total_fli01)}%</td>
-                  <td className="py-1.5 px-3 text-center font-mono text-blue-950 font-black">{ccms(total_fli01)}</td>
+                  <td className="py-1.5 px-3 text-center font-mono text-blue-950 font-black">{calcCCMS(total_fli01, 60)}</td>
                 </tr>
 
                 {/* 2. PENILAIAN PEMANTAUAN */}
@@ -226,7 +227,7 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <td className="py-1.5 px-3 text-center font-bold text-slate-700">2</td>
                   <td className="py-1.5 px-3 text-center text-slate-600">10%</td>
                   <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli02_c1_pct)}%</td>
-                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli02_c1_pct)}</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{calcCCMS(fli02_c1_pct, 10)}</td>
                 </tr>
                 <tr>
                   <td className="py-1.5 px-3 text-center text-slate-500">2</td>
@@ -234,7 +235,7 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <td className="py-1.5 px-3 text-center font-bold text-slate-700">3</td>
                   <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
                   <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli02_c2_pct)}%</td>
-                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli02_c2_pct)}</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{calcCCMS(fli02_c2_pct, 5)}</td>
                 </tr>
                 <tr>
                   <td className="py-1.5 px-3 text-center text-slate-500">3</td>
@@ -242,13 +243,13 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <td className="py-1.5 px-3 text-center font-bold text-slate-700">4</td>
                   <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
                   <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli02_c3_pct)}%</td>
-                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli02_c3_pct)}</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{calcCCMS(fli02_c3_pct, 5)}</td>
                 </tr>
                 <tr className="bg-indigo-50/60 font-black text-indigo-900">
                   <td colSpan={3} className="py-1.5 px-3 text-right uppercase text-[10px]">Jumlah Penilaian Pemantauan (FLI 02):</td>
                   <td className="py-1.5 px-3 text-center">20%</td>
                   <td className="py-1.5 px-3 text-center font-mono">{f2(total_fli02)}%</td>
-                  <td className="py-1.5 px-3 text-center font-mono text-indigo-950 font-black">{ccms(total_fli02)}</td>
+                  <td className="py-1.5 px-3 text-center font-mono text-indigo-950 font-black">{calcCCMS(total_fli02, 20)}</td>
                 </tr>
 
                 {/* 3. PENILAIAN LAPORAN AKHIR */}
@@ -264,7 +265,7 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <td className="py-1.5 px-3 text-center font-bold text-slate-700">1</td>
                   <td className="py-1.5 px-3 text-center text-slate-600">15%</td>
                   <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli03_d1_pct)}%</td>
-                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli03_d1_pct)}</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{calcCCMS(fli03_d1_pct, 15)}</td>
                 </tr>
                 <tr>
                   <td className="py-1.5 px-3 text-center text-slate-500">2</td>
@@ -272,13 +273,13 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <td className="py-1.5 px-3 text-center font-bold text-slate-700">2</td>
                   <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
                   <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli03_d2_pct)}%</td>
-                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli03_d2_pct)}</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{calcCCMS(fli03_d2_pct, 5)}</td>
                 </tr>
                 <tr className="bg-teal-50/60 font-black text-teal-900">
                   <td colSpan={3} className="py-1.5 px-3 text-right uppercase text-[10px]">Jumlah Penilaian Laporan Akhir (FLI 03):</td>
                   <td className="py-1.5 px-3 text-center">20%</td>
                   <td className="py-1.5 px-3 text-center font-mono">{f2(total_fli03)}%</td>
-                  <td className="py-1.5 px-3 text-center font-mono text-teal-950 font-black">{ccms(total_fli03)}</td>
+                  <td className="py-1.5 px-3 text-center font-mono text-teal-950 font-black">{calcCCMS(total_fli03, 20)}</td>
                 </tr>
 
                 {/* GRAND TOTAL */}
@@ -291,7 +292,7 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                     {f2(grand_total)}
                   </td>
                   <td className="py-2.5 px-3 text-center text-amber-300 font-mono text-sm bg-slate-950">
-                    {ccms(grand_total)}
+                    {calcCCMS(grand_total, 100)}
                   </td>
                 </tr>
               </tbody>
@@ -304,7 +305,8 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
               Disediakan oleh Pegawai Perhubungan Industri dan Alumni,
             </p>
             <div className="mt-8 border-b border-slate-400 w-56"></div>
-            <p className="text-xs font-bold text-slate-700 mt-3">
+            {/* Space for cop hidup */}
+            <p className="text-xs font-bold text-slate-700 mt-6">
               Tarikh:
             </p>
           </div>
