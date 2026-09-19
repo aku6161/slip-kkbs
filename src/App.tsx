@@ -13,6 +13,7 @@ import { ConfigPanel } from './components/ConfigPanel';
 import { LandingPage } from './components/LandingPage';
 import { StudentPortal } from './components/StudentPortal';
 import { LecturerPortal } from './components/LecturerPortal';
+import { PenilaianPelajar } from './components/PenilaianPelajar';
 import { RefreshCw, Lock, ShieldCheck, X, AlertCircle } from 'lucide-react';
 
 import { 
@@ -33,7 +34,7 @@ export default function App() {
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
   const [markah, setMarkah] = useState<any[]>([]);
   const [markahHeaders, setMarkahHeaders] = useState<string[]>([]);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian'>('dashboard');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedDocType, setSelectedDocType] = useState<DocumentType>('surat');
   
@@ -216,7 +217,100 @@ export default function App() {
 
   const handleSaveStudentMark = async (noMatrik: string, marks: any[]) => {
     try {
-      await saveMarkahToFirebase(noMatrik, { marks });
+      const realHeaders = ["FLI02-C1", "FLI02-C2", "TOTAL7", "FLI02-C3", "FLI02-C4", "TOTAL8", "FLI02-C5", "FLI02-C6", "TOTAL9", "GRAN TOTAL2", "FLI02-ULASAN"];
+      const markObj: Record<string, any> = { noMatrik, marks, updatedAt: new Date().toISOString() };
+      realHeaders.forEach((header, idx) => {
+        markObj[header] = marks[idx];
+      });
+      
+      await saveMarkahToFirebase(noMatrik, markObj);
+
+      // Local state update for immediate UI reflection
+      setMarkah(prev => {
+        const cleanNo = noMatrik.trim().toLowerCase();
+        const existingIdx = prev.findIndex(m => {
+          const matrikVal = String(m['NO. MATRIK'] || m['NO MATRIK'] || m['No. Pendaftaran'] || m['noMatrik'] || '').trim().toLowerCase();
+          return matrikVal === cleanNo;
+        });
+        if (existingIdx !== -1) {
+          const updated = [...prev];
+          updated[existingIdx] = { ...updated[existingIdx], ...markObj };
+          return updated;
+        }
+        return [...prev, markObj];
+      });
+
+      // Also sync to Google Apps Script if URL is configured
+      if (appsScriptUrl) {
+        fetch(appsScriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'update_student_mark',
+            noMatrik,
+            marks
+          })
+        }).catch(err => console.warn('Sync mark to Apps Script note:', err));
+      }
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, message: e.message || 'Ralat semasa menyimpan markah ke Firebase.' };
+    }
+  };
+
+  const handleSaveEvaluationMark = async (noMatrik: string, dataToSave: Record<string, any>) => {
+    try {
+      const markObj: Record<string, any> = {
+        ...dataToSave,
+        noMatrik,
+        updatedAt: new Date().toISOString()
+      };
+
+      await saveMarkahToFirebase(noMatrik, markObj);
+
+      // Update local state immediately
+      setMarkah(prev => {
+        const cleanNo = noMatrik.trim().toLowerCase();
+        const existingIdx = prev.findIndex(m => {
+          const matrikVal = String(m['NO. MATRIK'] || m['NO MATRIK'] || m['No. Pendaftaran'] || m['noMatrik'] || '').trim().toLowerCase();
+          return matrikVal === cleanNo;
+        });
+        if (existingIdx !== -1) {
+          const updated = [...prev];
+          updated[existingIdx] = { ...updated[existingIdx], ...markObj };
+          return updated;
+        }
+        return [...prev, markObj];
+      });
+
+      // Sync FLI 02 to Apps Script if marks array is present
+      if (appsScriptUrl && dataToSave['FLI02-C1'] !== undefined) {
+        const c1_1 = dataToSave['FLI02-C1'] || 1;
+        const c1_2 = dataToSave['FLI02-C2'] || 1;
+        const c1 = dataToSave['TOTAL7'] || 10;
+        const c2_1 = dataToSave['FLI02-C3'] || 1;
+        const c2_2 = dataToSave['FLI02-C4'] || 1;
+        const c2 = dataToSave['TOTAL8'] || 5;
+        const c3_1 = dataToSave['FLI02-C5'] || 1;
+        const c3_2 = dataToSave['FLI02-C6'] || 1;
+        const c3 = dataToSave['TOTAL9'] || 5;
+        const total = dataToSave['GRAN TOTAL2'] || 20;
+        const ulasan = dataToSave['FLI02-ULASAN'] || '';
+        
+        fetch(appsScriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'update_student_mark',
+            noMatrik,
+            marks: [c1_1, c1_2, c1, c2_1, c2_2, c2, c3_1, c3_2, c3, total, ulasan]
+          })
+        }).catch(err => console.warn('Sync mark to Apps Script note:', err));
+      }
+
       return { success: true };
     } catch (e: any) {
       return { success: false, message: e.message || 'Ralat semasa menyimpan markah ke Firebase.' };
@@ -236,18 +330,41 @@ export default function App() {
           setCurrentView('dashboard');
         }}
         onLecturerLogin={(staffId) => {
-          // Verify if staffId exists in markah rows
-          const staffKey = Object.keys(markah[0] || {}).find(key => {
-            const uKey = key.toUpperCase();
-            return uKey.includes('ID STAF') || uKey.includes('ID STAFF') || uKey.includes('ID PEMANTAU') || uKey.includes('STAFF ID') || uKey.includes('STAF ID') || (uKey.includes('PEMANTAU') && (uKey.includes('IC') || uKey.includes('KP') || uKey.includes('NO.')));
-          });
-          const match = markah.find(row => staffKey && String(row[staffKey]).toUpperCase().trim() === staffId.toUpperCase().trim());
+          const inputClean = staffId.trim();
+          const query = inputClean.toUpperCase();
+          const queryNoSlash = query.replace(/\s+/g, '');
           
-          if (match || staffId.toLowerCase() === 'admin' || staffId.toLowerCase() === 'staff') {
-            setLecturerId(staffId);
+          // 1. Master keywords
+          if (query === 'ADMIN' || query === 'STAFF') {
+            setLecturerId(inputClean);
+            setUserRole('lecturer');
+            return;
+          }
+
+          // 2. Search in markah rows for STAFF ID / NO. ID STAF (e.g. KKBS/003)
+          const matchedMarkah = markah.find(row => {
+            return Object.keys(row).some(key => {
+              const uKey = key.toUpperCase();
+              if (uKey.includes('STAFF ID') || uKey.includes('ID STAF') || uKey.includes('ID STAFF') || uKey.includes('ID PEMANTAU') || (uKey.includes('PEMANTAU') && uKey.includes('NO.'))) {
+                const val = String(row[key] || '').toUpperCase().trim();
+                const valNoSlash = val.replace(/\s+/g, '');
+                return val === query || valNoSlash === queryNoSlash;
+              }
+              return false;
+            });
+          });
+
+          if (matchedMarkah) {
+            // Find the exact staff key value
+            const staffKey = Object.keys(matchedMarkah).find(k => {
+              const uk = k.toUpperCase();
+              return uk.includes('STAFF ID') || uk.includes('ID STAF') || uk.includes('ID STAFF') || uk.includes('ID PEMANTAU');
+            });
+            const actualStaffId = (staffKey ? String(matchedMarkah[staffKey]) : inputClean).trim();
+            setLecturerId(actualStaffId);
             setUserRole('lecturer');
           } else {
-            alert('Maaf, ID tidak ditemui.');
+            alert(`Maaf, No. ID Staf "${inputClean}" tidak ditemui dalam sistem (Tab MARKAH_PELAJAR).\n\nSila pastikan No. ID Staf dimasukkan dengan tepat (Contoh: KKBS/003, KKBS/016, KKBS/049, dsb.).`);
           }
         }}
       />
@@ -350,7 +467,17 @@ export default function App() {
           />
         )}
 
-        {/* Admin Tab 3: Maklumat Latihan */}
+        {/* Admin Tab 3: Penilaian Pelajar */}
+        {currentView === 'penilaian' && (
+          <PenilaianPelajar
+            students={students}
+            markah={markah}
+            config={config}
+            onSaveMark={handleSaveEvaluationMark}
+          />
+        )}
+
+        {/* Admin Tab 4: Maklumat Latihan */}
         {currentView === 'config' && (
           <ConfigPanel
             config={config}

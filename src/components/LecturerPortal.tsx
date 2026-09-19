@@ -88,16 +88,39 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
   };
 
   // Filter markah rows where staff ID matches
-  const lecturerStudents = markah.filter(row => {
-    const staffKey = getStaffKey(row);
-    if (!staffKey) return false;
-    return String(row[staffKey]).toUpperCase().trim() === staffId.toUpperCase().trim();
-  });
+  const lecturerStudents = React.useMemo(() => {
+    const isMaster = staffId.toUpperCase() === 'ADMIN' || staffId.toUpperCase() === 'STAFF';
+    if (isMaster) return markah;
+
+    const cleanStaffId = staffId.toUpperCase().replace(/\s+/g, '');
+    const filteredMarkah = markah.filter(row => {
+      const staffKey = getStaffKey(row);
+      if (!staffKey) return false;
+      const val = String(row[staffKey] || '').toUpperCase().replace(/\s+/g, '');
+      return val === cleanStaffId;
+    });
+
+    if (filteredMarkah.length > 0) {
+      return filteredMarkah;
+    }
+
+    // Fallback if needed
+    return markah.filter(row => {
+      const staffKey = getStaffKey(row);
+      if (!staffKey) return false;
+      const val = String(row[staffKey] || '').toUpperCase();
+      return val.includes(cleanStaffId);
+    });
+  }, [markah, staffId]);
 
   // Name of the lecturer (from first matched student row, if any)
-  const lecturerName = lecturerStudents.length > 0 
-    ? (lecturerStudents[0]['NAMA PENSYARAH PEMANTAU'] || lecturerStudents[0]['NAMA PEMANTAU'] || lecturerStudents[0]['PENSYARAH PEMANTAU'] || `PENSYARAH (${staffId})`)
-    : `PENSYARAH (${staffId})`;
+  const lecturerName = React.useMemo(() => {
+    if (lecturerStudents.length > 0) {
+      const first = lecturerStudents[0];
+      return first['NAMA PENSYARAH PEMANTAU'] || first['NAMA PEMANTAU'] || first['PENSYARAH PEMANTAU'] || `PENSYARAH (${staffId})`;
+    }
+    return `PENSYARAH (${staffId})`;
+  }, [lecturerStudents, staffId]);
 
   // Calculate percentage values
   const calcC1Peratus = (c1_1: number, c1_2: number) => {

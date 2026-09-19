@@ -196,6 +196,8 @@ function doPost(e) {
       return handleUpdateConfig(postData);
     } else if (action === "update_student_mark") {
       return handleUpdateStudentMark(postData);
+    } else if (action === "trigger_backup" || action === "backup_data") {
+      return handleTriggerBackup();
     } else {
       return ContentService
         .createTextOutput(JSON.stringify({ success: false, error: "Aksi tidak dikenali" }))
@@ -817,3 +819,367 @@ function handleUpdateStudentMark(payload) {
     .createTextOutput(JSON.stringify({ success: true, message: "Markah pemantauan pelajar berjaya dikemaskini!" }))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+// ============================================================================
+// MODUL SANDARAN AUTOMATIK (AUTO BACKUP TO GOOGLE DRIVE)
+// ============================================================================
+var BACKUP_FOLDER_ID = "1OfPHbDXjqwGHIQuCzn5EJiFCD_aIq_LX";
+var FIREBASE_PROJECT_ID = "gen-lang-client-0270916732";
+var RETENTION_DAYS = 14; // Simpan sandaran 2 minggu terkini, selebihnya dipadam
+
+/**
+ * Persediaan Trigger Automatik Setiap Ahad Jam 2.00 Pagi Waktu Malaysia.
+ * Jalankan fungsi ini SEKALI di Google Apps Script editor.
+ */
+function setupAutoBackupTrigger() {
+  // Padam trigger lama jika wujud untuk elak pertindihan
+  var allTriggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < allTriggers.length; i++) {
+    if (allTriggers[i].getHandlerFunction() === "runAutoBackupSunday") {
+      ScriptApp.deleteTrigger(allTriggers[i]);
+    }
+  }
+
+  // Cipta trigger baharu: Setiap Ahad, Jam 2.00 Pagi (Waktu Malaysia)
+  ScriptApp.newTrigger("runAutoBackupSunday")
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.SUNDAY)
+    .atHour(2)
+    .inTimezone("Asia/Kuala_Lumpur")
+    .create();
+
+  Logger.log("✓ Trigger Sandaran Automatik BERJAYA disetup! (Setiap Hari Ahad, Jam 2.00 Pagi Asia/Kuala_Lumpur)");
+}
+
+/**
+ * Fungsi Utama Sandaran Automatik (Dipanggil oleh Trigger atau secara manual)
+ */
+function runAutoBackupSunday() {
+  try {
+    Logger.log("Memulakan sandaran data SLIP...");
+    var targetFolder = DriveApp.getFolderById(BACKUP_FOLDER_ID);
+    var now = new Date();
+    var dateStr = Utilities.formatDate(now, "Asia/Kuala_Lumpur", "yyyy-MM-dd_HHmm");
+    var humanDate = Utilities.formatDate(now, "Asia/Kuala_Lumpur", "yyyy-MM-dd HH:mm:ss");
+
+    // 1. Dapatkan Data Pelajar (Dari Firestore REST API atau Google Sheet)
+    var students = getStudentsForBackup();
+    if (students && students.length > 0) {
+      var studentCsv = convertStudentsToCsv(students);
+      var studentFileName = "SLIP_Pelajar_Backup_" + dateStr + ".csv";
+      targetFolder.createFile(studentFileName, studentCsv, MimeType.CSV);
+      Logger.log("✓ Fail sandaran pelajar dicipta: " + studentFileName + " (" + students.length + " rekod)");
+    }
+
+    // 2. Dapatkan Data Markah Pensyarah
+    var markahList = getMarkahForBackup();
+    if (markahList && markahList.length > 0) {
+      var markahCsv = convertMarkahToCsv(markahList);
+      var markahFileName = "SLIP_Markah_Backup_" + dateStr + ".csv";
+      targetFolder.createFile(markahFileName, markahCsv, MimeType.CSV);
+      Logger.log("✓ Fail sandaran markah dicipta: " + markahFileName + " (" + markahList.length + " rekod)");
+    }
+
+    // 3. Dapatkan Tetapan Sistem
+    var systemConfig = getSystemConfigForBackup();
+    if (systemConfig) {
+      var configCsv = convertConfigToCsv(systemConfig);
+      var configFileName = "SLIP_Tetapan_Backup_" + dateStr + ".csv";
+      targetFolder.createFile(configFileName, configCsv, MimeType.CSV);
+      Logger.log("✓ Fail sandaran tetapan sistem dicipta: " + configFileName);
+    }
+
+    // 4. Polisi Pengekalan Data: Padam fail lama melebihi 14 hari (2 minggu)
+    cleanupOldBackups(targetFolder, RETENTION_DAYS);
+
+    Logger.log("✓ PROSES SANDARAN SELESAI PADA: " + humanDate);
+    return { success: true, timestamp: humanDate };
+  } catch (err) {
+    Logger.log("Ralat semasa sandaran automatik: " + err.toString());
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Handle manual backup trigger dari API POST
+ */
+function handleTriggerBackup() {
+  var result = runAutoBackupSunday();
+  return ContentService
+    .createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Dapatkan semua data pelajar (utamakan Firestore REST API, sandar ke Sheet jika gagal)
+ */
+function getStudentsForBackup() {
+  try {
+    var url = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID + "/databases/(default)/documents/students?pageSize=1000";
+    var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (response.getResponseCode() === 200) {
+      var json = JSON.parse(response.getContentText());
+      if (json.documents && json.documents.length > 0) {
+        var list = [];
+        for (var i = 0; i < json.documents.length; i++) {
+          list.push(flattenFirestoreDoc(json.documents[i]));
+        }
+        return list;
+      }
+    }
+  } catch (e) {
+    Logger.log("Nota: Firestore REST fallback ke Google Sheet: " + e.toString());
+  }
+
+  // Fallback dari Sheet
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 2) return [];
+    var headers = data[0];
+    var list = [];
+    for (var r = 1; r < data.length; r++) {
+      var obj = {};
+      for (var c = 0; c < headers.length; c++) {
+        obj[headers[c].toString().trim()] = data[r][c];
+      }
+      list.push(obj);
+    }
+    return list;
+  } catch (err) {
+    Logger.log("Gagal membaca dari helaian: " + err.toString());
+    return [];
+  }
+}
+
+/**
+ * Dapatkan semua data markah
+ */
+function getMarkahForBackup() {
+  try {
+    var url = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID + "/databases/(default)/documents/markah?pageSize=1000";
+    var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (response.getResponseCode() === 200) {
+      var json = JSON.parse(response.getContentText());
+      if (json.documents && json.documents.length > 0) {
+        var list = [];
+        for (var i = 0; i < json.documents.length; i++) {
+          list.push(flattenFirestoreDoc(json.documents[i]));
+        }
+        return list;
+      }
+    }
+  } catch (e) {}
+
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName("MARKAH_PELAJAR");
+    if (!sheet) return [];
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 2) return [];
+    var headers = data[0];
+    var list = [];
+    for (var r = 1; r < data.length; r++) {
+      var obj = {};
+      for (var c = 0; c < headers.length; c++) {
+        obj[headers[c].toString().trim()] = data[r][c];
+      }
+      list.push(obj);
+    }
+    return list;
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Dapatkan Tetapan Sistem
+ */
+function getSystemConfigForBackup() {
+  try {
+    var url = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID + "/databases/(default)/documents/config/system";
+    var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (response.getResponseCode() === 200) {
+      var json = JSON.parse(response.getContentText());
+      if (json.fields) {
+        return flattenFirestoreDoc(json);
+      }
+    }
+  } catch (e) {}
+
+  return {
+    sesi: "SESI I 2026/2027",
+    tarikh: "30 NOVEMBER 2026 HINGGA 19 MAC 2027",
+    tempoh: "4 BULAN (16 MINGGU)",
+    tarikhAkhirJawapan: "15 OKTOBER 2026",
+    namaPpia: "SHAMSUDDIN BIN AMIN",
+    noTelefonPpia: "012-2455616",
+    tarikhPemantauan: "15 JANUARI 2027 HINGGA 15 FEBRUARI 2027",
+    tarikhPembentangan: "22 MAC 2027 HINGGA 26 MAC 2027",
+    tarikhKeputusan: "5 APRIL 2027"
+  };
+}
+
+/**
+ * Tukar Firestore Document Fields ke Objek JavaScript Rata
+ */
+function flattenFirestoreDoc(doc) {
+  var out = {};
+  if (doc.name) {
+    var parts = doc.name.split('/');
+    out["_id"] = parts[parts.length - 1];
+  }
+  if (!doc.fields) return out;
+  
+  for (var key in doc.fields) {
+    var valObj = doc.fields[key];
+    if (valObj.stringValue !== undefined) {
+      out[key] = valObj.stringValue;
+    } else if (valObj.integerValue !== undefined) {
+      out[key] = valObj.integerValue;
+    } else if (valObj.doubleValue !== undefined) {
+      out[key] = valObj.doubleValue;
+    } else if (valObj.booleanValue !== undefined) {
+      out[key] = valObj.booleanValue;
+    } else if (valObj.timestampValue !== undefined) {
+      out[key] = valObj.timestampValue;
+    } else if (valObj.mapValue !== undefined) {
+      out[key] = JSON.stringify(valObj.mapValue.fields || {});
+    } else if (valObj.arrayValue !== undefined) {
+      out[key] = JSON.stringify(valObj.arrayValue.values || []);
+    } else {
+      out[key] = JSON.stringify(valObj);
+    }
+  }
+  return out;
+}
+
+/**
+ * Escape nilai untuk format CSV selamat
+ */
+function escapeCsvValue(val) {
+  if (val === null || val === undefined) return '""';
+  var str = val.toString();
+  if (str.indexOf('"') !== -1 || str.indexOf(',') !== -1 || str.indexOf('\n') !== -1 || str.indexOf('\r') !== -1) {
+    str = str.replace(/"/g, '""');
+  }
+  return '"' + str + '"';
+}
+
+/**
+ * Format CSV Pelajar
+ */
+function convertStudentsToCsv(students) {
+  if (!students || students.length === 0) return "";
+  
+  // Kumpulkan semua keys unik untuk headers
+  var headerSet = {};
+  for (var i = 0; i < students.length; i++) {
+    for (var k in students[i]) {
+      headerSet[k] = true;
+    }
+  }
+  
+  // Susun header dengan tertib
+  var preferredOrder = [
+    "_id", "noMatrik", "namaPelajar", "noIc", "program", "sesi", "kelas",
+    "noTelefon", "emelPelajar", "alamat", "status", "namaSyarikat", "emelHrSyarikat",
+    "rujukanSurat", "tarikhSurat", "tempohLatihan", "tarikhLatihanMula", "tarikhLatihanTamat",
+    "namaPa", "noTelefonPa", "emelPa", "namaSekolahMenengah", "jawatanKkbs",
+    "programKkbs1", "programKkbs2", "programKkbs3", "pencapaian1", "pencapaian2", "pencapaian3",
+    "bjpliData", "timestamp", "migratedFromGoogleSheetAt"
+  ];
+  
+  var headers = [];
+  for (var p = 0; p < preferredOrder.length; p++) {
+    if (headerSet[preferredOrder[p]]) {
+      headers.push(preferredOrder[p]);
+      delete headerSet[preferredOrder[p]];
+    }
+  }
+  for (var remaining in headerSet) {
+    headers.push(remaining);
+  }
+
+  var lines = [];
+  lines.push(headers.map(escapeCsvValue).join(","));
+
+  for (var r = 0; r < students.length; r++) {
+    var row = [];
+    for (var c = 0; c < headers.length; c++) {
+      var val = students[r][headers[c]];
+      row.push(escapeCsvValue(val));
+    }
+    lines.push(row.join(","));
+  }
+
+  return lines.join("\r\n");
+}
+
+/**
+ * Format CSV Markah
+ */
+function convertMarkahToCsv(markahList) {
+  if (!markahList || markahList.length === 0) return "";
+  var headerSet = {};
+  for (var i = 0; i < markahList.length; i++) {
+    for (var k in markahList[i]) {
+      headerSet[k] = true;
+    }
+  }
+  var headers = Object.keys(headerSet);
+  var lines = [];
+  lines.push(headers.map(escapeCsvValue).join(","));
+
+  for (var r = 0; r < markahList.length; r++) {
+    var row = [];
+    for (var c = 0; c < headers.length; c++) {
+      var val = markahList[r][headers[c]];
+      row.push(escapeCsvValue(val));
+    }
+    lines.push(row.join(","));
+  }
+
+  return lines.join("\r\n");
+}
+
+/**
+ * Format CSV Tetapan
+ */
+function convertConfigToCsv(config) {
+  var headers = Object.keys(config);
+  var values = headers.map(function(h) { return config[h]; });
+  return headers.map(escapeCsvValue).join(",") + "\r\n" + values.map(escapeCsvValue).join(",");
+}
+
+/**
+ * Padam fail sandaran lama melebihi bilangan hari pengekalan (14 Hari / 2 Minggu)
+ */
+function cleanupOldBackups(folder, maxDays) {
+  try {
+    var nowMs = new Date().getTime();
+    var maxAgeMs = maxDays * 24 * 60 * 60 * 1000;
+    var files = folder.getFiles();
+    var deletedCount = 0;
+
+    while (files.hasNext()) {
+      var file = files.next();
+      var fileName = file.getName();
+      // Pastikan hanya proses fail sandaran SLIP (.csv)
+      if (fileName.indexOf("SLIP_") === 0 && fileName.indexOf(".csv") !== -1) {
+        var createdMs = file.getDateCreated().getTime();
+        var ageMs = nowMs - createdMs;
+        if (ageMs > maxAgeMs) {
+          Logger.log("Memadam sandaran lama (> " + maxDays + " hari): " + fileName);
+          file.setTrashed(true);
+          deletedCount++;
+        }
+      }
+    }
+    Logger.log("✓ Selesai pembersihan fail lama. Bilangan fail dipadam: " + deletedCount);
+  } catch (err) {
+    Logger.log("Ralat semasa pembersihan fail lama: " + err.toString());
+  }
+}
+

@@ -275,18 +275,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStudentLogin, onAdmi
             <form onSubmit={handleLecturerSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-black text-slate-700 uppercase tracking-wide mb-1.5">
-                  ID Staf Pensyarah: *
+                  No. ID Staf Pensyarah Pemantau: *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: staff123"
+                  placeholder="Contoh: KKBS/003"
                   value={staffIdInput}
                   onChange={(e) => {
                     setStaffIdInput(e.target.value);
                     if (lecturerError) setLecturerError('');
                   }}
-                  className="w-full px-4 py-3.5 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-900 outline-none text-sm font-bold text-slate-900 bg-slate-50/50"
+                  className="w-full px-4 py-3.5 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-900 outline-none text-sm font-bold text-slate-900 bg-slate-50/50 uppercase"
                   autoFocus
                 />
               </div>

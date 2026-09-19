@@ -1,10 +1,10 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { Users, UserPlus, RefreshCw, FileText, Lock, LogOut, ShieldCheck, Settings } from 'lucide-react';
+import { Users, UserPlus, RefreshCw, FileText, Lock, LogOut, ShieldCheck, Settings, Award } from 'lucide-react';
 
 interface NavbarProps {
-  currentView: 'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config';
-  onNavigate: (view: 'dashboard' | 'form' | 'status' | 'industry' | 'config') => void;
+  currentView: 'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian';
+  onNavigate: (view: 'dashboard' | 'form' | 'status' | 'industry' | 'config' | 'penilaian') => void;
   isSyncing?: boolean;
   isAdmin: boolean;
   onOpenAdminModal: () => void;
@@ -98,6 +98,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <button
+            onClick={() => onNavigate('penilaian')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              currentView === 'penilaian'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Award className="w-4 h-4" />
+            3. Penilaian Pelajar
+          </button>
+
+          <button
             onClick={() => onNavigate('config')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               currentView === 'config'
@@ -106,7 +118,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Settings className="w-4 h-4" />
-            3. Maklumat Latihan
+            4. Maklumat Latihan
           </button>
         </div>
       </div>
