@@ -394,6 +394,79 @@ export default function App() {
     }
   };
 
+  // Lecturer Assignment Handlers (FLI 02 & FLI 03)
+  const handleAssignLecturers = async (
+    studentIdOrMatrik: string,
+    assignments: {
+      idPemantau1?: string;
+      namaPemantau1?: string;
+      idPemantau2?: string;
+      namaPemantau2?: string;
+    }
+  ) => {
+    try {
+      // 1. Find and update target student in students state and Firebase
+      const targetStudent = students.find(
+        s => s.id === studentIdOrMatrik || s.noMatrik === studentIdOrMatrik
+      );
+
+      if (targetStudent) {
+        const updatedStudent: Student = {
+          ...targetStudent,
+          ...assignments
+        };
+        await saveStudentToFirebase(updatedStudent);
+        setStudents(prev => prev.map(s => (s.id === targetStudent.id ? updatedStudent : s)));
+      }
+
+      // 2. Sync to markah collection
+      const noMatrik = targetStudent?.noMatrik || studentIdOrMatrik;
+      const markahData: Record<string, any> = {};
+
+      if (assignments.idPemantau1 !== undefined) {
+        markahData['ID PEMANTAU 1'] = assignments.idPemantau1;
+        markahData['STAFF ID PEMANTAU 1'] = assignments.idPemantau1;
+        markahData['STAFF ID'] = assignments.idPemantau1;
+      }
+      if (assignments.namaPemantau1 !== undefined) {
+        markahData['NAMA PENSYARAH PEMANTAU'] = assignments.namaPemantau1;
+        markahData['NAMA PEMANTAU'] = assignments.namaPemantau1;
+      }
+      if (assignments.idPemantau2 !== undefined) {
+        markahData['ID PEMANTAU 2'] = assignments.idPemantau2;
+        markahData['STAFF ID PEMANTAU 2'] = assignments.idPemantau2;
+      }
+      if (assignments.namaPemantau2 !== undefined) {
+        markahData['NAMA PENSYARAH PENILAI'] = assignments.namaPemantau2;
+        markahData['NAMA PENILAI LAPORAN'] = assignments.namaPemantau2;
+      }
+
+      if (Object.keys(markahData).length > 0 && noMatrik) {
+        await saveMarkahToFirebase(noMatrik, markahData);
+        setMarkah(prev => {
+          const cleanNo = noMatrik.trim().toLowerCase();
+          const existingIdx = prev.findIndex(m => {
+            const matrikVal = String(
+              m['NO. MATRIK'] || m['NO MATRIK'] || m['No. Pendaftaran'] || m['noMatrik'] || ''
+            ).trim().toLowerCase();
+            return matrikVal === cleanNo;
+          });
+          if (existingIdx !== -1) {
+            const updated = [...prev];
+            updated[existingIdx] = { ...updated[existingIdx], ...markahData };
+            return updated;
+          }
+          return [...prev, { noMatrik, ...markahData }];
+        });
+      }
+
+      return { success: true };
+    } catch (e: any) {
+      console.error('Failed to assign lecturers:', e);
+      return { success: false, message: e.message || 'Ralat semasa menetapkan pensyarah.' };
+    }
+  };
+
   // Lecturer CRUD Handlers
   const handleSaveLecturer = async (lecturerData: Partial<Lecturer>) => {
     try {
@@ -617,8 +690,10 @@ export default function App() {
           <PenilaianPelajar
             students={students}
             markah={markah}
+            lecturers={lecturers}
             config={config}
             onSaveMark={handleSaveEvaluationMark}
+            onAssignLecturers={handleAssignLecturers}
           />
         )}
 

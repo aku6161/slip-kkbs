@@ -63,6 +63,11 @@ export interface Student {
   rujukanSurat?: string;
   tarikhSurat?: string;
   bjpliData?: BJPLIFormData;
+  // Pensyarah Penilai FLI 02 & FLI 03
+  idPemantau1?: string;
+  namaPemantau1?: string;
+  idPemantau2?: string;
+  namaPemantau2?: string;
 }
 
 export interface ScopeModule {

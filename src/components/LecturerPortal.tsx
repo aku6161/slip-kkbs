@@ -87,30 +87,30 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
     }) || '';
   };
 
-  // Filter markah rows where staff ID matches
+  // Filter markah rows where staff ID matches (checks Pemantau 1, Pemantau 2, or general Staff ID)
   const lecturerStudents = React.useMemo(() => {
     const isMaster = staffId.toUpperCase() === 'ADMIN' || staffId.toUpperCase() === 'STAFF';
     if (isMaster) return markah;
 
     const cleanStaffId = staffId.toUpperCase().replace(/\s+/g, '');
     const filteredMarkah = markah.filter(row => {
-      const staffKey = getStaffKey(row);
-      if (!staffKey) return false;
-      const val = String(row[staffKey] || '').toUpperCase().replace(/\s+/g, '');
-      return val === cleanStaffId;
+      if (!row) return false;
+      const keys = Object.keys(row).filter(key => {
+        const uKey = key.toUpperCase();
+        return uKey.includes('ID STAF') || 
+               uKey.includes('ID STAFF') || 
+               uKey.includes('ID PEMANTAU') || 
+               uKey.includes('STAFF ID') || 
+               uKey.includes('STAF ID') ||
+               (uKey.includes('PEMANTAU') && (uKey.includes('IC') || uKey.includes('KP') || uKey.includes('NO.')));
+      });
+      return keys.some(key => {
+        const val = String(row[key] || '').toUpperCase().replace(/\s+/g, '');
+        return val === cleanStaffId || (cleanStaffId.length > 3 && val.includes(cleanStaffId));
+      });
     });
 
-    if (filteredMarkah.length > 0) {
-      return filteredMarkah;
-    }
-
-    // Fallback if needed
-    return markah.filter(row => {
-      const staffKey = getStaffKey(row);
-      if (!staffKey) return false;
-      const val = String(row[staffKey] || '').toUpperCase();
-      return val.includes(cleanStaffId);
-    });
+    return filteredMarkah;
   }, [markah, staffId]);
 
   // Name of the lecturer (from first matched student row, if any)

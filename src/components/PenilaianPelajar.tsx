@@ -2,19 +2,17 @@ import React, { useState, useMemo } from 'react';
 import { 
   Award, 
   Search, 
-  Filter, 
   CheckCircle2, 
   AlertCircle, 
   Clock, 
-  FileText, 
   Calendar, 
   Layers, 
   GraduationCap,
-  Download,
-  Eye,
+  UserCheck,
+  FileCheck,
   Check
 } from 'lucide-react';
-import { Student, SystemConfig } from '../types';
+import { Student, SystemConfig, Lecturer } from '../types';
 import { BorangFLI01Modal } from './evaluations/BorangFLI01Modal';
 import { BorangFLI02Modal } from './evaluations/BorangFLI02Modal';
 import { BorangFLI03Modal } from './evaluations/BorangFLI03Modal';
@@ -23,20 +21,33 @@ import { BorangFLI04Modal } from './evaluations/BorangFLI04Modal';
 interface PenilaianPelajarProps {
   students: Student[];
   markah: any[];
+  lecturers: Lecturer[];
   config: SystemConfig;
   onSaveMark: (noMatrik: string, markData: Record<string, any>) => Promise<{ success: boolean; message?: string }>;
+  onAssignLecturers: (
+    studentIdOrMatrik: string,
+    assignments: {
+      idPemantau1?: string;
+      namaPemantau1?: string;
+      idPemantau2?: string;
+      namaPemantau2?: string;
+    }
+  ) => Promise<{ success: boolean; message?: string }>;
 }
 
 export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
   students,
   markah,
+  lecturers,
   config,
-  onSaveMark
+  onSaveMark,
+  onAssignLecturers
 }) => {
   // 1. Filter States
   const [selectedSesi, setSelectedSesi] = useState<string>('SEMUA');
   const [selectedProgram, setSelectedProgram] = useState<string>('SEMUA');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [savedFeedback, setSavedFeedback] = useState<{ [key: string]: boolean }>({});
 
   // 2. Active Modals State
   const [activeModal, setActiveModal] = useState<{
@@ -191,6 +202,38 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
     };
   }, [filteredStudents, markah]);
 
+  // Handle setting FLI 02 lecturer
+  const handleAssignFli02 = async (student: Student, staffId: string) => {
+    const selectedLec = lecturers.find(l => l.staffId === staffId);
+    const key = `${student.noMatrik || student.id}_fli02`;
+    
+    await onAssignLecturers(student.id || student.noMatrik, {
+      idPemantau1: staffId,
+      namaPemantau1: selectedLec ? selectedLec.nama : ''
+    });
+
+    setSavedFeedback(prev => ({ ...prev, [key]: true }));
+    setTimeout(() => {
+      setSavedFeedback(prev => ({ ...prev, [key]: false }));
+    }, 2000);
+  };
+
+  // Handle setting FLI 03 lecturer
+  const handleAssignFli03 = async (student: Student, staffId: string) => {
+    const selectedLec = lecturers.find(l => l.staffId === staffId);
+    const key = `${student.noMatrik || student.id}_fli03`;
+    
+    await onAssignLecturers(student.id || student.noMatrik, {
+      idPemantau2: staffId,
+      namaPemantau2: selectedLec ? selectedLec.nama : ''
+    });
+
+    setSavedFeedback(prev => ({ ...prev, [key]: true }));
+    setTimeout(() => {
+      setSavedFeedback(prev => ({ ...prev, [key]: false }));
+    }, 2000);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner & Title */}
@@ -311,7 +354,7 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
             Senarai Penilaian Pelajar
           </h3>
           <span className="text-[11px] text-slate-500 font-semibold">
-            Klik pada mana-mana kad (FLI 01, FLI 02, FLI 03, FLI 04) untuk mengisi markah
+            Klik pada kad penilaian untuk mengisi markah | Tetapkan Penilai FLI 02 &amp; FLI 03
           </span>
         </div>
 
@@ -330,20 +373,79 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
               const fli03 = isFli03Completed(markData);
               const fli04 = isFli04Completed(markData);
 
+              const currentFli02StaffId = student.idPemantau1 || markData['ID PEMANTAU 1'] || markData['STAFF ID PEMANTAU 1'] || markData['STAFF ID'] || markData['ID STAF'] || '';
+              const currentFli03StaffId = student.idPemantau2 || markData['ID PEMANTAU 2'] || markData['STAFF ID PEMANTAU 2'] || '';
+
+              const isFli02Saved = savedFeedback[`${student.noMatrik || student.id}_fli02`];
+              const isFli03Saved = savedFeedback[`${student.noMatrik || student.id}_fli03`];
+
               return (
                 <div
                   key={student.id || student.noMatrik}
-                  className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4"
                 >
-                  {/* Left: Student Name Only */}
-                  <div className="space-y-0.5">
+                  {/* Left: Student Name & Assign Pensyarah Penilai */}
+                  <div className="space-y-2.5 flex-1">
                     <h4 className="font-black text-slate-900 text-sm uppercase tracking-wide">
                       {student.namaPelajar || student['NAMA PELAJAR']}
                     </h4>
+
+                    {/* Evaluator Assignment Row */}
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+                      {/* Penilai FLI 02 (Pemantauan) */}
+                      <div className="flex items-center gap-1.5 bg-blue-50/80 border border-blue-200/80 rounded-xl px-2.5 py-1 text-slate-700 shadow-xs">
+                        <UserCheck className="w-3.5 h-3.5 text-blue-700 shrink-0" />
+                        <span className="text-[10px] font-bold text-blue-900 uppercase tracking-tight shrink-0">
+                          Penilai FLI 02:
+                        </span>
+                        <select
+                          value={currentFli02StaffId}
+                          onChange={(e) => handleAssignFli02(student, e.target.value)}
+                          className="bg-transparent text-[11px] font-bold text-slate-900 outline-none cursor-pointer max-w-[180px] sm:max-w-[210px] truncate"
+                        >
+                          <option value="">-- Pilih Penilai FLI 02 --</option>
+                          {lecturers.map(lec => (
+                            <option key={`fli02_${lec.id || lec.staffId}`} value={lec.staffId}>
+                              {lec.staffId} - {lec.nama}
+                            </option>
+                          ))}
+                        </select>
+                        {isFli02Saved && (
+                          <span className="inline-flex items-center text-[10px] font-bold text-emerald-700 animate-in fade-in">
+                            <Check className="w-3 h-3" />
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Penilai FLI 03 (Laporan Akhir) */}
+                      <div className="flex items-center gap-1.5 bg-indigo-50/80 border border-indigo-200/80 rounded-xl px-2.5 py-1 text-slate-700 shadow-xs">
+                        <FileCheck className="w-3.5 h-3.5 text-indigo-700 shrink-0" />
+                        <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-tight shrink-0">
+                          Penilai FLI 03:
+                        </span>
+                        <select
+                          value={currentFli03StaffId}
+                          onChange={(e) => handleAssignFli03(student, e.target.value)}
+                          className="bg-transparent text-[11px] font-bold text-slate-900 outline-none cursor-pointer max-w-[180px] sm:max-w-[210px] truncate"
+                        >
+                          <option value="">-- Pilih Penilai FLI 03 --</option>
+                          {lecturers.map(lec => (
+                            <option key={`fli03_${lec.id || lec.staffId}`} value={lec.staffId}>
+                              {lec.staffId} - {lec.nama}
+                            </option>
+                          ))}
+                        </select>
+                        {isFli03Saved && (
+                          <span className="inline-flex items-center text-[10px] font-bold text-emerald-700 animate-in fade-in">
+                            <Check className="w-3 h-3" />
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Right: 4 Interactive Evaluation Cards (Clean: Name Only + Red/Green status) */}
-                  <div className="flex items-center gap-2.5 flex-wrap">
+                  <div className="flex items-center gap-2.5 flex-wrap shrink-0">
                     {/* Kad FLI 01 */}
                     <button
                       type="button"
