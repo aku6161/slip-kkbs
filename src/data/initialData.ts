@@ -6,21 +6,204 @@ export const INITIAL_STUDENTS: Student[] = [];
 
 export const INITIAL_LECTURERS: Lecturer[] = [
   {
+    id: 'lec_kkbs_022',
+    nama: 'REZIELLA BINTI LAHAJI',
+    staffId: 'KKBS/022',
+    emel: 'reziella.lahaji@kkbeaufort.edu.my',
+    program: 'SIJIL OPERASI PERHOTELAN',
+    jawatan: 'PENSYARAH'
+  },
+  {
     id: 'lec_kkbs_003',
     nama: 'SHAMSUDDIN BIN AMIN',
     staffId: 'KKBS/003',
-    emel: 'shamsuddin@kkbs.edu.my',
-    program: 'UNIT PERHUBUNGAN INDUSTRI & ALUMNI (UPLI)',
+    emel: 'shamsuddin.amin@kkbeaufort.edu.my',
+    program: 'PEGAWAI PERHUBUNGAN INDUSTRI DAN ALUMNI',
     noTelefon: '012-2455616',
-    jawatan: 'PEGAWAI PERHUBUNGAN INDUSTRI & ALUMNI'
+    jawatan: 'PEGAWAI PERHUBUNGAN INDUSTRI DAN ALUMNI'
+  },
+  {
+    id: 'lec_kkbs_010',
+    nama: 'LENNY MELON',
+    staffId: 'KKBS/010',
+    emel: 'lenny.melon@kkbeaufort.edu.my',
+    program: 'SIJIL KULINARI',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_029',
+    nama: 'NORFAZIRAH BINTI KUSIN',
+    staffId: 'KKBS/029',
+    emel: 'norfazirah@kkbeaufort.edu.my',
+    program: 'SIJIL KULINARI',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_020',
+    nama: 'MOHD YUSOF BIN YAAKOB',
+    staffId: 'KKBS/020',
+    emel: 'yusof.yaakob@kkbeaufort.edu.my',
+    program: 'SIJIL KULINARI',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_009',
+    nama: 'MOHD FIKRI BIN MURSHIDI',
+    staffId: 'KKBS/009',
+    emel: 'fikri.murshidi@kkbeaufort.edu.my',
+    program: 'SIJIL KULINARI',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_053',
+    nama: 'ERMINEYANTI BINTI BACHTERAN',
+    staffId: 'KKBS/053',
+    emel: 'ermineyanti@kkbeaufort.edu.my',
+    program: 'SIJIL KULINARI',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_004',
+    nama: 'NURHAYATI BINTI HASSAN',
+    staffId: 'KKBS/004',
+    emel: 'nurhayati_hassan@kkbeaufort.edu.my',
+    program: 'SIJIL KULINARI',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_044',
+    nama: 'RADHIYAH MARDHIYYAH BINTI MD SHUKRI',
+    staffId: 'KKBS/044',
+    emel: 'mardhiyyahshukri@kkbeaufort.edu.my',
+    program: 'SIJIL KULINARI',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_054',
+    nama: 'JEANY AMBROSE',
+    staffId: 'KKBS/054',
+    emel: 'jeany.ambrose@kkbeaufort.edu.my',
+    program: 'SIJIL KULINARI',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_013',
+    nama: 'NURUL AIDILA SURAYA BINTI JAPRI',
+    staffId: 'KKBS/013',
+    emel: 'surayajapri@kkbeaufort.edu.my',
+    program: 'SIJIL OPERASI PERHOTELAN',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_018',
+    nama: "UMMU 'AMMARAH BINTI ABDUL HALIM",
+    staffId: 'KKBS/018',
+    emel: 'ummu.ammarah@kkbeaufort.edu.my',
+    program: 'SIJIL OPERASI PERHOTELAN',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_027',
+    nama: 'NUR AZHARI BIN AZHARUDDIN',
+    staffId: 'KKBS/027',
+    emel: 'azhari@kkbeaufort.edu.my',
+    program: 'SIJIL OPERASI PERHOTELAN',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_030',
+    nama: 'NURUL HAYATI BINTI ABDUL HAMID',
+    staffId: 'KKBS/030',
+    emel: 'nurulhayati@kkbeaufort.edu.my',
+    program: 'SIJIL OPERASI PERHOTELAN',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_043',
+    nama: 'WASTI DOMINIC',
+    staffId: 'KKBS/043',
+    emel: 'wasti@kkbeaufort.edu.my',
+    program: 'SIJIL OPERASI PERHOTELAN',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_042',
+    nama: 'NUR KHAIRONISA BINTI WET',
+    staffId: 'KKBS/042',
+    emel: 'khaironisa@kkbeaufort.edu.my',
+    program: 'SIJIL OPERASI PERHOTELAN',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_051',
+    nama: 'JUNAINAH BT JUSTIN @ JOHARI',
+    staffId: 'KKBS/051',
+    emel: 'junainahjustin@kkbeaufort.edu.my',
+    program: 'SIJIL OPERASI PERHOTELAN',
+    jawatan: 'PENSYARAH'
   },
   {
     id: 'lec_kkbs_016',
-    nama: 'NUR AZHARI BIN AZHARUDDIN',
+    nama: 'CHRISTOPER BIN ASOK',
     staffId: 'KKBS/016',
-    emel: 'azhari@kkbs.edu.my',
-    program: 'SIJIL OPERASI PERHOTELAN',
-    noTelefon: '019-8765432',
+    emel: 'christoper.asok@kkbeaufort.edu.my',
+    program: 'SIJIL TEKNOLOGI ELEKTRIK',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_040',
+    nama: 'SHALIZAN BIN KADIR',
+    staffId: 'KKBS/040',
+    emel: 'shalizan@kkbeaufort.edu.my',
+    program: 'SIJIL TEKNOLOGI ELEKTRIK',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_028',
+    nama: 'MUHAMMAD ABDUL HAQ BIN AZIZ',
+    staffId: 'KKBS/028',
+    emel: 'mhaq@kkbeaufort.edu.my',
+    program: 'SIJIL TEKNOLOGI ELEKTRIK',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_048',
+    nama: 'MUHAMMAD FARIS BIN HAMDANI',
+    staffId: 'KKBS/048',
+    emel: 'faris@kkbeaufort.edu.my',
+    program: 'SIJIL TEKNOLOGI ELEKTRIK',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_047',
+    nama: 'GRACE JENNIFER PHILIP',
+    staffId: 'KKBS/047',
+    emel: 'grace@kkbeaufort.edu.my',
+    program: 'SIJIL TEKNOLOGI ELEKTRIK',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_045',
+    nama: 'NUR SYAFIQAH BINTI MOHD ROBI',
+    staffId: 'KKBS/045',
+    emel: 'nursyafiqah@kkbeaufort.edu.my',
+    program: 'SIJIL TEKNOLOGI ELEKTRIK',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_046',
+    nama: 'AHMAD KHUDRI BIN SHAMSUDDIN',
+    staffId: 'KKBS/046',
+    emel: 'ahmad_khudri@kkbeaufort.edu.my',
+    program: 'SIJIL TEKNOLOGI ELEKTRIK',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_049',
+    nama: 'Ts. HAIDIE BIN INUN',
+    staffId: 'KKBS/049',
+    emel: 'haidie@kkbeaufort.edu.my',
+    program: 'SIJIL TEKNOLOGI ELEKTRIK',
     jawatan: 'PENSYARAH'
   }
 ];

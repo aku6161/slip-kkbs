@@ -183,13 +183,13 @@ export async function seedFirebaseIfEmpty(initialStudents: Student[], initialCon
 
     if (initialLecturers && initialLecturers.length > 0) {
       const lecturersSnap = await getDocs(collection(db, LECTURERS_COLLECTION));
-      if (lecturersSnap.empty) {
-        console.log('Seeding initial lecturers to Firestore...');
+      if (lecturersSnap.size < initialLecturers.length) {
+        console.log('Seeding official registered lecturers to Firestore...');
         const batch = writeBatch(db);
         for (const lecturer of initialLecturers) {
           const docId = lecturer.id || lecturer.staffId?.replace(/[\/\s]/g, '_') || `lecturer_${Math.random()}`;
           const ref = doc(db, LECTURERS_COLLECTION, docId);
-          batch.set(ref, { ...lecturer, id: docId });
+          batch.set(ref, { ...lecturer, id: docId }, { merge: true });
         }
         await batch.commit();
       }

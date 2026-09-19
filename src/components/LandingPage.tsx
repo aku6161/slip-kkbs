@@ -280,7 +280,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStudentLogin, onAdmi
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: KKBS/003"
+                  placeholder="NO. ID STAF"
                   value={staffIdInput}
                   onChange={(e) => {
                     setStaffIdInput(e.target.value);
