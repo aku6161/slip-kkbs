@@ -167,16 +167,6 @@ export const MaklumatPensyarah: React.FC<MaklumatPensyarahProps> = ({
     });
   }, [lecturers, selectedProgram, searchQuery]);
 
-  // Statistics calculation
-  const stats = useMemo(() => {
-    const total = lecturers.length;
-    const byProgram: Record<string, number> = {};
-    lecturers.forEach(l => {
-      const p = l.program || 'LAIN-LAIN';
-      byProgram[p] = (byProgram[p] || 0) + 1;
-    });
-    return { total, byProgram };
-  }, [lecturers]);
 
   // Count advisees (pelajar PA) for each lecturer
   const getStudentCountForLecturer = (lecName: string, staffId: string) => {
@@ -217,54 +207,6 @@ export const MaklumatPensyarah: React.FC<MaklumatPensyarahProps> = ({
         </div>
       </div>
 
-      {/* Top Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-900 flex items-center justify-center shrink-0">
-            <Users className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Jumlah Pensyarah</p>
-            <h3 className="text-2xl font-black text-slate-950 mt-0.5">{stats.total}</h3>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-900 flex items-center justify-center shrink-0">
-            <GraduationCap className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sijil Elektrik (SKE)</p>
-            <h3 className="text-2xl font-black text-blue-900 mt-0.5">
-              {stats.byProgram['SIJIL TEKNOLOGI ELEKTRIK'] || 0}
-            </h3>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-900 flex items-center justify-center shrink-0">
-            <Layers className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sijil Kulinari (SKU)</p>
-            <h3 className="text-2xl font-black text-amber-900 mt-0.5">
-              {stats.byProgram['SIJIL KULINARI'] || 0}
-            </h3>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-teal-50 text-teal-900 flex items-center justify-center shrink-0">
-            <IdCard className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Perhotelan (SOP)</p>
-            <h3 className="text-2xl font-black text-teal-900 mt-0.5">
-              {stats.byProgram['SIJIL OPERASI PERHOTELAN'] || 0}
-            </h3>
-          </div>
-        </div>
-      </div>
 
       {/* Filter and Search Bar */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
