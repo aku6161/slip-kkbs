@@ -1,10 +1,10 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { Users, UserPlus, RefreshCw, FileText, Lock, LogOut, ShieldCheck, Settings, Award } from 'lucide-react';
+import { Users, UserPlus, RefreshCw, FileText, Lock, LogOut, ShieldCheck, Settings, Award, UserCheck } from 'lucide-react';
 
 interface NavbarProps {
-  currentView: 'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian';
-  onNavigate: (view: 'dashboard' | 'form' | 'status' | 'industry' | 'config' | 'penilaian') => void;
+  currentView: 'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian' | 'pensyarah';
+  onNavigate: (view: 'dashboard' | 'form' | 'status' | 'industry' | 'config' | 'penilaian' | 'pensyarah') => void;
   isSyncing?: boolean;
   isAdmin: boolean;
   onOpenAdminModal: () => void;
@@ -75,7 +75,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-2 flex-wrap justify-center w-full md:w-auto">
           <button
             onClick={() => onNavigate('dashboard')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               currentView === 'dashboard'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -87,7 +87,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={() => onNavigate('status')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               currentView === 'status'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -99,7 +99,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={() => onNavigate('penilaian')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               currentView === 'penilaian'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -110,15 +110,27 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <button
+            onClick={() => onNavigate('pensyarah')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              currentView === 'pensyarah'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <UserCheck className="w-4 h-4" />
+            4. Maklumat Pensyarah
+          </button>
+
+          <button
             onClick={() => onNavigate('config')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               currentView === 'config'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'text-slate-300 hover:bg-slate-800 hover:text-white'
             }`}
           >
             <Settings className="w-4 h-4" />
-            4. Maklumat Latihan
+            5. Maklumat Latihan
           </button>
         </div>
       </div>

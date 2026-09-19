@@ -96,3 +96,15 @@ export interface SystemConfig {
   tarikhPembentangan?: string;
   tarikhKeputusan?: string;
 }
+
+export interface Lecturer {
+  id: string;
+  nama: string;
+  staffId: string;
+  emel: string;
+  program: string;
+  noTelefon?: string;
+  jawatan?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}

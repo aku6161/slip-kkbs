@@ -1,8 +1,56 @@
-import { Student, ScopeModule } from '../types';
+import { Student, ScopeModule, Lecturer } from '../types';
 
 export const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1E52qMDhPQjJES0q_QMRrxAW_bz27RABSDom7HFaMLJo/edit?usp=sharing';
 
 export const INITIAL_STUDENTS: Student[] = [];
+
+export const INITIAL_LECTURERS: Lecturer[] = [
+  {
+    id: 'lec_kkbs_003',
+    nama: 'SHAMSUDDIN BIN AMIN',
+    staffId: 'KKBS/003',
+    emel: 'shamsuddin@kkbs.edu.my',
+    program: 'UNIT PERHUBUNGAN INDUSTRI & ALUMNI (UPLI)',
+    noTelefon: '012-2455616',
+    jawatan: 'PEGAWAI PERHUBUNGAN INDUSTRI & ALUMNI'
+  },
+  {
+    id: 'lec_kkbs_016',
+    nama: 'NUR AZHARI BIN AZHARUDDIN',
+    staffId: 'KKBS/016',
+    emel: 'azhari@kkbs.edu.my',
+    program: 'SIJIL OPERASI PERHOTELAN',
+    noTelefon: '019-8765432',
+    jawatan: 'PENSYARAH / PENASIHAT AKADEMIK'
+  },
+  {
+    id: 'lec_kkbs_022',
+    nama: 'MUHAMMAD SYAFIQ BIN ABDULLAH',
+    staffId: 'KKBS/022',
+    emel: 'syafiq@kkbs.edu.my',
+    program: 'SIJIL TEKNOLOGI ELEKTRIK',
+    noTelefon: '013-1234567',
+    jawatan: 'PENSYARAH / PENASIHAT AKADEMIK'
+  },
+  {
+    id: 'lec_kkbs_035',
+    nama: 'SITI NORAINI BINTI HASSAN',
+    staffId: 'KKBS/035',
+    emel: 'noraini@kkbs.edu.my',
+    program: 'SIJIL KULINARI',
+    noTelefon: '014-9876543',
+    jawatan: 'PENSYARAH / PENASIHAT AKADEMIK'
+  },
+  {
+    id: 'lec_kkbs_049',
+    nama: 'AHMAD FAIZAL BIN ISMAIL',
+    staffId: 'KKBS/049',
+    emel: 'faizal@kkbs.edu.my',
+    program: 'SIJIL TEKNOLOGI ELEKTRIK',
+    noTelefon: '011-23456789',
+    jawatan: 'PENSYARAH PEMANTAU'
+  }
+];
 
 export const STANDARD_SOP_SCOPES: ScopeModule[] = [
   {

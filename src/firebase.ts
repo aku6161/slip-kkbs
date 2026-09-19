@@ -32,9 +32,43 @@ export const db = getFirestore(app);
 export const STUDENTS_COLLECTION = 'students';
 export const MARKAH_COLLECTION = 'markah';
 export const CONFIG_COLLECTION = 'config';
+export const LECTURERS_COLLECTION = 'lecturers';
 
 export function removeUndefined<T extends Record<string, any>>(obj: T): T {
   return JSON.parse(JSON.stringify(obj, (k, v) => (v === undefined ? null : v)));
+}
+
+/**
+ * Real-time listener for lecturers collection
+ */
+export function subscribeLecturers(callback: (lecturers: any[]) => void, onError?: (error: Error) => void) {
+  const q = query(collection(db, LECTURERS_COLLECTION));
+  return onSnapshot(q, (snapshot) => {
+    const list: any[] = [];
+    snapshot.forEach((docSnap) => {
+      list.push(docSnap.data());
+    });
+    callback(list);
+  }, (err) => {
+    console.error('Firestore lecturers subscription error:', err);
+    if (onError) onError(err);
+  });
+}
+
+/**
+ * Save or update a lecturer in Firestore
+ */
+export async function saveLecturerToFirebase(lecturer: any): Promise<void> {
+  const docId = lecturer.id || lecturer.staffId?.replace(/[\/\s]/g, '_') || `lecturer_${Date.now()}`;
+  const data = removeUndefined({ ...lecturer, id: docId, updatedAt: new Date().toISOString() });
+  await setDoc(doc(db, LECTURERS_COLLECTION, docId), data, { merge: true });
+}
+
+/**
+ * Delete a lecturer from Firestore
+ */
+export async function deleteLecturerFromFirebase(lecturerId: string): Promise<void> {
+  await deleteDoc(doc(db, LECTURERS_COLLECTION, lecturerId));
 }
 
 /**
@@ -124,9 +158,9 @@ export async function saveMarkahToFirebase(noMatrik: string, markData: any): Pro
 }
 
 /**
- * Initial Seeding: Seeds initial students & config if Firestore is empty
+ * Initial Seeding: Seeds initial students, config & lecturers if Firestore is empty
  */
-export async function seedFirebaseIfEmpty(initialStudents: Student[], initialConfig: SystemConfig): Promise<void> {
+export async function seedFirebaseIfEmpty(initialStudents: Student[], initialConfig: SystemConfig, initialLecturers?: any[]): Promise<void> {
   try {
     const studentsSnap = await getDocs(collection(db, STUDENTS_COLLECTION));
     if (studentsSnap.empty && initialStudents.length > 0) {
@@ -145,6 +179,20 @@ export async function seedFirebaseIfEmpty(initialStudents: Student[], initialCon
     if (!configDoc.exists()) {
       console.log('Seeding initial config to Firestore...');
       await setDoc(doc(db, CONFIG_COLLECTION, 'system'), initialConfig);
+    }
+
+    if (initialLecturers && initialLecturers.length > 0) {
+      const lecturersSnap = await getDocs(collection(db, LECTURERS_COLLECTION));
+      if (lecturersSnap.empty) {
+        console.log('Seeding initial lecturers to Firestore...');
+        const batch = writeBatch(db);
+        for (const lecturer of initialLecturers) {
+          const docId = lecturer.id || lecturer.staffId?.replace(/[\/\s]/g, '_') || `lecturer_${Math.random()}`;
+          const ref = doc(db, LECTURERS_COLLECTION, docId);
+          batch.set(ref, { ...lecturer, id: docId });
+        }
+        await batch.commit();
+      }
     }
   } catch (err) {
     console.warn('Firestore initial seeding note/warning:', err);

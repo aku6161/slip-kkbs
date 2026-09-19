@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Student, DocumentType, BJPLIFormData, SystemConfig } from './types';
-import { INITIAL_STUDENTS } from './data/initialData';
+import React, { useState, useEffect, useRef } from 'react';
+import { Student, DocumentType, BJPLIFormData, SystemConfig, Lecturer } from './types';
+import { INITIAL_STUDENTS, INITIAL_LECTURERS } from './data/initialData';
 import { Navbar } from './components/Navbar';
 import { MainDashboard } from './components/MainDashboard';
 import { StudentList } from './components/StudentList';
@@ -14,6 +14,7 @@ import { LandingPage } from './components/LandingPage';
 import { StudentPortal } from './components/StudentPortal';
 import { LecturerPortal } from './components/LecturerPortal';
 import { PenilaianPelajar } from './components/PenilaianPelajar';
+import { MaklumatPensyarah } from './components/MaklumatPensyarah';
 import { RefreshCw, Lock, ShieldCheck, X, AlertCircle } from 'lucide-react';
 
 import { 
@@ -23,18 +24,64 @@ import {
   saveMarkahToFirebase, 
   subscribeSystemConfig, 
   saveSystemConfigToFirebase,
+  subscribeLecturers,
+  saveLecturerToFirebase,
+  deleteLecturerFromFirebase,
   seedFirebaseIfEmpty 
 } from './firebase';
 
+const SESSION_KEY = 'SLIP_AUTH_SESSION';
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+interface AuthSession {
+  userRole: 'landing' | 'student' | 'admin' | 'lecturer';
+  studentIc: string;
+  lecturerId: string;
+  currentView: 'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian' | 'pensyarah';
+  lastActiveTimestamp: number;
+}
+
 export default function App() {
-  const [userRole, setUserRole] = useState<'landing' | 'student' | 'admin' | 'lecturer'>('landing');
-  const [studentIc, setStudentIc] = useState<string>('');
-  const [lecturerId, setLecturerId] = useState<string>('');
+  // Restore session from localStorage if within 30 minutes
+  const getInitialSession = (): AuthSession => {
+    try {
+      const saved = localStorage.getItem(SESSION_KEY);
+      if (saved) {
+        const parsed: AuthSession = JSON.parse(saved);
+        const elapsed = Date.now() - (parsed.lastActiveTimestamp || 0);
+        if (elapsed < INACTIVITY_TIMEOUT_MS && parsed.userRole && parsed.userRole !== 'landing') {
+          return {
+            ...parsed,
+            lastActiveTimestamp: Date.now()
+          };
+        } else {
+          localStorage.removeItem(SESSION_KEY);
+        }
+      }
+    } catch (e) {
+      localStorage.removeItem(SESSION_KEY);
+    }
+    return {
+      userRole: 'landing',
+      studentIc: '',
+      lecturerId: '',
+      currentView: 'dashboard',
+      lastActiveTimestamp: Date.now()
+    };
+  };
+
+  const initialSession = getInitialSession();
+
+  const [userRole, setUserRole] = useState<'landing' | 'student' | 'admin' | 'lecturer'>(initialSession.userRole);
+  const [studentIc, setStudentIc] = useState<string>(initialSession.studentIc);
+  const [lecturerId, setLecturerId] = useState<string>(initialSession.lecturerId);
+  const [currentView, setCurrentView] = useState<'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian' | 'pensyarah'>(initialSession.currentView);
 
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
   const [markah, setMarkah] = useState<any[]>([]);
   const [markahHeaders, setMarkahHeaders] = useState<string[]>([]);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian'>('dashboard');
+  const [lecturers, setLecturers] = useState<Lecturer[]>(INITIAL_LECTURERS);
+  
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedDocType, setSelectedDocType] = useState<DocumentType>('surat');
   
@@ -64,12 +111,78 @@ export default function App() {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [adminAuthError, setAdminAuthError] = useState('');
 
-  // 1. Firebase Firestore Real-Time Subscriptions (Students, Config, Markah)
+  const lastActiveRef = useRef<number>(Date.now());
+
+  // Save session updates to localStorage
+  const saveSession = (
+    role: 'landing' | 'student' | 'admin' | 'lecturer',
+    ic = studentIc,
+    lecId = lecturerId,
+    view = currentView
+  ) => {
+    if (role === 'landing') {
+      localStorage.removeItem(SESSION_KEY);
+    } else {
+      const sess: AuthSession = {
+        userRole: role,
+        studentIc: ic,
+        lecturerId: lecId,
+        currentView: view,
+        lastActiveTimestamp: Date.now()
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(sess));
+    }
+  };
+
+  // 1. Inactivity Tracker (Auto-Logout after 30 minutes of no user action)
+  useEffect(() => {
+    if (userRole === 'landing') return;
+
+    const updateActivity = () => {
+      const now = Date.now();
+      lastActiveRef.current = now;
+      saveSession(userRole, studentIc, lecturerId, currentView);
+    };
+
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    let throttleTimeout: any = null;
+
+    const handleUserActivity = () => {
+      if (!throttleTimeout) {
+        throttleTimeout = setTimeout(() => {
+          updateActivity();
+          throttleTimeout = null;
+        }, 3000); // throttle every 3 seconds to avoid heavy storage writes
+      }
+    };
+
+    events.forEach(event => window.addEventListener(event, handleUserActivity, { passive: true }));
+
+    // Periodic check every 15 seconds
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastActiveRef.current;
+      if (elapsed >= INACTIVITY_TIMEOUT_MS) {
+        // Auto logout due to 30 mins inactivity
+        setUserRole('landing');
+        localStorage.removeItem(SESSION_KEY);
+        alert('Sesi anda telah tamat secara automatik kerana tiada aktiviti selama 30 minit.\n\nSila log masuk semula.');
+      }
+    }, 15000);
+
+    return () => {
+      events.forEach(event => window.removeEventListener(event, handleUserActivity));
+      clearInterval(interval);
+      if (throttleTimeout) clearTimeout(throttleTimeout);
+    };
+  }, [userRole, studentIc, lecturerId, currentView]);
+
+  // 2. Firebase Firestore Real-Time Subscriptions (Students, Config, Markah, Lecturers)
   useEffect(() => {
     setIsSyncing(true);
 
     // Initial seeding if Firestore is empty
-    seedFirebaseIfEmpty(INITIAL_STUDENTS, config).catch(() => {});
+    seedFirebaseIfEmpty(INITIAL_STUDENTS, config, INITIAL_LECTURERS).catch(() => {});
 
     // Subscribe to students collection in real-time
     const unsubscribeStudents = subscribeStudents(
@@ -101,10 +214,18 @@ export default function App() {
       }
     });
 
+    // Subscribe to lecturers in real-time
+    const unsubscribeLecturers = subscribeLecturers((firebaseLecturers) => {
+      if (firebaseLecturers && firebaseLecturers.length > 0) {
+        setLecturers(firebaseLecturers as Lecturer[]);
+      }
+    });
+
     return () => {
       unsubscribeStudents();
       unsubscribeConfig();
       unsubscribeMarkah();
+      unsubscribeLecturers();
     };
   }, []);
 
@@ -117,6 +238,7 @@ export default function App() {
       setAdminPasswordInput('');
       setAdminAuthError('');
       setCurrentView('dashboard');
+      saveSession('admin', '', '', 'dashboard');
     } else {
       setAdminAuthError('Kata laluan tidak sah. Sila masukkan kata laluan admin yang betul.');
     }
@@ -127,10 +249,10 @@ export default function App() {
     setSelectedStudent(student);
     setSelectedDocType(docType);
     setCurrentView('document');
+    saveSession(userRole, studentIc, lecturerId, 'document');
   };
 
   const handleUpdateStudent = async (id: string, updatedData: Partial<Student>) => {
-    // Update local state immediately
     const target = students.find(s => s.id === id);
     if (!target) return;
     const updated = { ...target, ...updatedData };
@@ -143,7 +265,6 @@ export default function App() {
       setSelectedStudent(prev => (prev ? { ...prev, ...updatedData } : null));
     }
 
-    // Save directly to Firebase Firestore
     try {
       await saveStudentToFirebase(updated);
     } catch (err) {
@@ -206,15 +327,6 @@ export default function App() {
     });
   };
 
-  const handleNewStudentCreated = (newStudent: Student, message?: string, emailError?: string) => {
-    setStudents(prev => [newStudent, ...prev]);
-    if (emailError) {
-      alert(`Permohonan telah disimpan, tetapi penghantaran emel GAGAL: ${emailError}. Sila semak semula emel HR atau laporkan kepada pentadbir.`);
-    } else {
-      alert('Permohonan telah berjaya disimpan ke Firebase. Sila semak emel anda!');
-    }
-  };
-
   const handleSaveStudentMark = async (noMatrik: string, marks: any[]) => {
     try {
       const realHeaders = ["FLI02-C1", "FLI02-C2", "TOTAL7", "FLI02-C3", "FLI02-C4", "TOTAL8", "FLI02-C5", "FLI02-C6", "TOTAL9", "GRAN TOTAL2", "FLI02-ULASAN"];
@@ -225,7 +337,6 @@ export default function App() {
       
       await saveMarkahToFirebase(noMatrik, markObj);
 
-      // Local state update for immediate UI reflection
       setMarkah(prev => {
         const cleanNo = noMatrik.trim().toLowerCase();
         const existingIdx = prev.findIndex(m => {
@@ -240,7 +351,6 @@ export default function App() {
         return [...prev, markObj];
       });
 
-      // Also sync to Google Apps Script if URL is configured
       if (appsScriptUrl) {
         fetch(appsScriptUrl, {
           method: 'POST',
@@ -262,15 +372,8 @@ export default function App() {
 
   const handleSaveEvaluationMark = async (noMatrik: string, dataToSave: Record<string, any>) => {
     try {
-      const markObj: Record<string, any> = {
-        ...dataToSave,
-        noMatrik,
-        updatedAt: new Date().toISOString()
-      };
+      await saveMarkahToFirebase(noMatrik, dataToSave);
 
-      await saveMarkahToFirebase(noMatrik, markObj);
-
-      // Update local state immediately
       setMarkah(prev => {
         const cleanNo = noMatrik.trim().toLowerCase();
         const existingIdx = prev.findIndex(m => {
@@ -279,41 +382,49 @@ export default function App() {
         });
         if (existingIdx !== -1) {
           const updated = [...prev];
-          updated[existingIdx] = { ...updated[existingIdx], ...markObj };
+          updated[existingIdx] = { ...updated[existingIdx], ...dataToSave };
           return updated;
         }
-        return [...prev, markObj];
+        return [...prev, { noMatrik, ...dataToSave }];
       });
-
-      // Sync FLI 02 to Apps Script if marks array is present
-      if (appsScriptUrl && dataToSave['FLI02-C1'] !== undefined) {
-        const c1_1 = dataToSave['FLI02-C1'] || 1;
-        const c1_2 = dataToSave['FLI02-C2'] || 1;
-        const c1 = dataToSave['TOTAL7'] || 10;
-        const c2_1 = dataToSave['FLI02-C3'] || 1;
-        const c2_2 = dataToSave['FLI02-C4'] || 1;
-        const c2 = dataToSave['TOTAL8'] || 5;
-        const c3_1 = dataToSave['FLI02-C5'] || 1;
-        const c3_2 = dataToSave['FLI02-C6'] || 1;
-        const c3 = dataToSave['TOTAL9'] || 5;
-        const total = dataToSave['GRAN TOTAL2'] || 20;
-        const ulasan = dataToSave['FLI02-ULASAN'] || '';
-        
-        fetch(appsScriptUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'update_student_mark',
-            noMatrik,
-            marks: [c1_1, c1_2, c1, c2_1, c2_2, c2, c3_1, c3_2, c3, total, ulasan]
-          })
-        }).catch(err => console.warn('Sync mark to Apps Script note:', err));
-      }
 
       return { success: true };
     } catch (e: any) {
       return { success: false, message: e.message || 'Ralat semasa menyimpan markah ke Firebase.' };
+    }
+  };
+
+  // Lecturer CRUD Handlers
+  const handleSaveLecturer = async (lecturerData: Partial<Lecturer>) => {
+    try {
+      const docId = lecturerData.id || lecturerData.staffId?.replace(/[\/\s]/g, '_') || `lec_${Date.now()}`;
+      const fullLecturer: Lecturer = {
+        id: docId,
+        nama: lecturerData.nama || '',
+        staffId: lecturerData.staffId || '',
+        emel: lecturerData.emel || '',
+        program: lecturerData.program || 'SIJIL TEKNOLOGI ELEKTRIK',
+        noTelefon: lecturerData.noTelefon || '',
+        jawatan: lecturerData.jawatan || 'PENSYARAH',
+        updatedAt: new Date().toISOString()
+      };
+
+      await saveLecturerToFirebase(fullLecturer);
+      setLecturers(prev => [fullLecturer, ...prev.filter(l => l.id !== docId)]);
+      return { success: true };
+    } catch (err: any) {
+      console.error('Failed to save lecturer to Firebase:', err);
+      return { success: false, message: err.message || 'Ralat semasa menyimpan pensyarah.' };
+    }
+  };
+
+  const handleDeleteLecturer = async (id: string) => {
+    try {
+      await deleteLecturerFromFirebase(id);
+      setLecturers(prev => prev.filter(l => l.id !== id));
+    } catch (err) {
+      console.error('Failed to delete lecturer from Firebase:', err);
+      throw err;
     }
   };
 
@@ -324,10 +435,12 @@ export default function App() {
         onStudentLogin={(ic) => {
           setStudentIc(ic);
           setUserRole('student');
+          saveSession('student', ic, '', 'dashboard');
         }}
         onAdminLogin={() => {
           setUserRole('admin');
           setCurrentView('dashboard');
+          saveSession('admin', '', '', 'dashboard');
         }}
         onLecturerLogin={(staffId) => {
           const inputClean = staffId.trim();
@@ -338,10 +451,25 @@ export default function App() {
           if (query === 'ADMIN' || query === 'STAFF') {
             setLecturerId(inputClean);
             setUserRole('lecturer');
+            saveSession('lecturer', '', inputClean, 'dashboard');
             return;
           }
 
-          // 2. Search in markah rows for STAFF ID / NO. ID STAF (e.g. KKBS/003)
+          // 2. Check in lecturers list
+          const matchedLecturer = lecturers.find(l => {
+            const sid = (l.staffId || '').toUpperCase().trim();
+            const sidNoSlash = sid.replace(/\s+/g, '');
+            return sid === query || sidNoSlash === queryNoSlash;
+          });
+
+          if (matchedLecturer) {
+            setLecturerId(matchedLecturer.staffId);
+            setUserRole('lecturer');
+            saveSession('lecturer', '', matchedLecturer.staffId, 'dashboard');
+            return;
+          }
+
+          // 3. Search in markah rows for STAFF ID / NO. ID STAF (e.g. KKBS/003)
           const matchedMarkah = markah.find(row => {
             return Object.keys(row).some(key => {
               const uKey = key.toUpperCase();
@@ -355,7 +483,6 @@ export default function App() {
           });
 
           if (matchedMarkah) {
-            // Find the exact staff key value
             const staffKey = Object.keys(matchedMarkah).find(k => {
               const uk = k.toUpperCase();
               return uk.includes('STAFF ID') || uk.includes('ID STAF') || uk.includes('ID STAFF') || uk.includes('ID PEMANTAU');
@@ -363,8 +490,9 @@ export default function App() {
             const actualStaffId = (staffKey ? String(matchedMarkah[staffKey]) : inputClean).trim();
             setLecturerId(actualStaffId);
             setUserRole('lecturer');
+            saveSession('lecturer', '', actualStaffId, 'dashboard');
           } else {
-            alert(`Maaf, No. ID Staf "${inputClean}" tidak ditemui dalam sistem (Tab MARKAH_PELAJAR).\n\nSila pastikan No. ID Staf dimasukkan dengan tepat (Contoh: KKBS/003, KKBS/016, KKBS/049, dsb.).`);
+            alert(`Maaf, No. ID Staf "${inputClean}" tidak ditemui dalam sistem.\n\nSila pastikan No. ID Staf dimasukkan dengan tepat (Contoh: KKBS/003, KKBS/016, KKBS/022, KKBS/035, KKBS/049, dsb.).`);
           }
         }}
       />
@@ -381,7 +509,10 @@ export default function App() {
         appsScriptUrl={appsScriptUrl}
         onSaveStudent={handleSaveStudentAsync}
         onSelectStudentForDoc={handleSelectStudentForDoc}
-        onLogout={() => setUserRole('landing')}
+        onLogout={() => {
+          setUserRole('landing');
+          saveSession('landing');
+        }}
       />
     );
   }
@@ -395,7 +526,10 @@ export default function App() {
         markah={markah}
         markahHeaders={markahHeaders}
         onSaveMark={handleSaveStudentMark}
-        onLogout={() => setUserRole('landing')}
+        onLogout={() => {
+          setUserRole('landing');
+          saveSession('landing');
+        }}
         config={config}
       />
     );
@@ -409,6 +543,7 @@ export default function App() {
         currentView={currentView}
         onNavigate={view => {
           setCurrentView(view);
+          saveSession('admin', '', '', view);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         isSyncing={isSyncing}
@@ -417,17 +552,24 @@ export default function App() {
         onLogoutAdmin={() => {
           setUserRole('landing');
           setCurrentView('dashboard');
+          saveSession('landing');
         }}
       />
 
       {/* Main Body View */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-        {/* Admin Tab 1: Statistik Permohonan (No welcome header) */}
+        {/* Admin Tab 1: Statistik Permohonan */}
         {currentView === 'dashboard' && (
           <MainDashboard
             students={students}
-            onNavigateTab={view => setCurrentView(view)}
-            onOpenNewForm={() => setCurrentView('form')}
+            onNavigateTab={view => {
+              setCurrentView(view);
+              saveSession('admin', '', '', view);
+            }}
+            onOpenNewForm={() => {
+              setCurrentView('form');
+              saveSession('admin', '', '', 'form');
+            }}
             hideWelcomeHeader={true}
           />
         )}
@@ -458,7 +600,10 @@ export default function App() {
             config={config}
             appsScriptUrl={appsScriptUrl}
             initialDoc={selectedDocType}
-            onBack={() => setCurrentView('status')}
+            onBack={() => {
+              setCurrentView('status');
+              saveSession('admin', '', '', 'status');
+            }}
             onSaveBjpli={handleSaveBjpliData}
             onOpenAiAssist={student => {
               setSelectedStudent(student);
@@ -477,7 +622,17 @@ export default function App() {
           />
         )}
 
-        {/* Admin Tab 4: Maklumat Latihan */}
+        {/* Admin Tab 4: Maklumat Pensyarah */}
+        {currentView === 'pensyarah' && (
+          <MaklumatPensyarah
+            lecturers={lecturers}
+            students={students}
+            onSaveLecturer={handleSaveLecturer}
+            onDeleteLecturer={handleDeleteLecturer}
+          />
+        )}
+
+        {/* Admin Tab 5: Maklumat Latihan */}
         {currentView === 'config' && (
           <ConfigPanel
             config={config}
@@ -495,12 +650,15 @@ export default function App() {
               SISTEM LATIHAN INDUSTRI PELAJAR (SLIP) © 2026
             </p>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Unit Perhubungan Industri & Alumni | Kolej Komuniti Beaufort Sabah
+              Unit Perhubungan Industri &amp; Alumni | Kolej Komuniti Beaufort Sabah
             </p>
           </div>
           <button
-            onClick={() => setUserRole('landing')}
-            className="text-slate-400 hover:text-white font-bold text-xs"
+            onClick={() => {
+              setUserRole('landing');
+              saveSession('landing');
+            }}
+            className="text-slate-400 hover:text-white font-bold text-xs cursor-pointer"
           >
             ← Kembali ke Paparan Utama
           </button>
