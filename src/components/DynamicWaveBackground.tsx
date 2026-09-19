@@ -1,54 +1,75 @@
 import React, { useEffect, useRef } from 'react';
 
-// SLIP color palette – deep navy → electric cyan/blue binary rain
-const COLORS = {
-  bg: '#020d1a',
-  bgMid: '#030f22',
-  bgFar: '#04152e',
-  primary: '#00c8ff',        // Electric Cyan
-  secondary: '#0066ff',      // Royal Blue
-  accent: '#00ffcc',         // Teal Glow
-  faded: '#003a5c',
-  dim: '#001824',
-  white: '#e0f8ff',
+// ─── Palette ────────────────────────────────────────────────────────────────
+const C = {
+  bgDeep:  '#06071a',
+  bgMid:   '#080c28',
+  bgShift: '#0a1035',
+  indigo:  '55, 60, 180',     // #3739b4 rgb
+  indigoD: '30, 36, 120',
+  indigoBr:'100, 115, 255',
+  blue:    '60, 120, 255',
+  blueS:   '80, 160, 255',
+  red:     '220, 40, 60',
+  redA:    '255, 80, 90',
+  white:   '220, 230, 255',
+  neutral: '140, 155, 200',
 };
 
-interface Column {
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const rand = (a: number, b: number) => a + Math.random() * (b - a);
+const randInt = (a: number, b: number) => Math.floor(rand(a, b + 1));
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface Particle {
+  wx: number;   // wave-space X (0-1)
+  wy: number;   // wave-space Y offset
+  speed: number;
+  size: number;
+  opacity: number;
+  opacityTarget: number;
+  blink: number;
+  blinkSpeed: number;
+  color: string;
+  trail: { x: number; y: number }[];
+  maxTrail: number;
+  isRed: boolean;
+}
+
+interface BinaryGlyph {
   x: number;
   y: number;
-  speed: number;
-  chars: string[];
-  length: number;          // number of chars in this stream
+  char: string;
   opacity: number;
-  glowPulse: number;
-  glowPhase: number;
-  colorVariant: number;    // 0=cyan, 1=blue, 2=teal
-  // Wave modifier
-  waveAmplitude: number;
-  waveFrequency: number;
-  wavePhase: number;
+  speed: number;
+  size: number;
 }
 
-// Binary + tech character set
-const CHAR_SETS = [
-  '01',                   // pure binary
-  '01',                   // more binary weight
-  '0123456789',           // digits
-  'ABCDEF0123456789',     // hex
-  '{}[]<>/\\|=+-*&%$#@!', // symbols
-];
-
-function randomChar(): string {
-  const set = CHAR_SETS[Math.floor(Math.random() * CHAR_SETS.length)];
-  return set[Math.floor(Math.random() * set.length)];
+interface GeomShape {
+  type: 'triangle' | 'rect' | 'line';
+  cx: number;
+  cy: number;
+  size: number;
+  rotation: number;
+  rotSpeed: number;
+  opacityBase: number;
+  breathPhase: number;
+  breathSpeed: number;
+  isRed: boolean;
+  driftX: number;
+  driftY: number;
+  driftPhase: number;
+  driftSpeed: number;
 }
 
-const COLUMN_COLORS = [
-  // [head, mid, tail]
-  ['rgba(0, 255, 255, 1)', 'rgba(0, 200, 255, 0.85)', 'rgba(0, 100, 180, 0)'],   // Cyan
-  ['rgba(100, 200, 255, 1)', 'rgba(0, 100, 255, 0.8)', 'rgba(0, 40, 120, 0)'],   // Blue
-  ['rgba(0, 255, 200, 1)', 'rgba(0, 180, 160, 0.8)', 'rgba(0, 80, 80, 0)'],      // Teal
-];
+interface FlowLine {
+  points: { x: number; y: number }[];
+  opacity: number;
+  speed: number;
+  progress: number;
+  color: string;
+  width: number;
+}
 
 export const DynamicWaveBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -56,198 +77,443 @@ export const DynamicWaveBackground: React.FC = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
-    let animationFrameId: number;
-    let width = 0;
-    let height = 0;
-    let dpr = 1;
+    let raf: number;
+    let W = 0, H = 0, dpr = 1;
+    let t = 0;
 
-    const FONT_SIZE = 14;
-    const MIN_STREAM_LENGTH = 8;
-    const MAX_STREAM_LENGTH = 32;
-    let columns: Column[] = [];
-    let time = 0;
+    // ─── Entities ─────────────────────────────────────────────────────────────
+    let particles: Particle[] = [];
+    let glyphs: BinaryGlyph[] = [];
+    let shapes: GeomShape[] = [];
+    let flowLines: FlowLine[] = [];
 
-    const handleResize = () => {
+    const resize = () => {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      initColumns();
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      canvas.style.width = `${W}px`;
+      canvas.style.height = `${H}px`;
+      init();
     };
 
-    const initColumns = () => {
-      const cols = Math.floor(width / FONT_SIZE);
-      columns = [];
+    // ─── Wave function ─────────────────────────────────────────────────────────
+    // Returns the Y position on screen of the wave at normalised x (0-1)
+    const waveY = (nx: number, time: number): number => {
+      const base = H * 0.52;
+      const s1 = Math.sin(nx * Math.PI * 2.8 - time * 0.55) * H * 0.085;
+      const s2 = Math.sin(nx * Math.PI * 1.4 + time * 0.32) * H * 0.055;
+      const s3 = Math.sin(nx * Math.PI * 5.2 - time * 0.9) * H * 0.022;
+      return base + s1 + s2 + s3;
+    };
 
-      for (let i = 0; i < cols; i++) {
-        const x = i * FONT_SIZE + FONT_SIZE / 2;
-        const streamLength = MIN_STREAM_LENGTH + Math.floor(Math.random() * (MAX_STREAM_LENGTH - MIN_STREAM_LENGTH));
-        const chars = Array.from({ length: streamLength + 5 }, () => randomChar());
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    const init = () => {
+      // Particles
+      const pCount = Math.min(180, Math.max(90, Math.floor(W / 12)));
+      particles = Array.from({ length: pCount }, (): Particle => {
+        const isRed = Math.random() < 0.07;
+        const colorBase = isRed
+          ? C.redA
+          : Math.random() < 0.5 ? C.blueS : C.indigoBr;
+        return {
+          wx: Math.random(),
+          wy: rand(-0.35, 0.35) * H,
+          speed: rand(0.0008, 0.003),
+          size: rand(isRed ? 2.5 : 1.5, isRed ? 4.5 : 3.2),
+          opacity: rand(0.35, 0.9),
+          opacityTarget: rand(0.3, 1),
+          blink: rand(0.3, 1),
+          blinkSpeed: rand(0.012, 0.04),
+          color: colorBase,
+          trail: [],
+          maxTrail: randInt(4, 18),
+          isRed,
+        };
+      });
 
-        columns.push({
-          x,
-          y: -(Math.random() * height * 1.5),  // stagger starts above viewport
-          speed: 1.5 + Math.random() * 3.5,
-          chars,
-          length: streamLength,
-          opacity: 0.6 + Math.random() * 0.4,
-          glowPulse: 0,
-          glowPhase: Math.random() * Math.PI * 2,
-          colorVariant: Math.floor(Math.random() * 3),
-          waveAmplitude: 12 + Math.random() * 20,
-          waveFrequency: 0.008 + Math.random() * 0.018,
-          wavePhase: Math.random() * Math.PI * 2,
+      // Binary glyphs (very subtle)
+      const gCount = Math.min(90, Math.floor(W / 20));
+      glyphs = Array.from({ length: gCount }, (): BinaryGlyph => ({
+        x: rand(0, W),
+        y: rand(0, H),
+        char: Math.random() < 0.6 ? (Math.random() < 0.5 ? '0' : '1') : ['A','F','E','C','7','9'][randInt(0,5)],
+        opacity: rand(0.04, 0.13),
+        speed: rand(0.2, 0.8),
+        size: rand(9, 15),
+      }));
+
+      // Geometric background shapes
+      shapes = [];
+      // Large indigo background shapes
+      for (let i = 0; i < 5; i++) {
+        shapes.push({
+          type: Math.random() < 0.6 ? 'triangle' : 'rect',
+          cx: rand(W * 0.05, W * 0.95),
+          cy: rand(H * 0.05, H * 0.9),
+          size: rand(W * 0.08, W * 0.22),
+          rotation: rand(0, Math.PI * 2),
+          rotSpeed: rand(-0.0006, 0.0006),
+          opacityBase: rand(0.04, 0.10),
+          breathPhase: rand(0, Math.PI * 2),
+          breathSpeed: rand(0.008, 0.018),
+          isRed: false,
+          driftX: rand(-1, 1),
+          driftY: rand(-0.5, 0.5),
+          driftPhase: rand(0, Math.PI * 2),
+          driftSpeed: rand(0.005, 0.015),
         });
       }
+      // Red accent shapes (fewer, smaller)
+      for (let i = 0; i < 3; i++) {
+        shapes.push({
+          type: Math.random() < 0.5 ? 'triangle' : 'line',
+          cx: rand(W * 0.1, W * 0.9),
+          cy: rand(H * 0.1, H * 0.9),
+          size: rand(W * 0.025, W * 0.065),
+          rotation: rand(0, Math.PI * 2),
+          rotSpeed: rand(-0.001, 0.001),
+          opacityBase: rand(0.08, 0.22),
+          breathPhase: rand(0, Math.PI * 2),
+          breathSpeed: rand(0.01, 0.02),
+          isRed: true,
+          driftX: rand(-0.8, 0.8),
+          driftY: rand(-0.5, 0.5),
+          driftPhase: rand(0, Math.PI * 2),
+          driftSpeed: rand(0.007, 0.018),
+        });
+      }
+
+      // Flow lines along wave path
+      flowLines = Array.from({ length: 14 }, (): FlowLine => spawnFlowLine());
     };
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
+    const spawnFlowLine = (): FlowLine => {
+      const steps = 60;
+      const startX = rand(-0.2, 0) * W;
+      const offsetY = rand(-0.38, 0.38) * H;
+      const pts = Array.from({ length: steps }, (_, i) => {
+        const nx = (startX + i * W / (steps - 1)) / W;
+        return { x: startX + i * W / (steps - 1), y: waveY(nx, 0) + offsetY };
+      });
+      const isRed = Math.random() < 0.06;
+      return {
+        points: pts,
+        opacity: rand(0.06, 0.28),
+        speed: rand(0.003, 0.01),
+        progress: rand(0, 1),
+        color: isRed ? C.red : (Math.random() < 0.5 ? C.blueS : C.indigoBr),
+        width: rand(isRed ? 0.8 : 0.6, isRed ? 1.8 : 1.4),
+      };
+    };
 
+    // ─── Draw helpers ─────────────────────────────────────────────────────────
+    const drawTriangle = (cx: number, cy: number, size: number, rot: number) => {
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = rot + (i * Math.PI * 2) / 3;
+        const x = cx + Math.cos(a) * size;
+        const y = cy + Math.sin(a) * size;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    };
+
+    const drawRect = (cx: number, cy: number, size: number, rot: number) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rot);
+      const s = size * 0.7;
+      ctx.beginPath();
+      ctx.rect(-s, -s * 0.6, s * 2, s * 1.2);
+      ctx.restore();
+    };
+
+    // ─── Render ───────────────────────────────────────────────────────────────
     const render = () => {
-      time += 1;
-
+      t += 0.016;
       ctx.save();
       ctx.scale(dpr, dpr);
 
-      // --- Background ---
-      // Trailing fade (creates persistence / motion blur effect)
-      ctx.fillStyle = 'rgba(2, 13, 26, 0.18)';
-      ctx.fillRect(0, 0, width, height);
+      // --- Background gradient ---
+      const bg = ctx.createLinearGradient(0, 0, W * 0.5, H);
+      bg.addColorStop(0, C.bgDeep);
+      bg.addColorStop(0.45, C.bgMid);
+      bg.addColorStop(1, C.bgShift);
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
 
-      // Deep background every 60 frames to prevent ghosting buildup
-      if (time % 60 === 0) {
-        ctx.fillStyle = COLORS.bg;
-        ctx.fillRect(0, 0, width, height);
+      // Ambient top-right nebula (indigo)
+      const neb1 = ctx.createRadialGradient(W * 0.82, H * 0.12, 10, W * 0.82, H * 0.12, W * 0.55);
+      neb1.addColorStop(0, `rgba(${C.indigo}, 0.18)`);
+      neb1.addColorStop(0.6, `rgba(${C.indigoD}, 0.06)`);
+      neb1.addColorStop(1, 'rgba(6,7,26,0)');
+      ctx.fillStyle = neb1;
+      ctx.fillRect(0, 0, W, H);
+
+      // Ambient bottom-left nebula (deep blue)
+      const neb2 = ctx.createRadialGradient(W * 0.15, H * 0.88, 10, W * 0.15, H * 0.88, W * 0.5);
+      neb2.addColorStop(0, `rgba(${C.blue}, 0.12)`);
+      neb2.addColorStop(1, 'rgba(6,7,26,0)');
+      ctx.fillStyle = neb2;
+      ctx.fillRect(0, 0, W, H);
+
+      // ── 1. Background geometric shapes ─────────────────────────────────────
+      shapes.forEach(s => {
+        s.rotation += s.rotSpeed;
+        s.breathPhase += s.breathSpeed;
+        s.driftPhase += s.driftSpeed;
+
+        const breath = 0.8 + Math.sin(s.breathPhase) * 0.2;
+        const alpha = s.opacityBase * breath;
+        const driftX = s.cx + Math.sin(s.driftPhase) * 25 * s.driftX;
+        const driftY = s.cy + Math.cos(s.driftPhase * 0.7) * 18 * s.driftY;
+        const col = s.isRed ? C.red : C.indigo;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        if (s.type === 'triangle') {
+          drawTriangle(driftX, driftY, s.size, s.rotation);
+          ctx.strokeStyle = `rgba(${col}, 0.9)`;
+          ctx.lineWidth = s.isRed ? 1.5 : 1;
+          ctx.stroke();
+          // subtle fill
+          ctx.fillStyle = `rgba(${col}, 0.06)`;
+          ctx.fill();
+        } else if (s.type === 'rect') {
+          drawRect(driftX, driftY, s.size, s.rotation);
+          ctx.strokeStyle = `rgba(${col}, 0.8)`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        } else {
+          // line accent
+          const len = s.size * 2;
+          ctx.beginPath();
+          ctx.moveTo(driftX - Math.cos(s.rotation) * len, driftY - Math.sin(s.rotation) * len);
+          ctx.lineTo(driftX + Math.cos(s.rotation) * len, driftY + Math.sin(s.rotation) * len);
+          ctx.strokeStyle = `rgba(${col}, 0.95)`;
+          ctx.lineWidth = s.isRed ? 2 : 1;
+          ctx.stroke();
+        }
+        ctx.restore();
+      });
+
+      // ── 2. Wave body (glowing band) ────────────────────────────────────────
+      const waveSteps = 200;
+      // Wave fill (upper half above wave → indigo glow, lower → dark)
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(0, H);
+      for (let i = 0; i <= waveSteps; i++) {
+        const nx = i / waveSteps;
+        const px = nx * W;
+        const py = waveY(nx, t);
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.lineTo(W, H);
+      ctx.lineTo(0, H);
+      ctx.closePath();
+      const wfill = ctx.createLinearGradient(0, H * 0.3, 0, H);
+      wfill.addColorStop(0, `rgba(${C.indigo}, 0.09)`);
+      wfill.addColorStop(0.5, `rgba(${C.indigoD}, 0.05)`);
+      wfill.addColorStop(1, 'rgba(6,7,26,0)');
+      ctx.fillStyle = wfill;
+      ctx.fill();
+      ctx.restore();
+
+      // Wave crest glow line
+      ctx.save();
+      ctx.beginPath();
+      for (let i = 0; i <= waveSteps; i++) {
+        const nx = i / waveSteps;
+        const py = waveY(nx, t);
+        i === 0 ? ctx.moveTo(0, py) : ctx.lineTo(nx * W, py);
+      }
+      const wlineGrad = ctx.createLinearGradient(0, 0, W, 0);
+      wlineGrad.addColorStop(0, `rgba(${C.blueS}, 0)`);
+      wlineGrad.addColorStop(0.15, `rgba(${C.blueS}, 0.55)`);
+      wlineGrad.addColorStop(0.5, `rgba(${C.indigoBr}, 0.85)`);
+      wlineGrad.addColorStop(0.85, `rgba(${C.blueS}, 0.55)`);
+      wlineGrad.addColorStop(1, `rgba(${C.blueS}, 0)`);
+      ctx.strokeStyle = wlineGrad;
+      ctx.lineWidth = 1.8;
+      ctx.shadowColor = `rgba(${C.blueS}, 0.6)`;
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Secondary offset wave for depth
+      ctx.beginPath();
+      for (let i = 0; i <= waveSteps; i++) {
+        const nx = i / waveSteps;
+        const py = waveY(nx, t - 0.28) + 18;
+        i === 0 ? ctx.moveTo(0, py) : ctx.lineTo(nx * W, py);
+      }
+      ctx.strokeStyle = `rgba(${C.indigo}, 0.18)`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+
+      // ── 3. Flowing light trails ────────────────────────────────────────────
+      for (let li = flowLines.length - 1; li >= 0; li--) {
+        const fl = flowLines[li];
+        fl.progress += fl.speed;
+
+        if (fl.progress > 1.3) {
+          flowLines[li] = spawnFlowLine();
+          continue;
+        }
+
+        const vis = Math.min(1, fl.progress / 0.2) * Math.max(0, 1 - (fl.progress - 0.8) / 0.5);
+        const startIdx = Math.max(0, Math.floor(fl.progress * fl.points.length) - 22);
+        const endIdx = Math.min(fl.points.length - 1, Math.floor(fl.progress * fl.points.length));
+
+        if (endIdx - startIdx < 2) continue;
+
+        ctx.save();
+        ctx.globalAlpha = fl.opacity * vis;
+        ctx.lineWidth = fl.width;
+        ctx.lineCap = 'round';
+
+        const grad = ctx.createLinearGradient(
+          fl.points[startIdx].x, fl.points[startIdx].y,
+          fl.points[endIdx].x, fl.points[endIdx].y
+        );
+        grad.addColorStop(0, `rgba(${fl.color}, 0)`);
+        grad.addColorStop(0.6, `rgba(${fl.color}, 0.85)`);
+        grad.addColorStop(1, `rgba(255,255,255, 0.95)`);
+        ctx.strokeStyle = grad;
+
+        ctx.beginPath();
+        ctx.moveTo(fl.points[startIdx].x, fl.points[startIdx].y);
+        for (let pi = startIdx + 1; pi <= endIdx; pi++) {
+          ctx.lineTo(fl.points[pi].x, fl.points[pi].y);
+        }
+        ctx.stroke();
+        ctx.restore();
       }
 
-      // Ambient blue-teal radial glow in the center
-      const ambientGlow = ctx.createRadialGradient(
-        width * 0.5,
-        height * 0.4,
-        50,
-        width * 0.5,
-        height * 0.4,
-        Math.max(width, height) * 0.75
-      );
-      ambientGlow.addColorStop(0, 'rgba(0, 100, 200, 0.08)');
-      ambientGlow.addColorStop(0.5, 'rgba(0, 60, 140, 0.04)');
-      ambientGlow.addColorStop(1, 'rgba(2, 13, 26, 0)');
-      ctx.fillStyle = ambientGlow;
-      ctx.fillRect(0, 0, width, height);
-
-      ctx.font = `${FONT_SIZE}px monospace`;
+      // ── 4. Binary glyphs ──────────────────────────────────────────────────
+      ctx.save();
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
+      ctx.textBaseline = 'middle';
+      glyphs.forEach(g => {
+        g.y += g.speed;
+        if (g.y > H + 20) { g.y = -20; g.x = rand(0, W); }
+        ctx.font = `${g.size}px monospace`;
+        const drift = Math.sin(t * 0.4 + g.x * 0.01) * 6;
+        // Vary near wave
+        const wy = waveY(g.x / W, t);
+        const distToWave = Math.abs(g.y - wy);
+        const nearWave = Math.max(0, 1 - distToWave / (H * 0.2));
+        ctx.globalAlpha = g.opacity * (1 + nearWave * 0.8);
+        ctx.fillStyle = `rgba(${C.blueS}, 1)`;
+        ctx.fillText(g.char, g.x + drift, g.y);
+      });
+      ctx.restore();
 
-      // --- Render each column stream ---
-      for (let ci = 0; ci < columns.length; ci++) {
-        const col = columns[ci];
-        col.y += col.speed;
-        col.glowPhase += 0.04;
-        col.glowPulse = 0.7 + Math.sin(col.glowPhase) * 0.3;
-
-        // Occasionally mutate chars for digital glitch feel
-        if (Math.random() < 0.025) {
-          const ri = Math.floor(Math.random() * col.chars.length);
-          col.chars[ri] = randomChar();
+      // ── 5. Particles ──────────────────────────────────────────────────────
+      particles.forEach(p => {
+        p.wx += p.speed;
+        if (p.wx > 1.08) { p.wx = -0.08; }
+        p.blink += p.blinkSpeed;
+        p.opacity += (p.opacityTarget - p.opacity) * 0.03;
+        if (Math.abs(p.opacity - p.opacityTarget) < 0.01) {
+          p.opacityTarget = rand(0.2, 1.0);
         }
 
-        // Sine-wave X displacement for wave motion
-        const waveX = col.x + Math.sin(time * 0.025 + col.wavePhase + col.y * col.waveFrequency) * col.waveAmplitude;
+        const px = p.wx * W;
+        const baseY = waveY(p.wx, t);
+        const py = baseY + p.wy + Math.sin(t * 0.6 + p.wx * 8) * 12;
 
-        const colors = COLUMN_COLORS[col.colorVariant];
+        // Trail
+        p.trail.push({ x: px, y: py });
+        if (p.trail.length > p.maxTrail) p.trail.shift();
 
-        // Draw each character in the stream
-        for (let ci2 = 0; ci2 < col.length; ci2++) {
-          const charY = col.y - ci2 * FONT_SIZE;
-
-          if (charY < -FONT_SIZE || charY > height + FONT_SIZE) continue;
-
-          // t=0 is head, t=1 is tail
-          const t = ci2 / (col.length - 1);
-
-          // --- Character color & brightness ---
-          if (ci2 === 0) {
-            // HEAD: Bright white/cyan with heavy glow
-            ctx.fillStyle = COLORS.white;
-            ctx.shadowColor = colors[0];
-            ctx.shadowBlur = 18 * col.glowPulse;
-          } else if (t < 0.25) {
-            // NEAR HEAD: Bright cyan
-            const fade = 1 - t / 0.25;
-            ctx.fillStyle = colors[0];
-            ctx.shadowColor = colors[0];
-            ctx.shadowBlur = 12 * fade * col.glowPulse;
-          } else if (t < 0.65) {
-            // MID BODY: Medium blue-cyan fading
-            const fade = 1 - (t - 0.25) / 0.4;
-            ctx.fillStyle = `rgba(0, 160, 255, ${0.4 + fade * 0.45})`;
-            ctx.shadowColor = colors[1];
-            ctx.shadowBlur = 5 * fade;
-          } else {
-            // TAIL: Fading dark blue
-            const fade = 1 - (t - 0.65) / 0.35;
-            ctx.fillStyle = `rgba(0, 70, 180, ${0.05 + fade * 0.25})`;
-            ctx.shadowBlur = 0;
+        if (p.trail.length > 1) {
+          ctx.save();
+          ctx.lineCap = 'round';
+          for (let ti = 1; ti < p.trail.length; ti++) {
+            const frac = ti / p.trail.length;
+            ctx.globalAlpha = p.opacity * frac * 0.45;
+            ctx.strokeStyle = `rgba(${p.color}, 1)`;
+            ctx.lineWidth = p.size * frac * 0.5;
+            ctx.beginPath();
+            ctx.moveTo(p.trail[ti - 1].x, p.trail[ti - 1].y);
+            ctx.lineTo(p.trail[ti].x, p.trail[ti].y);
+            ctx.stroke();
           }
-
-          ctx.globalAlpha = col.opacity;
-          ctx.fillText(col.chars[ci2 % col.chars.length], waveX, charY);
-          ctx.shadowBlur = 0;
+          ctx.restore();
         }
 
-        ctx.globalAlpha = 1;
+        // Glow halo
+        const glow = ctx.createRadialGradient(px, py, 0, px, py, p.size * (p.isRed ? 5 : 4));
+        glow.addColorStop(0, `rgba(${p.color}, ${p.opacity * 0.6})`);
+        glow.addColorStop(1, `rgba(${p.color}, 0)`);
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(px, py, p.size * (p.isRed ? 5 : 4), 0, Math.PI * 2);
+        ctx.fill();
 
-        // Reset column when stream scrolls fully past bottom
-        if (col.y - col.length * FONT_SIZE > height) {
-          col.y = -(Math.random() * height * 0.4);
-          col.speed = 1.5 + Math.random() * 3.5;
-          col.length = MIN_STREAM_LENGTH + Math.floor(Math.random() * (MAX_STREAM_LENGTH - MIN_STREAM_LENGTH));
-          col.chars = Array.from({ length: col.length + 5 }, () => randomChar());
-          col.colorVariant = Math.floor(Math.random() * 3);
-          col.waveAmplitude = 12 + Math.random() * 20;
-          col.waveFrequency = 0.008 + Math.random() * 0.018;
-          col.wavePhase = Math.random() * Math.PI * 2;
-          col.glowPhase = Math.random() * Math.PI * 2;
-          col.opacity = 0.6 + Math.random() * 0.4;
+        // Core dot
+        ctx.save();
+        ctx.globalAlpha = p.opacity;
+        ctx.beginPath();
+        ctx.arc(px, py, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = p.isRed ? `rgba(${p.color}, 1)` : '#ffffff';
+        if (p.isRed) {
+          ctx.shadowColor = `rgba(${C.red}, 0.9)`;
+          ctx.shadowBlur = 14;
         }
-      }
+        ctx.fill();
+        ctx.restore();
+      });
 
-      // --- Scanline overlay for cinematic CRT depth ---
-      for (let sy = 0; sy < height; sy += 4) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
-        ctx.fillRect(0, sy, width, 1);
-      }
-
-      // --- Subtle top & bottom gradient vignette ---
-      const topVig = ctx.createLinearGradient(0, 0, 0, height * 0.18);
-      topVig.addColorStop(0, 'rgba(2, 13, 26, 0.7)');
-      topVig.addColorStop(1, 'rgba(2, 13, 26, 0)');
+      // ── 6. Vignette overlay ───────────────────────────────────────────────
+      ctx.save();
+      // Top vignette (more space for content)
+      const topVig = ctx.createLinearGradient(0, 0, 0, H * 0.3);
+      topVig.addColorStop(0, 'rgba(6,7,26,0.72)');
+      topVig.addColorStop(1, 'rgba(6,7,26,0)');
       ctx.fillStyle = topVig;
-      ctx.fillRect(0, 0, width, height * 0.18);
+      ctx.fillRect(0, 0, W, H * 0.3);
 
-      const botVig = ctx.createLinearGradient(0, height * 0.82, 0, height);
-      botVig.addColorStop(0, 'rgba(2, 13, 26, 0)');
-      botVig.addColorStop(1, 'rgba(2, 13, 26, 0.75)');
+      const botVig = ctx.createLinearGradient(0, H * 0.75, 0, H);
+      botVig.addColorStop(0, 'rgba(6,7,26,0)');
+      botVig.addColorStop(1, 'rgba(6,7,26,0.6)');
       ctx.fillStyle = botVig;
-      ctx.fillRect(0, height * 0.82, width, height * 0.18);
+      ctx.fillRect(0, H * 0.75, W, H * 0.25);
+
+      // Side vignettes for focus
+      const lVig = ctx.createLinearGradient(0, 0, W * 0.08, 0);
+      lVig.addColorStop(0, 'rgba(6,7,26,0.45)');
+      lVig.addColorStop(1, 'rgba(6,7,26,0)');
+      ctx.fillStyle = lVig;
+      ctx.fillRect(0, 0, W * 0.08, H);
+
+      const rVig = ctx.createLinearGradient(W * 0.92, 0, W, 0);
+      rVig.addColorStop(0, 'rgba(6,7,26,0)');
+      rVig.addColorStop(1, 'rgba(6,7,26,0.45)');
+      ctx.fillStyle = rVig;
+      ctx.fillRect(W * 0.92, 0, W * 0.08, H);
+      ctx.restore();
 
       ctx.restore();
-      animationFrameId = requestAnimationFrame(render);
+      raf = requestAnimationFrame(render);
     };
 
-    animationFrameId = requestAnimationFrame(render);
+    resize();
+    window.addEventListener('resize', resize);
+    raf = requestAnimationFrame(render);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(raf);
     };
   }, []);
 
