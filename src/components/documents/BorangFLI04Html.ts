@@ -79,11 +79,11 @@ export function renderBorangFLI04Html(row: any, config?: any): string {
     }
     body {
       font-family: Arial, Helvetica, sans-serif;
-      font-size: 9px;
+      font-size: 9.5px;
       color: #0f172a;
       background: white;
       padding: 10px 20px;
-      line-height: 1.25;
+      line-height: 1.3;
     }
     @media print {
       body { padding: 0; }
@@ -94,24 +94,24 @@ export function renderBorangFLI04Html(row: any, config?: any): string {
       }
     }
     table { border-collapse: collapse; width: 100%; }
-    td, th { padding: 2.5px 5px; vertical-align: middle; }
-    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 4px; }
-    .header-text h1 { font-size: 10.5px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.3px; }
-    .header-text p { font-size: 8px; font-weight: 600; color: #334155; }
-    .doc-code { font-size: 8.5px; font-family: monospace; font-weight: 800; border: 1px solid #334155; padding: 2px 6px; border-radius: 2px; }
-    .title-banner { text-align: center; background: #0f172a; color: white; padding: 3px; border-radius: 3px; margin-bottom: 4px; }
-    .title-banner h2 { font-size: 9.5px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
-    .info-table td { padding: 2px 4px; font-size: 8.5px; }
+    td, th { padding: 2.8px 5px; vertical-align: middle; }
+    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px; margin-bottom: 5px; }
+    .header-text h1 { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.3px; }
+    .header-text p { font-size: 8.5px; font-weight: 700; color: #334155; }
+    .doc-code { font-size: 9px; font-family: monospace; font-weight: 800; border: 1.2px solid #334155; padding: 2px 7px; border-radius: 2px; }
+    .title-banner { text-align: center; background: #0f172a; color: white; padding: 3.5px; border-radius: 3px; margin-bottom: 5px; }
+    .title-banner h2 { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+    .info-table td { padding: 2px 5px; font-size: 9px; }
     .info-label { font-weight: 700; color: #475569; width: 18%; text-transform: uppercase; }
     .info-val { font-weight: 700; color: #0f172a; width: 32%; }
-    .summary-table { border: 1.2px solid #0f172a; margin-top: 4px; }
-    .summary-table th { background: #0f172a; color: white; font-weight: 800; font-size: 8px; text-transform: uppercase; border: 1px solid #334155; text-align: center; padding: 3px 4px; }
-    .summary-table td { border: 1px solid #cbd5e1; font-size: 8.5px; }
-    .section-head { background: #e2e8f0; font-weight: 800; text-transform: uppercase; font-size: 8px; color: #0f172a; }
+    .summary-table { border: 1.2px solid #0f172a; margin-top: 5px; }
+    .summary-table th { background: #0f172a; color: white; font-weight: 800; font-size: 8.5px; text-transform: uppercase; border: 1px solid #334155; text-align: center; padding: 3.5px 5px; }
+    .summary-table td { border: 1px solid #cbd5e1; font-size: 9px; }
+    .section-head { background: #e2e8f0; font-weight: 800; text-transform: uppercase; font-size: 8.5px; color: #0f172a; }
     .subtotal-row { background: #f1f5f9; font-weight: 800; }
     .grand-total-row { background: #0f172a; color: white; font-weight: 900; font-size: 10px; }
-    .sig-section { margin-top: 10px; page-break-inside: avoid; font-size: 9px; }
-    .sig-line { margin-top: 32px; border-bottom: 1px solid #0f172a; width: 220px; }
+    .sig-section { margin-top: 20px; page-break-inside: avoid; font-size: 9.5px; line-height: 1.3; }
+    .sig-line { margin-top: 36px; border-bottom: 1px solid #0f172a; width: 220px; }
   </style>
 </head>
 <body>
@@ -131,7 +131,7 @@ export function renderBorangFLI04Html(row: any, config?: any): string {
   <div class="header">
     <div class="header-text">
       <h1>KOLEJ KOMUNITI BEAUFORT SABAH</h1>
-      <p>UNIT PERHUBUNGAN INDUSTRI &amp; ALUMNI (UPLI) | KEMENTERIAN PENDIDIKAN TINGGI</p>
+      <p>KEMENTERIAN PENDIDIKAN TINGGI</p>
     </div>
     <div class="doc-code">FLI 04</div>
   </div>
@@ -142,7 +142,7 @@ export function renderBorangFLI04Html(row: any, config?: any): string {
   </div>
 
   <!-- Student Info Table -->
-  <table class="info-table" style="border:1px solid #cbd5e1;margin-bottom:4px;background:#f8fafc;">
+  <table class="info-table" style="border:1px solid #cbd5e1;margin-bottom:5px;background:#f8fafc;">
     <tr>
       <td class="info-label">Kod &amp; Nama Kursus:</td>
       <td class="info-val">SUT40078 - LATIHAN INDUSTRI</td>
@@ -163,25 +163,25 @@ export function renderBorangFLI04Html(row: any, config?: any): string {
     </tr>
   </table>
 
-  <!-- Summary Table with [CCMS] Column -->
+  <!-- Summary Table with [Markah CCMS] Column -->
   <table class="summary-table">
     <thead>
       <tr>
-        <th style="width:4%;">Bil</th>
-        <th style="width:39%;text-align:left;">Kriteria Penilaian</th>
-        <th style="width:7%;">CLO</th>
-        <th style="width:11%;">Pemberat</th>
+        <th style="width:5%;">Bil</th>
+        <th style="width:43%;text-align:left;">Kriteria Penilaian</th>
+        <th style="width:8%;">CLO</th>
+        <th style="width:12%;">Pemberat</th>
         <th style="width:16%;">Markah (%)</th>
-        <th style="width:23%;">CCMS [Markah (%)/pemberat*100]</th>
+        <th style="width:16%;">Markah CCMS</th>
       </tr>
     </thead>
     <tbody>
       <!-- Section 1: PENILAIAN INDUSTRI -->
       <tr class="section-head">
-        <td colspan="6" style="padding:2.5px 6px;font-weight:900;">1. PENILAIAN INDUSTRI (FLI 01)</td>
+        <td colspan="6" style="padding:3px 6px;font-weight:900;">1. PENILAIAN INDUSTRI (FLI 01)</td>
       </tr>
       <tr style="background:#f8fafc;font-weight:700;">
-        <td colspan="6" style="padding:2px 6px;color:#334155;font-size:8px;">BAHAGIAN A: PENILAIAN PRESTASI (50%)</td>
+        <td colspan="6" style="padding:2px 6px;color:#334155;font-size:8.5px;">BAHAGIAN A: PENILAIAN PRESTASI (50%)</td>
       </tr>
       <tr>
         <td style="text-align:center;">1</td>
@@ -224,7 +224,7 @@ export function renderBorangFLI04Html(row: any, config?: any): string {
         <td style="text-align:center;font-weight:700;font-family:monospace;">${calcCCMS(a5, 5)}</td>
       </tr>
       <tr style="background:#f8fafc;font-weight:700;">
-        <td colspan="6" style="padding:2px 6px;color:#334155;font-size:8px;">BAHAGIAN B: BUKU LOG LI (10%)</td>
+        <td colspan="6" style="padding:2px 6px;color:#334155;font-size:8.5px;">BAHAGIAN B: BUKU LOG LI (10%)</td>
       </tr>
       <tr>
         <td style="text-align:center;">1</td>
@@ -243,10 +243,10 @@ export function renderBorangFLI04Html(row: any, config?: any): string {
 
       <!-- Section 2: PENILAIAN PEMANTAUAN -->
       <tr class="section-head">
-        <td colspan="6" style="padding:2.5px 6px;font-weight:900;">2. PENILAIAN PEMANTAUAN (FLI 02)</td>
+        <td colspan="6" style="padding:3px 6px;font-weight:900;">2. PENILAIAN PEMANTAUAN (FLI 02)</td>
       </tr>
       <tr style="background:#f8fafc;font-weight:700;">
-        <td colspan="6" style="padding:2px 6px;color:#334155;font-size:8px;">BAHAGIAN C: TEMUBUAL (20%)</td>
+        <td colspan="6" style="padding:2px 6px;color:#334155;font-size:8.5px;">BAHAGIAN C: TEMUBUAL (20%)</td>
       </tr>
       <tr>
         <td style="text-align:center;">1</td>
@@ -281,10 +281,10 @@ export function renderBorangFLI04Html(row: any, config?: any): string {
 
       <!-- Section 3: PENILAIAN LAPORAN AKHIR -->
       <tr class="section-head">
-        <td colspan="6" style="padding:2.5px 6px;font-weight:900;">3. PENILAIAN LAPORAN AKHIR (FLI 03)</td>
+        <td colspan="6" style="padding:3px 6px;font-weight:900;">3. PENILAIAN LAPORAN AKHIR (FLI 03)</td>
       </tr>
       <tr style="background:#f8fafc;font-weight:700;">
-        <td colspan="6" style="padding:2px 6px;color:#334155;font-size:8px;">BAHAGIAN D: LAPORAN AKHIR (20%)</td>
+        <td colspan="6" style="padding:2px 6px;color:#334155;font-size:8.5px;">BAHAGIAN D: LAPORAN AKHIR (20%)</td>
       </tr>
       <tr>
         <td style="text-align:center;">1</td>
@@ -311,14 +311,14 @@ export function renderBorangFLI04Html(row: any, config?: any): string {
 
       <!-- GRAND TOTAL -->
       <tr class="grand-total-row">
-        <td colspan="3" style="text-align:right;padding:4px 8px;letter-spacing:0.3px;">
+        <td colspan="3" style="text-align:right;padding:4.5px 8px;letter-spacing:0.3px;">
           JUMLAH KESELURUHAN (A + B + C + D):
         </td>
         <td style="text-align:center;">100%</td>
-        <td style="text-align:center;font-size:10px;background:#1e3a8a;">
+        <td style="text-align:center;font-size:10.5px;background:#1e3a8a;">
           ${f2(grand_total)}
         </td>
-        <td style="text-align:center;font-size:10px;background:#1e3a8a;font-family:monospace;">
+        <td style="text-align:center;font-size:10.5px;background:#1e3a8a;font-family:monospace;">
           ${calcCCMS(grand_total, 100)}
         </td>
       </tr>
@@ -330,7 +330,7 @@ export function renderBorangFLI04Html(row: any, config?: any): string {
     <div>Disediakan oleh Pegawai Perhubungan Industri dan Alumni,</div>
     <div class="sig-line"></div>
     <!-- Space for cop hidup between signature line and Tarikh -->
-    <div style="margin-top:28px;font-weight:700;font-size:9px;">Tarikh:</div>
+    <div style="margin-top:30px;font-weight:700;font-size:9.5px;">Tarikh:</div>
   </div>
 
 </body>

@@ -145,7 +145,7 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
                   <th className="py-2.5 px-3 text-center w-16">CLO</th>
                   <th className="py-2.5 px-3 text-center w-20">Pemberat</th>
                   <th className="py-2.5 px-3 text-center w-24">Markah (%)</th>
-                  <th className="py-2.5 px-3 text-center w-36 bg-slate-900 text-amber-300">CCMS [Markah (%)/pemberat*100]</th>
+                  <th className="py-2.5 px-3 text-center w-28 bg-slate-900 text-amber-300">Markah CCMS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150">
