@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Printer, Award, CheckCircle2, AlertCircle, FileText, UserCheck } from 'lucide-react';
+import { X, Printer, Award, FileText } from 'lucide-react';
 import { Student, SystemConfig } from '../../types';
 import { renderBorangFLI04Html } from '../documents/BorangFLI04Html';
 
@@ -18,6 +18,16 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
 }) => {
   const getVal = (key: string, fallback = '0'): string => {
     return markData && markData[key] !== undefined && markData[key] !== null ? markData[key].toString() : fallback;
+  };
+
+  const f2 = (val: number | string): string => {
+    const num = parseFloat(String(val)) || 0;
+    return num.toFixed(2);
+  };
+
+  const ccms = (val: number | string): string => {
+    const num = parseFloat(String(val)) || 0;
+    return (num / 100).toFixed(2);
   };
 
   // FLI 01 Breakdown
@@ -42,19 +52,6 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
 
   // Grand Total
   const grand_total = parseFloat((total_fli01 + total_fli02 + total_fli03).toFixed(2));
-
-  // Determine Grade
-  let grade = 'E';
-  let statusLulus = 'GAGAL';
-  if (grand_total >= 90) { grade = 'A+'; statusLulus = 'LULUS CEMERLANG'; }
-  else if (grand_total >= 80) { grade = 'A'; statusLulus = 'LULUS CEMERLANG'; }
-  else if (grand_total >= 75) { grade = 'A-'; statusLulus = 'LULUS'; }
-  else if (grand_total >= 70) { grade = 'B+'; statusLulus = 'LULUS'; }
-  else if (grand_total >= 65) { grade = 'B'; statusLulus = 'LULUS'; }
-  else if (grand_total >= 60) { grade = 'B-'; statusLulus = 'LULUS'; }
-  else if (grand_total >= 55) { grade = 'C+'; statusLulus = 'LULUS'; }
-  else if (grand_total >= 50) { grade = 'C'; statusLulus = 'LULUS'; }
-  else if (grand_total >= 40) { grade = 'D'; statusLulus = 'GAGAL'; }
 
   const handlePrint = () => {
     try {
@@ -92,7 +89,7 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
         <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -112,212 +109,215 @@ export const BorangFLI04Modal: React.FC<BorangFLI04ModalProps> = ({
         </div>
 
         {/* Modal Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Summary Score Card */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          {/* Summary Score Cards with 2 decimal places */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+            <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl">
               <span className="text-[10px] font-bold text-blue-800 uppercase tracking-wide">1. Industri (FLI 01)</span>
-              <h4 className="text-xl font-black text-blue-950 mt-1">{total_fli01} / 60%</h4>
+              <h4 className="text-lg font-black text-blue-950 mt-0.5">{f2(total_fli01)} / 60%</h4>
+              <p className="text-[10px] font-mono text-blue-700 mt-0.5">CCMS: {ccms(total_fli01)}</p>
             </div>
-            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl">
+            <div className="p-3.5 bg-indigo-50 border border-indigo-200 rounded-2xl">
               <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-wide">2. Pemantauan (FLI 02)</span>
-              <h4 className="text-xl font-black text-indigo-950 mt-1">{total_fli02} / 20%</h4>
+              <h4 className="text-lg font-black text-indigo-950 mt-0.5">{f2(total_fli02)} / 20%</h4>
+              <p className="text-[10px] font-mono text-indigo-700 mt-0.5">CCMS: {ccms(total_fli02)}</p>
             </div>
-            <div className="p-4 bg-teal-50 border border-teal-200 rounded-2xl">
+            <div className="p-3.5 bg-teal-50 border border-teal-200 rounded-2xl">
               <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wide">3. Laporan (FLI 03)</span>
-              <h4 className="text-xl font-black text-teal-950 mt-1">{total_fli03} / 20%</h4>
+              <h4 className="text-lg font-black text-teal-950 mt-0.5">{f2(total_fli03)} / 20%</h4>
+              <p className="text-[10px] font-mono text-teal-700 mt-0.5">CCMS: {ccms(total_fli03)}</p>
             </div>
-            <div className="p-4 bg-slate-900 text-white rounded-2xl shadow-md">
+            <div className="p-3.5 bg-slate-900 text-white rounded-2xl shadow-md">
               <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wide">Jumlah Keseluruhan</span>
-              <h4 className="text-xl font-black text-amber-400 mt-1">{grand_total} / 100</h4>
+              <h4 className="text-lg font-black text-amber-400 mt-0.5">{f2(grand_total)} / 100</h4>
+              <p className="text-[10px] font-mono text-amber-300 mt-0.5">CCMS: {ccms(grand_total)}</p>
             </div>
           </div>
 
-          {/* Detailed Breakdown Table */}
+          {/* Detailed Breakdown Table with CCMS Column */}
           <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-800 text-white font-black uppercase text-[10px] tracking-wider">
-                  <th className="py-2.5 px-4 w-12 text-center">Bil</th>
-                  <th className="py-2.5 px-4">Kriteria Penilaian</th>
-                  <th className="py-2.5 px-4 text-center w-20">CLO</th>
-                  <th className="py-2.5 px-4 text-center w-24">Pemberat</th>
-                  <th className="py-2.5 px-4 text-center w-28">Markah (%)</th>
+                  <th className="py-2.5 px-3 w-10 text-center">Bil</th>
+                  <th className="py-2.5 px-3">Kriteria Penilaian</th>
+                  <th className="py-2.5 px-3 text-center w-16">CLO</th>
+                  <th className="py-2.5 px-3 text-center w-20">Pemberat</th>
+                  <th className="py-2.5 px-3 text-center w-24">Markah (%)</th>
+                  <th className="py-2.5 px-3 text-center w-28 bg-slate-900 text-amber-300">CCMS [Markah/100]</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150">
                 {/* 1. PENILAIAN INDUSTRI */}
                 <tr className="bg-slate-100 font-black text-slate-900">
-                  <td colSpan={5} className="py-2 px-4 uppercase text-[11px]">1. PENILAIAN INDUSTRI (FLI 01 - 60%)</td>
+                  <td colSpan={6} className="py-1.5 px-3 uppercase text-[10px]">1. PENILAIAN INDUSTRI (FLI 01)</td>
                 </tr>
-                <tr className="bg-slate-50/60 font-bold text-slate-700">
-                  <td colSpan={5} className="py-1 px-4 text-[10px]">BAHAGIAN A: PENILAIAN PRESTASI (50%)</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-4 text-center text-slate-500">1</td>
-                  <td className="py-2 px-4 font-semibold text-slate-800">Kemahiran di tempat kerja</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-700">CLO 1</td>
-                  <td className="py-2 px-4 text-center text-slate-600">30%</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-900">{fli01_a1_pct}%</td>
+                <tr className="bg-slate-50/70 font-bold text-slate-700">
+                  <td colSpan={6} className="py-1 px-3 text-[9.5px]">BAHAGIAN A: PENILAIAN PRESTASI (50%)</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-4 text-center text-slate-500">2</td>
-                  <td className="py-2 px-4 font-semibold text-slate-800">Komunikasi berkesan</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-700">CLO 2</td>
-                  <td className="py-2 px-4 text-center text-slate-600">5%</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-900">{fli01_a2_pct}%</td>
+                  <td className="py-1.5 px-3 text-center text-slate-500">1</td>
+                  <td className="py-1.5 px-3 font-semibold text-slate-800">Kemahiran di tempat kerja</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-700">1</td>
+                  <td className="py-1.5 px-3 text-center text-slate-600">30%</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli01_a1_pct)}%</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli01_a1_pct)}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-4 text-center text-slate-500">3</td>
-                  <td className="py-2 px-4 font-semibold text-slate-800">Kerja berpasukan dan tanggungjawab</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-700">CLO 3</td>
-                  <td className="py-2 px-4 text-center text-slate-600">5%</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-900">{fli01_a3_pct}%</td>
+                  <td className="py-1.5 px-3 text-center text-slate-500">2</td>
+                  <td className="py-1.5 px-3 font-semibold text-slate-800">Komunikasi berkesan</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-700">2</td>
+                  <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli01_a2_pct)}%</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli01_a2_pct)}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-4 text-center text-slate-500">4</td>
-                  <td className="py-2 px-4 font-semibold text-slate-800">Kemahiran personal</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-700">CLO 4</td>
-                  <td className="py-2 px-4 text-center text-slate-600">5%</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-900">{fli01_a4_pct}%</td>
+                  <td className="py-1.5 px-3 text-center text-slate-500">3</td>
+                  <td className="py-1.5 px-3 font-semibold text-slate-800">Kerja berpasukan dan tanggungjawab</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-700">3</td>
+                  <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli01_a3_pct)}%</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli01_a3_pct)}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-4 text-center text-slate-500">5</td>
-                  <td className="py-2 px-4 font-semibold text-slate-800">Nilai, etika dan profesionalisme</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-700">CLO 5</td>
-                  <td className="py-2 px-4 text-center text-slate-600">5%</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-900">{fli01_a5_pct}%</td>
-                </tr>
-                <tr className="bg-slate-50/60 font-bold text-slate-700">
-                  <td colSpan={5} className="py-1 px-4 text-[10px]">BAHAGIAN B: BUKU LOG LI (10%)</td>
+                  <td className="py-1.5 px-3 text-center text-slate-500">4</td>
+                  <td className="py-1.5 px-3 font-semibold text-slate-800">Kemahiran personal</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-700">4</td>
+                  <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli01_a4_pct)}%</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli01_a4_pct)}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-4 text-center text-slate-500">1</td>
-                  <td className="py-2 px-4 font-semibold text-slate-800">Kemahiran di tempat kerja</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-700">CLO 1</td>
-                  <td className="py-2 px-4 text-center text-slate-600">10%</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-900">{fli01_b_pct}%</td>
+                  <td className="py-1.5 px-3 text-center text-slate-500">5</td>
+                  <td className="py-1.5 px-3 font-semibold text-slate-800">Nilai, etika dan profesionalisme</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-700">5</td>
+                  <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli01_a5_pct)}%</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli01_a5_pct)}</td>
                 </tr>
-                <tr className="bg-blue-50/50 font-black text-blue-900">
-                  <td colSpan={3} className="py-2 px-4 text-right uppercase text-[10px]">Subtotal FLI 01:</td>
-                  <td className="py-2 px-4 text-center">60%</td>
-                  <td className="py-2 px-4 text-center text-sm">{total_fli01}%</td>
+                <tr className="bg-slate-50/70 font-bold text-slate-700">
+                  <td colSpan={6} className="py-1 px-3 text-[9.5px]">BAHAGIAN B: BUKU LOG LI (10%)</td>
+                </tr>
+                <tr>
+                  <td className="py-1.5 px-3 text-center text-slate-500">1</td>
+                  <td className="py-1.5 px-3 font-semibold text-slate-800">Kemahiran di tempat kerja</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-700">1</td>
+                  <td className="py-1.5 px-3 text-center text-slate-600">10%</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli01_b_pct)}%</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli01_b_pct)}</td>
+                </tr>
+                <tr className="bg-blue-50/60 font-black text-blue-900">
+                  <td colSpan={3} className="py-1.5 px-3 text-right uppercase text-[10px]">Jumlah Penilaian Industri (FLI 01):</td>
+                  <td className="py-1.5 px-3 text-center">60%</td>
+                  <td className="py-1.5 px-3 text-center font-mono">{f2(total_fli01)}%</td>
+                  <td className="py-1.5 px-3 text-center font-mono text-blue-950 font-black">{ccms(total_fli01)}</td>
                 </tr>
 
                 {/* 2. PENILAIAN PEMANTAUAN */}
                 <tr className="bg-slate-100 font-black text-slate-900">
-                  <td colSpan={5} className="py-2 px-4 uppercase text-[11px]">2. PENILAIAN PEMANTAUAN (FLI 02 - 20%)</td>
+                  <td colSpan={6} className="py-1.5 px-3 uppercase text-[10px]">2. PENILAIAN PEMANTAUAN (FLI 02)</td>
                 </tr>
-                <tr className="bg-slate-50/60 font-bold text-slate-700">
-                  <td colSpan={5} className="py-1 px-4 text-[10px]">BAHAGIAN C: TEMUBUAL (20%)</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-4 text-center text-slate-500">1</td>
-                  <td className="py-2 px-4 font-semibold text-slate-800">Komunikasi lisan</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-700">CLO 2</td>
-                  <td className="py-2 px-4 text-center text-slate-600">10%</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-900">{fli02_c1_pct}%</td>
+                <tr className="bg-slate-50/70 font-bold text-slate-700">
+                  <td colSpan={6} className="py-1 px-3 text-[9.5px]">BAHAGIAN C: TEMUBUAL (20%)</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-4 text-center text-slate-500">2</td>
-                  <td className="py-2 px-4 font-semibold text-slate-800">Kerja berpasukan dan tanggungjawab</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-700">CLO 3</td>
-                  <td className="py-2 px-4 text-center text-slate-600">5%</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-900">{fli02_c2_pct}%</td>
+                  <td className="py-1.5 px-3 text-center text-slate-500">1</td>
+                  <td className="py-1.5 px-3 font-semibold text-slate-800">Komunikasi lisan</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-700">2</td>
+                  <td className="py-1.5 px-3 text-center text-slate-600">10%</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli02_c1_pct)}%</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli02_c1_pct)}</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-4 text-center text-slate-500">3</td>
-                  <td className="py-2 px-4 font-semibold text-slate-800">Kemahiran personal</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-700">CLO 4</td>
-                  <td className="py-2 px-4 text-center text-slate-600">5%</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-900">{fli02_c3_pct}%</td>
+                  <td className="py-1.5 px-3 text-center text-slate-500">2</td>
+                  <td className="py-1.5 px-3 font-semibold text-slate-800">Kerja berpasukan dan tanggungjawab</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-700">3</td>
+                  <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli02_c2_pct)}%</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli02_c2_pct)}</td>
                 </tr>
-                <tr className="bg-indigo-50/50 font-black text-indigo-900">
-                  <td colSpan={3} className="py-2 px-4 text-right uppercase text-[10px]">Subtotal FLI 02:</td>
-                  <td className="py-2 px-4 text-center">20%</td>
-                  <td className="py-2 px-4 text-center text-sm">{total_fli02}%</td>
+                <tr>
+                  <td className="py-1.5 px-3 text-center text-slate-500">3</td>
+                  <td className="py-1.5 px-3 font-semibold text-slate-800">Kemahiran personal</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-700">4</td>
+                  <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli02_c3_pct)}%</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli02_c3_pct)}</td>
+                </tr>
+                <tr className="bg-indigo-50/60 font-black text-indigo-900">
+                  <td colSpan={3} className="py-1.5 px-3 text-right uppercase text-[10px]">Jumlah Penilaian Pemantauan (FLI 02):</td>
+                  <td className="py-1.5 px-3 text-center">20%</td>
+                  <td className="py-1.5 px-3 text-center font-mono">{f2(total_fli02)}%</td>
+                  <td className="py-1.5 px-3 text-center font-mono text-indigo-950 font-black">{ccms(total_fli02)}</td>
                 </tr>
 
                 {/* 3. PENILAIAN LAPORAN AKHIR */}
                 <tr className="bg-slate-100 font-black text-slate-900">
-                  <td colSpan={5} className="py-2 px-4 uppercase text-[11px]">3. PENILAIAN LAPORAN AKHIR (FLI 03 - 20%)</td>
+                  <td colSpan={6} className="py-1.5 px-3 uppercase text-[10px]">3. PENILAIAN LAPORAN AKHIR (FLI 03)</td>
                 </tr>
-                <tr className="bg-slate-50/60 font-bold text-slate-700">
-                  <td colSpan={5} className="py-1 px-4 text-[10px]">BAHAGIAN D: LAPORAN AKHIR (20%)</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-4 text-center text-slate-500">1</td>
-                  <td className="py-2 px-4 font-semibold text-slate-800">Kemahiran di tempat kerja</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-700">CLO 1</td>
-                  <td className="py-2 px-4 text-center text-slate-600">15%</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-900">{fli03_d1_pct}%</td>
+                <tr className="bg-slate-50/70 font-bold text-slate-700">
+                  <td colSpan={6} className="py-1 px-3 text-[9.5px]">BAHAGIAN D: LAPORAN AKHIR (20%)</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-4 text-center text-slate-500">2</td>
-                  <td className="py-2 px-4 font-semibold text-slate-800">Komunikasi bertulis</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-700">CLO 2</td>
-                  <td className="py-2 px-4 text-center text-slate-600">5%</td>
-                  <td className="py-2 px-4 text-center font-bold text-slate-900">{fli03_d2_pct}%</td>
+                  <td className="py-1.5 px-3 text-center text-slate-500">1</td>
+                  <td className="py-1.5 px-3 font-semibold text-slate-800">Kemahiran di tempat kerja</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-700">1</td>
+                  <td className="py-1.5 px-3 text-center text-slate-600">15%</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli03_d1_pct)}%</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli03_d1_pct)}</td>
                 </tr>
-                <tr className="bg-teal-50/50 font-black text-teal-900">
-                  <td colSpan={3} className="py-2 px-4 text-right uppercase text-[10px]">Subtotal FLI 03:</td>
-                  <td className="py-2 px-4 text-center">20%</td>
-                  <td className="py-2 px-4 text-center text-sm">{total_fli03}%</td>
+                <tr>
+                  <td className="py-1.5 px-3 text-center text-slate-500">2</td>
+                  <td className="py-1.5 px-3 font-semibold text-slate-800">Komunikasi bertulis</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-700">2</td>
+                  <td className="py-1.5 px-3 text-center text-slate-600">5%</td>
+                  <td className="py-1.5 px-3 text-center font-bold text-slate-900">{f2(fli03_d2_pct)}%</td>
+                  <td className="py-1.5 px-3 text-center font-bold font-mono text-slate-800">{ccms(fli03_d2_pct)}</td>
+                </tr>
+                <tr className="bg-teal-50/60 font-black text-teal-900">
+                  <td colSpan={3} className="py-1.5 px-3 text-right uppercase text-[10px]">Jumlah Penilaian Laporan Akhir (FLI 03):</td>
+                  <td className="py-1.5 px-3 text-center">20%</td>
+                  <td className="py-1.5 px-3 text-center font-mono">{f2(total_fli03)}%</td>
+                  <td className="py-1.5 px-3 text-center font-mono text-teal-950 font-black">{ccms(total_fli03)}</td>
                 </tr>
 
                 {/* GRAND TOTAL */}
-                <tr className="bg-slate-900 text-white font-black text-sm">
-                  <td colSpan={3} className="py-3 px-4 text-right uppercase tracking-wider">
+                <tr className="bg-slate-900 text-white font-black text-xs">
+                  <td colSpan={3} className="py-2.5 px-3 text-right uppercase tracking-wider">
                     Jumlah Keseluruhan (A + B + C + D):
                   </td>
-                  <td className="py-3 px-4 text-center">100%</td>
-                  <td className="py-3 px-4 text-center text-amber-400 font-mono text-base">
-                    {grand_total} / 100
+                  <td className="py-2.5 px-3 text-center">100%</td>
+                  <td className="py-2.5 px-3 text-center text-amber-400 font-mono text-sm">
+                    {f2(grand_total)}
+                  </td>
+                  <td className="py-2.5 px-3 text-center text-amber-300 font-mono text-sm bg-slate-950">
+                    {ccms(grand_total)}
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          {/* Grade and Status Box */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div>
-              <span className="text-xs font-bold text-slate-500 uppercase">Keputusan Akhir:</span>
-              <p className={`text-base font-black uppercase mt-0.5 ${grand_total >= 50 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                {statusLulus}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-500 uppercase">Gred Diperolehi:</span>
-              <span className="px-4 py-1.5 bg-slate-900 text-white font-black text-base rounded-xl">
-                {grade}
-              </span>
-            </div>
-          </div>
-
-          {/* PPIA Signature Box as requested */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase">
-              <UserCheck className="w-4 h-4 text-blue-900" />
-              <span>Disediakan Oleh: Pegawai Perhubungan Industri dan Alumni (PPIA)</span>
-            </div>
-            <p className="text-sm font-black text-slate-900 uppercase">
-              {config?.namaPpia || 'SHAMSUDDIN BIN AMIN'}
+          {/* Signature Box formatted as requested */}
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+            <p className="text-xs font-bold text-slate-800">
+              Disediakan oleh Pegawai Perhubungan Industri dan Alumni,
             </p>
-            <p className="text-[11px] text-slate-500">
-              Unit Perhubungan Industri & Alumni • Kolej Komuniti Beaufort Sabah
+            <div className="mt-8 border-b border-slate-400 w-56"></div>
+            <p className="text-xs font-bold text-slate-700 mt-3">
+              Tarikh:
             </p>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-3">
+          <div className="flex items-center justify-between pt-2">
             <button
               type="button"
               onClick={handlePrint}
               className="px-5 py-3 bg-blue-900 hover:bg-blue-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>Cetak Borang FLI 04</span>
+              <span>Cetak Borang FLI 04 (1 Halaman A4)</span>
             </button>
 
             <button

@@ -387,7 +387,7 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
                           fli01.completed ? 'bg-emerald-200/80 text-emerald-900' : 'bg-rose-200/80 text-rose-900'
                         }`}>
-                          {fli01.completed ? `${fli01.score}%` : 'Belum Diisi'}
+                          {fli01.completed ? `${fli01.score.toFixed(2)}%` : 'Belum Diisi'}
                         </span>
                       </div>
                     </button>
@@ -409,9 +409,9 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
                       <p className="text-[11px] font-bold">Pemantauan (20%)</p>
                       <div className="mt-2 flex items-center justify-between">
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                          fli02.completed ? `${fli02.score}%` : 'Belum Diisi'}
-                        `}>
-                          {fli02.completed ? `${fli02.score}%` : 'Belum Diisi'}
+                          fli02.completed ? 'bg-emerald-200/80 text-emerald-900' : 'bg-rose-200/80 text-rose-900'
+                        }`}>
+                          {fli02.completed ? `${fli02.score.toFixed(2)}%` : 'Belum Diisi'}
                         </span>
                       </div>
                     </button>
@@ -433,9 +433,9 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
                       <p className="text-[11px] font-bold">Laporan (20%)</p>
                       <div className="mt-2 flex items-center justify-between">
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                          fli03.completed ? `${fli03.score}%` : 'Belum Diisi'}
-                        `}>
-                          {fli03.completed ? `${fli03.score}%` : 'Belum Diisi'}
+                          fli03.completed ? 'bg-emerald-200/80 text-emerald-900' : 'bg-rose-200/80 text-rose-900'
+                        }`}>
+                          {fli03.completed ? `${fli03.score.toFixed(2)}%` : 'Belum Diisi'}
                         </span>
                       </div>
                     </button>
@@ -459,7 +459,7 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
                           fli04.completed ? 'bg-emerald-200/80 text-emerald-900' : 'bg-rose-200/80 text-rose-900'
                         }`}>
-                          {fli04.completed ? `${fli04.total}%` : 'Belum Lengkap'}
+                          {fli04.completed ? `${fli04.total.toFixed(2)}%` : 'Belum Lengkap'}
                         </span>
                       </div>
                     </button>
