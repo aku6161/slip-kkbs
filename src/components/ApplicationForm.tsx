@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { Student, SystemConfig, Lecturer, formatProgramName } from '../types';
-import { UserPlus, Send, User, Building, Award, BookOpen } from 'lucide-react';
+import { Student, SystemConfig, Lecturer, IndustryCompany, formatProgramName } from '../types';
+import { INITIAL_COMPANIES } from '../data/initialData';
+import { UserPlus, Send, User, Building, Award, BookOpen, Info } from 'lucide-react';
 
 interface ApplicationFormProps {
   students?: Student[];
   lecturers?: Lecturer[];
+  companies?: IndustryCompany[];
   config: SystemConfig;
   appsScriptUrl?: string;
   onSuccess?: (newStudent: Student, message?: string, emailError?: string) => void;
@@ -18,6 +20,7 @@ interface ApplicationFormProps {
 export const ApplicationForm: React.FC<ApplicationFormProps> = ({ 
   students = [], 
   lecturers = [],
+  companies = INITIAL_COMPANIES,
   config, 
   appsScriptUrl = '', 
   onSuccess, 
@@ -564,28 +567,63 @@ JALAN MELALUGUS,
             <Building className="w-4 h-4 text-blue-900" />
             4. MAKLUMAT INDUSTRI
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">NAMA INDUSTRI: *</label>
-              <input
-                type="text"
-                required
-                placeholder="Contoh: SHANGRI-LA RASA RIA RESORT"
-                value={formData.namaSyarikat || ''}
-                onChange={e => setFormData({ ...formData, namaSyarikat: e.target.value.toUpperCase() })}
-                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none uppercase font-bold text-slate-900 bg-white"
-              />
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">NAMA INDUSTRI: *</label>
+                <select
+                  required
+                  value={formData.namaSyarikat || ''}
+                  onChange={e => {
+                    const selectedName = e.target.value;
+                    const matched = companies.find(
+                      c => c.namaSyarikat.trim().toUpperCase() === selectedName.trim().toUpperCase()
+                    );
+                    setFormData(prev => ({
+                      ...prev,
+                      namaSyarikat: selectedName,
+                      emelHrSyarikat: matched?.emelHr ? matched.emelHr.toLowerCase() : (selectedName === '' ? '' : prev.emelHrSyarikat || '')
+                    }));
+                  }}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none uppercase font-bold text-slate-900 bg-white cursor-pointer"
+                >
+                  <option value="">[SILA PILIH SYARIKAT INDUSTRI]</option>
+                  {companies && companies.length > 0 ? (
+                    [...companies]
+                      .sort((a, b) => a.namaSyarikat.localeCompare(b.namaSyarikat))
+                      .map(comp => (
+                        <option key={comp.id || comp.namaSyarikat} value={comp.namaSyarikat}>
+                          {comp.namaSyarikat}
+                        </option>
+                      ))
+                  ) : (
+                    <option value="" disabled>Tiada data syarikat</option>
+                  )}
+                  {/* Sertakan pilihan jika nama sedia ada tiada dalam senarai syarikat berdaftar */}
+                  {formData.namaSyarikat && !companies?.some(c => c.namaSyarikat.trim().toUpperCase() === formData.namaSyarikat?.trim().toUpperCase()) && (
+                    <option value={formData.namaSyarikat}>{formData.namaSyarikat}</option>
+                  )}
+                </select>
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">EMEL HR: *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="Contoh: hr@syarikat.com"
+                  value={formData.emelHrSyarikat || ''}
+                  onChange={e => setFormData({ ...formData, emelHrSyarikat: e.target.value.toLowerCase() })}
+                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none font-mono text-blue-900 bg-white font-medium"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">EMEL HR: *</label>
-              <input
-                type="email"
-                required
-                placeholder="Contoh: shahmi@sheraton.com"
-                value={formData.emelHrSyarikat || ''}
-                onChange={e => setFormData({ ...formData, emelHrSyarikat: e.target.value.toLowerCase() })}
-                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none font-mono text-blue-900 bg-white"
-              />
+
+            {/* Note */}
+            <div className="p-3 bg-blue-100/80 border border-blue-300 rounded-xl text-xs font-semibold text-blue-950 flex items-start gap-2">
+              <Info className="w-4 h-4 text-blue-900 shrink-0 mt-0.5" />
+              <span>
+                <strong>Nota:</strong> Sekiranya senarai syarikat tiada dalam senarai, sila maklum PPIA untuk mendaftar syarikat baharu.
+              </span>
             </div>
           </div>
         </div>

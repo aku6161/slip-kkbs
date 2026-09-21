@@ -654,6 +654,7 @@ export default function App() {
         icNumber={studentIc}
         students={students}
         lecturers={lecturers}
+        companies={companies}
         config={config}
         appsScriptUrl={appsScriptUrl}
         onSaveStudent={handleSaveStudentAsync}

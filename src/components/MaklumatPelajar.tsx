@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Student, ApplicationStatus, Lecturer, formatProgramName } from '../types';
+import { INITIAL_COMPANIES } from '../data/initialData';
 import * as XLSX from 'xlsx';
 import { 
   Users, 
@@ -902,12 +903,31 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Nama Syarikat Industri Sasaran</label>
-                    <input
-                      type="text"
+                    <select
                       value={formData.namaSyarikat || ''}
-                      onChange={e => setFormData({ ...formData, namaSyarikat: e.target.value.toUpperCase() })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg uppercase focus:ring-2 focus:ring-blue-900 bg-white"
-                    />
+                      onChange={e => {
+                        const selectedName = e.target.value;
+                        const matched = INITIAL_COMPANIES.find(
+                          c => c.namaSyarikat.trim().toUpperCase() === selectedName.trim().toUpperCase()
+                        );
+                        setFormData(prev => ({
+                          ...prev,
+                          namaSyarikat: selectedName,
+                          emelHrSyarikat: matched?.emelHr ? matched.emelHr.toLowerCase() : (selectedName === '' ? '' : prev.emelHrSyarikat || '')
+                        }));
+                      }}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg uppercase font-bold focus:ring-2 focus:ring-blue-900 bg-white cursor-pointer"
+                    >
+                      <option value="">[SILA PILIH SYARIKAT]</option>
+                      {INITIAL_COMPANIES.map(comp => (
+                        <option key={comp.id || comp.namaSyarikat} value={comp.namaSyarikat}>
+                          {comp.namaSyarikat}
+                        </option>
+                      ))}
+                      {formData.namaSyarikat && !INITIAL_COMPANIES.some(c => c.namaSyarikat.trim().toUpperCase() === formData.namaSyarikat?.trim().toUpperCase()) && (
+                        <option value={formData.namaSyarikat}>{formData.namaSyarikat}</option>
+                      )}
+                    </select>
                   </div>
 
                   <div>
@@ -915,8 +935,8 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                     <input
                       type="email"
                       value={formData.emelHrSyarikat || ''}
-                      onChange={e => setFormData({ ...formData, emelHrSyarikat: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 bg-white"
+                      onChange={e => setFormData({ ...formData, emelHrSyarikat: e.target.value.toLowerCase() })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 bg-white font-mono"
                     />
                   </div>
 
