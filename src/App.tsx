@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Student, DocumentType, BJPLIFormData, SystemConfig, Lecturer } from './types';
+import { Student, DocumentType, BJPLIFormData, SystemConfig, Lecturer, formatProgramName } from './types';
 import { INITIAL_STUDENTS, INITIAL_LECTURERS } from './data/initialData';
 import { Navbar } from './components/Navbar';
 import { MainDashboard } from './components/MainDashboard';
@@ -257,7 +257,9 @@ export default function App() {
   const handleUpdateStudent = async (id: string, updatedData: Partial<Student>) => {
     const target = students.find(s => s.id === id);
     if (!target) return;
-    const updated = { ...target, ...updatedData };
+    const cleanData = { ...updatedData };
+    if (cleanData.program) cleanData.program = formatProgramName(cleanData.program);
+    const updated = { ...target, ...cleanData };
 
     setStudents(prev =>
       prev.map(s => (s.id === id ? updated : s))
@@ -279,12 +281,9 @@ export default function App() {
       const docId = studentData.id || studentData.noMatrik?.replace(/\//g, '_') || `student_${Date.now()}`;
       const fullStudent: Student = {
         id: docId,
-        timestamp: new Date().toLocaleString('ms-MY'),
+        timestamp: studentData.timestamp || new Date().toLocaleString('ms-MY'),
         email: studentData.email || studentData.emelPelajar || '',
-        namaPelajar: studentData.namaPelajar || '',
         noIc: studentData.noIc || '',
-        noMatrik: studentData.noMatrik || '',
-        program: studentData.program || '',
         sesi: studentData.sesi || config.sesi || '',
         noTelefon: studentData.noTelefon || '',
         emelPelajar: studentData.emelPelajar || '',
@@ -297,13 +296,17 @@ export default function App() {
         pencapaian1: studentData.pencapaian1 || '',
         pencapaian2: studentData.pencapaian2 || '',
         pencapaian3: studentData.pencapaian3 || '',
-        namaPa: studentData.namaPa || '',
+        namaPa: studentData.namaPa?.toUpperCase() || '',
         noTelefonPa: studentData.noTelefonPa || '',
         emelPa: studentData.emelPa || '',
         emelHrSyarikat: studentData.emelHrSyarikat || '',
-        namaSyarikat: studentData.namaSyarikat || '',
+        namaSyarikat: studentData.namaSyarikat?.toUpperCase() || '',
         status: (studentData.status || 'Permohonan Dihantar') as any,
-        ...studentData
+        ...studentData,
+        namaPelajar: studentData.namaPelajar?.toUpperCase() || '',
+        noMatrik: studentData.noMatrik?.toUpperCase() || '',
+        kelas: studentData.kelas?.toUpperCase() || '',
+        program: formatProgramName(studentData.program),
       };
 
       await saveStudentToFirebase(fullStudent);

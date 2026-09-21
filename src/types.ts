@@ -11,6 +11,15 @@ export type ApplicationStatus =
 
 export type DocumentType = 'surat' | 'resume' | 'bjpli' | 'skop';
 
+export const formatProgramName = (prog?: string): string => {
+  if (!prog) return '';
+  const up = prog.toUpperCase().trim();
+  if (up.includes('KULINARI') || up === 'SKU') return 'SIJIL KULINARI';
+  if (up.includes('PERHOTELAN') || up.includes('HOTEL') || up === 'SOP') return 'SIJIL OPERASI PERHOTELAN';
+  if (up.includes('ELEKTRIK') || up === 'SKE' || up === 'STE') return 'SIJIL TEKNOLOGI ELEKTRIK';
+  return up.replace(/\s*\([^)]*\)/g, '').trim();
+};
+
 export interface BJPLIFormData {
   keputusan: 'DITERIMA' | 'DITOLAK' | 'MEMERLUKAN_TEMUDUGA' | 'PENDING';
   namaPegawaiIndustri: string;

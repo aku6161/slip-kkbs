@@ -1,5 +1,5 @@
 import React from 'react';
-import { Student } from '../../types';
+import { Student, formatProgramName } from '../../types';
 import { User, Award, BookOpen, Building, Mail, Phone, MapPin, CheckCircle, GraduationCap } from 'lucide-react';
 
 interface ResumeDocProps {
@@ -20,8 +20,8 @@ export const ResumeDoc: React.FC<ResumeDocProps> = ({ student, aiEnhancedText })
             <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight mt-2 text-white">
               {student.namaPelajar}
             </h1>
-            <p className="text-blue-300 font-semibold text-sm mt-1">
-              {student.program || 'Sijil Operasi Perhotelan (SOP)'} - Kolej Komuniti Beaufort Sabah
+            <p className="text-blue-300 font-semibold text-sm mt-1 uppercase">
+              {formatProgramName(student.program)} - KOLEJ KOMUNITI BEAUFORT SABAH
             </p>
           </div>
           <div className="text-right text-xs font-mono bg-slate-800 p-3 rounded border border-slate-700">

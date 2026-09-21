@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Student } from '../types';
+import { Student, formatProgramName } from '../types';
 import { 
   Building2, 
   Search, 
@@ -282,7 +282,7 @@ export const MaklumatSyarikat: React.FC<MaklumatSyarikatProps> = ({
                               {st.namaPelajar}
                             </p>
                             <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                              {st.noMatrik} • {st.program}
+                              {st.noMatrik} • {formatProgramName(st.program)}
                             </p>
                           </div>
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${

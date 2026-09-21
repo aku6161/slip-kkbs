@@ -1,5 +1,5 @@
 import React from 'react';
-import { Student } from '../types';
+import { Student, formatProgramName } from '../types';
 import { X, User, GraduationCap, Building2 } from 'lucide-react';
 
 interface StudentDetailModalProps {
@@ -41,7 +41,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               </span>
             )}
             <h2 className="text-xl font-bold uppercase text-slate-900 mt-1">{student.namaPelajar}</h2>
-            <p className="text-xs text-slate-600 font-medium">{student.program} - Kolej Komuniti Beaufort Sabah</p>
+            <p className="text-xs text-slate-600 font-medium uppercase">{formatProgramName(student.program)} - KOLEJ KOMUNITI BEAUFORT SABAH</p>
           </div>
         </div>
 

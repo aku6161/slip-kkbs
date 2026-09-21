@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Student, BJPLIFormData } from '../../types';
+import { Student, BJPLIFormData, formatProgramName } from '../../types';
 import { Check, Building2, CheckCircle2, XCircle, FileText, Send } from 'lucide-react';
 
 interface BorangBJPLIDocProps {
@@ -84,7 +84,7 @@ export const BorangBJPLIDoc: React.FC<BorangBJPLIDocProps> = ({
           </div>
           <div>
             <span className="text-slate-500 font-medium">Program Pengajian:</span>
-            <p className="font-semibold text-slate-800">{student.program}</p>
+            <p className="font-semibold text-slate-800 uppercase">{formatProgramName(student.program)}</p>
           </div>
           <div>
             <span className="text-slate-500 font-medium">Tempoh Latihan Dimohon:</span>

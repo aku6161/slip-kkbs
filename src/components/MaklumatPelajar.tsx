@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Student, ApplicationStatus } from '../types';
+import { Student, ApplicationStatus, formatProgramName } from '../types';
 import * as XLSX from 'xlsx';
 import { 
   Users, 
@@ -126,6 +126,10 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
     try {
       const studentData: Partial<Student> = {
         ...formData,
+        program: formatProgramName(formData.program),
+        namaPelajar: formData.namaPelajar?.toUpperCase(),
+        noMatrik: formData.noMatrik?.toUpperCase(),
+        kelas: formData.kelas?.toUpperCase(),
         id: editingStudent ? editingStudent.id : formData.noMatrik?.replace(/\//g, '_'),
         timestamp: editingStudent ? editingStudent.timestamp : new Date().toISOString(),
       };
@@ -500,7 +504,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
 
                     {/* Program & Sesi */}
                     <td className="py-3 px-4">
-                      <p className="font-semibold text-slate-900">{student.program}</p>
+                      <p className="font-semibold text-slate-900 uppercase">{formatProgramName(student.program)}</p>
                       <p className="text-[11px] text-slate-500">{student.sesi} {student.kelas && `• ${student.kelas}`}</p>
                     </td>
 

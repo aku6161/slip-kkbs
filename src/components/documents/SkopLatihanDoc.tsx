@@ -1,5 +1,5 @@
 import React from 'react';
-import { Student, SystemConfig } from '../../types';
+import { Student, SystemConfig, formatProgramName } from '../../types';
 import { STANDARD_SOP_SCOPES } from '../../data/initialData';
 import { BookOpen, CheckCircle, Clock, FileCheck } from 'lucide-react';
 
@@ -21,7 +21,7 @@ export const SkopLatihanDoc: React.FC<SkopLatihanDocProps> = ({ student, config 
             DOKUMEN SKOP LATIHAN INDUSTRI ({config?.tempoh || '20 MINGGU'})
           </h1>
           <p className="text-xs font-bold text-blue-900 uppercase">
-            {student.program || 'Sijil Operasi Perhotelan (SOP)'} - KOLEJ KOMUNITI BEAUFORT SABAH
+            {formatProgramName(student.program)} - KOLEJ KOMUNITI BEAUFORT SABAH
           </p>
         </div>
         <div className="text-right text-xs font-mono text-slate-600">

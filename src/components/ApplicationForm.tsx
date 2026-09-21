@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Student, SystemConfig } from '../types';
+import { Student, SystemConfig, formatProgramName } from '../types';
 import { UserPlus, Send, User, Building, Award, BookOpen } from 'lucide-react';
 
 interface ApplicationFormProps {
@@ -148,7 +148,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
       status: 'Memohon', // Always force status to 'Memohon' on submission
       namaPelajar: cleanUpper(formData.namaPelajar),
       noMatrik: cleanUpper(formData.noMatrik),
-      program: formData.program?.trim(), // Program names from selection
+      program: formatProgramName(formData.program), // Standardized uppercase program name without abbreviations
       kelas: cleanUpper(formData.kelas),
       sesi: config.sesi, // Force the student's Sesi to the active session configured in the system
       alamat: cleanUpper(formData.alamat),

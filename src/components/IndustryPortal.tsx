@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Student, BJPLIFormData } from '../types';
+import { Student, BJPLIFormData, formatProgramName } from '../types';
 import { Building2, CheckCircle2, XCircle, FileText, Send, User, MapPin, Mail, Phone, Award, Sparkles } from 'lucide-react';
 import { BorangBJPLIDoc } from './documents/BorangBJPLIDoc';
 
@@ -125,8 +125,8 @@ export const IndustryPortal: React.FC<IndustryPortalProps> = ({
                   </div>
 
                   <h3 className="font-bold text-sm uppercase mt-2">{student.namaPelajar}</h3>
-                  <p className={`text-xs mt-0.5 font-medium ${activeStudent?.id === student.id ? 'text-blue-200' : 'text-slate-600'}`}>
-                    {student.program}
+                  <p className={`text-xs mt-0.5 font-medium uppercase ${activeStudent?.id === student.id ? 'text-blue-200' : 'text-slate-600'}`}>
+                    {formatProgramName(student.program)}
                   </p>
 
                   <div className={`mt-3 pt-2 border-t text-[11px] flex justify-between items-center ${
@@ -152,8 +152,8 @@ export const IndustryPortal: React.FC<IndustryPortalProps> = ({
                     PEMOHON LATIHAN INDUSTRI
                   </span>
                   <h2 className="text-xl font-black uppercase text-slate-900 mt-1">{activeStudent.namaPelajar}</h2>
-                  <p className="text-xs text-slate-600 font-medium">
-                    {activeStudent.program} | {activeStudent.noMatrik} ({activeStudent.noIc})
+                  <p className="text-xs text-slate-600 font-medium uppercase">
+                    {formatProgramName(activeStudent.program)} | {activeStudent.noMatrik} ({activeStudent.noIc})
                   </p>
                 </div>
 

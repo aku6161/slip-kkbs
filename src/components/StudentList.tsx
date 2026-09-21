@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Student, ApplicationStatus } from '../types';
+import { Student, ApplicationStatus, formatProgramName } from '../types';
 import { Search, Filter, FileText, CheckCircle2, Clock, XCircle, Send, Sparkles, Eye, UserPlus, Building, Phone, Mail, AlertCircle, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -263,8 +263,8 @@ export const StudentList: React.FC<StudentListProps> = ({
                       </td>
 
                       {/* Program */}
-                      <td className="py-3.5 px-4 font-semibold text-slate-700">
-                        {student.program}
+                      <td className="py-3.5 px-4 font-semibold text-slate-700 uppercase">
+                        {formatProgramName(student.program)}
                       </td>
 
                       {/* Industry & HR */}
