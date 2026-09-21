@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Student, ApplicationStatus } from '../types';
-import { Search, Filter, FileText, CheckCircle2, Clock, XCircle, Send, Sparkles, Eye, UserPlus, Building, Phone, Mail, AlertCircle } from 'lucide-react';
+import { Search, Filter, FileText, CheckCircle2, Clock, XCircle, Send, Sparkles, Eye, UserPlus, Building, Phone, Mail, AlertCircle, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface StudentListProps {
   students: Student[];
@@ -62,6 +63,68 @@ export const StudentList: React.FC<StudentListProps> = ({
     return matchesSearch && matchesStatus && matchesSession && matchesProgram;
   });
 
+  // Handle Export Report to .xlsx
+  const handleExportXLSX = () => {
+    if (filteredStudents.length === 0) {
+      alert('Tiada rekod pelajar untuk dicetak mengikut tapisan semasa.');
+      return;
+    }
+
+    const exportData = filteredStudents.map((s, index) => {
+      let displayStatus = s.status;
+      if (s.status === 'Lulus / Diterima') displayStatus = 'Diterima';
+      else if (s.status === 'Permohonan Dihantar' || s.status === 'Menunggu Jawapan') displayStatus = 'Memohon';
+
+      return {
+        'BIL': index + 1,
+        'NAMA PELAJAR': s.namaPelajar?.toUpperCase() || '',
+        'NO. MATRIK': s.noMatrik || '',
+        'NO. KAD PENGENALAN': s.noIc ? `${s.noIc}` : '',
+        'PROGRAM PENGAJIAN': s.program || '',
+        'KELAS': s.kelas || '',
+        'SESI': s.sesi || '',
+        'STATUS PERMOHONAN': displayStatus || 'Belum Memohon',
+        'NAMA SYARIKAT INDUSTRI': s.namaSyarikat || 'Belum Ditetapkan',
+        'EMEL HR SYARIKAT': s.emelHrSyarikat || '',
+        'NO. TELEFON PELAJAR': s.noTelefon ? `${s.noTelefon}` : '',
+        'EMEL PELAJAR': s.emelPelajar || '',
+        'NAMA PENASIHAT AKADEMIK (PA)': s.namaPa || '',
+        'NO. TELEFON PA': s.noTelefonPa ? `${s.noTelefonPa}` : '',
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+    // Set custom column widths for clear readability in Excel
+    worksheet['!cols'] = [
+      { wch: 6 },  // BIL
+      { wch: 32 }, // NAMA PELAJAR
+      { wch: 16 }, // NO. MATRIK
+      { wch: 18 }, // NO. KAD PENGENALAN
+      { wch: 28 }, // PROGRAM PENGAJIAN
+      { wch: 10 }, // KELAS
+      { wch: 12 }, // SESI
+      { wch: 20 }, // STATUS PERMOHONAN
+      { wch: 35 }, // NAMA SYARIKAT INDUSTRI
+      { wch: 30 }, // EMEL HR SYARIKAT
+      { wch: 18 }, // NO. TELEFON PELAJAR
+      { wch: 28 }, // EMEL PELAJAR
+      { wch: 30 }, // NAMA PA
+      { wch: 18 }, // NO. TELEFON PA
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Status Permohonan');
+
+    // Generate descriptive filename with filter details
+    const cleanDate = new Date().toISOString().slice(0, 10);
+    const sessionTag = sessionFilter !== 'SEMUA' ? `_${sessionFilter.replace(/[\/\s]/g, '_')}` : '';
+    const statusTag = statusFilter !== 'SEMUA' ? `_${statusFilter.replace(/[\/\s]/g, '_')}` : '';
+    const fileName = `Laporan_Status_Permohonan_KKBS${sessionTag}${statusTag}_${cleanDate}.xlsx`;
+
+    XLSX.writeFile(workbook, fileName);
+  };
+
   return (
     <div className="space-y-6">
 
@@ -89,8 +152,8 @@ export const StudentList: React.FC<StudentListProps> = ({
           </button>
         </div>
 
-        {/* Dropdown Filters for Sesi and Program */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+        {/* Dropdown Filters for Sesi, Program, Status & Cetak Laporan Button */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100 items-end">
           <div>
             <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Filter Sesi</label>
             <select
@@ -132,6 +195,19 @@ export const StudentList: React.FC<StudentListProps> = ({
               <option value="Diterima">Diterima</option>
               <option value="Belum Memohon">Belum Memohon</option>
             </select>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Cetak Laporan</label>
+            <button
+              type="button"
+              onClick={handleExportXLSX}
+              className="w-full px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white border border-emerald-800 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              title="Cetak Laporan Pelajar (.xlsx)"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+              <span>Cetak Laporan (.xlsx)</span>
+            </button>
           </div>
         </div>
       </div>
