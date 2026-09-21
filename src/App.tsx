@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Student, DocumentType, BJPLIFormData, SystemConfig, Lecturer, formatProgramName } from './types';
-import { INITIAL_STUDENTS, INITIAL_LECTURERS } from './data/initialData';
+import { Student, DocumentType, BJPLIFormData, SystemConfig, Lecturer, IndustryCompany, formatProgramName } from './types';
+import { INITIAL_STUDENTS, INITIAL_LECTURERS, INITIAL_COMPANIES } from './data/initialData';
 import { Navbar } from './components/Navbar';
 import { MainDashboard } from './components/MainDashboard';
 import { StudentList } from './components/StudentList';
@@ -29,6 +29,9 @@ import {
   subscribeLecturers,
   saveLecturerToFirebase,
   deleteLecturerFromFirebase,
+  subscribeCompanies,
+  saveCompanyToFirebase,
+  deleteCompanyFromFirebase,
   seedFirebaseIfEmpty 
 } from './firebase';
 
@@ -83,6 +86,7 @@ export default function App() {
   const [markah, setMarkah] = useState<any[]>([]);
   const [markahHeaders, setMarkahHeaders] = useState<string[]>([]);
   const [lecturers, setLecturers] = useState<Lecturer[]>(INITIAL_LECTURERS);
+  const [companies, setCompanies] = useState<IndustryCompany[]>(INITIAL_COMPANIES);
   
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedDocType, setSelectedDocType] = useState<DocumentType>('surat');
@@ -179,12 +183,12 @@ export default function App() {
     };
   }, [userRole, studentIc, lecturerId, currentView]);
 
-  // 2. Firebase Firestore Real-Time Subscriptions (Students, Config, Markah, Lecturers)
+  // 2. Firebase Firestore Real-Time Subscriptions (Students, Config, Markah, Lecturers, Companies)
   useEffect(() => {
     setIsSyncing(true);
 
     // Initial seeding if Firestore is empty
-    seedFirebaseIfEmpty(INITIAL_STUDENTS, config, INITIAL_LECTURERS).catch(() => {});
+    seedFirebaseIfEmpty(INITIAL_STUDENTS, config, INITIAL_LECTURERS, INITIAL_COMPANIES).catch(() => {});
 
     // Subscribe to students collection in real-time
     const unsubscribeStudents = subscribeStudents(
@@ -223,11 +227,19 @@ export default function App() {
       }
     });
 
+    // Subscribe to companies in real-time
+    const unsubscribeCompanies = subscribeCompanies((firebaseCompanies) => {
+      if (firebaseCompanies && firebaseCompanies.length > 0) {
+        setCompanies(firebaseCompanies as IndustryCompany[]);
+      }
+    });
+
     return () => {
       unsubscribeStudents();
       unsubscribeConfig();
       unsubscribeMarkah();
       unsubscribeLecturers();
+      unsubscribeCompanies();
     };
   }, []);
 
@@ -516,6 +528,54 @@ export default function App() {
     }
   };
 
+  // Industry Company CRUD Handlers
+  const handleSaveCompany = async (companyData: Partial<IndustryCompany>) => {
+    try {
+      const docId = companyData.id || `comp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const fullCompany: IndustryCompany = {
+        id: docId,
+        bil: companyData.bil || (companies.length + 1),
+        namaSyarikat: (companyData.namaSyarikat || '').trim(),
+        alamat1: (companyData.alamat1 || '').trim(),
+        alamat2: (companyData.alamat2 || '').trim(),
+        emelHr: (companyData.emelHr || '').trim(),
+        nomborTel: (companyData.nomborTel || '').trim(),
+        elaun: (companyData.elaun || '-').trim(),
+        penginapan: companyData.penginapan || '-',
+        makan: companyData.makan || '-',
+        offday: companyData.offday || '1',
+        pengangkutan: companyData.pengangkutan || '-',
+        catatan: (companyData.catatan || '').trim(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await saveCompanyToFirebase(fullCompany);
+      setCompanies(prev => {
+        const existingIdx = prev.findIndex(c => c.id === docId);
+        if (existingIdx !== -1) {
+          const updated = [...prev];
+          updated[existingIdx] = fullCompany;
+          return updated;
+        }
+        return [fullCompany, ...prev];
+      });
+      return { success: true };
+    } catch (err: any) {
+      console.error('Failed to save company to Firebase:', err);
+      return { success: false, message: err?.message || 'Ralat semasa menyimpan maklumat syarikat.' };
+    }
+  };
+
+  const handleDeleteCompany = async (companyId: string) => {
+    try {
+      await deleteCompanyFromFirebase(companyId);
+      setCompanies(prev => prev.filter(c => c.id !== companyId));
+    } catch (err: any) {
+      console.error('Failed to delete company from Firebase:', err);
+      throw err;
+    }
+  };
+
   // 1. Landing View
   if (userRole === 'landing') {
     return (
@@ -718,10 +778,13 @@ export default function App() {
           <TetapanPanel
             students={students}
             lecturers={lecturers}
+            companies={companies}
             config={config}
             appsScriptUrl={appsScriptUrl}
             onSaveLecturer={handleSaveLecturer}
             onDeleteLecturer={handleDeleteLecturer}
+            onSaveCompany={handleSaveCompany}
+            onDeleteCompany={handleDeleteCompany}
             onSaveStudent={async (studentData) => {
               await handleSaveStudentAsync(studentData);
             }}

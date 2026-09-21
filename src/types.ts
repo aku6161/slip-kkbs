@@ -122,3 +122,21 @@ export interface Lecturer {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface IndustryCompany {
+  id: string;
+  bil?: number | string;
+  namaSyarikat: string;
+  alamat1?: string;
+  alamat2?: string;
+  emelHr?: string;
+  nomborTel?: string;
+  elaun?: string;
+  penginapan?: string;
+  makan?: string;
+  offday?: string | number;
+  pengangkutan?: string;
+  catatan?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}

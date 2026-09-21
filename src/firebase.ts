@@ -12,7 +12,7 @@ import {
   orderBy,
   writeBatch
 } from 'firebase/firestore';
-import { Student, SystemConfig } from './types';
+import { Student, SystemConfig, Lecturer, IndustryCompany } from './types';
 
 // Firebase configuration
 export const firebaseConfig = {
@@ -33,9 +33,43 @@ export const STUDENTS_COLLECTION = 'students';
 export const MARKAH_COLLECTION = 'markah';
 export const CONFIG_COLLECTION = 'config';
 export const LECTURERS_COLLECTION = 'lecturers';
+export const COMPANIES_COLLECTION = 'companies';
 
 export function removeUndefined<T extends Record<string, any>>(obj: T): T {
   return JSON.parse(JSON.stringify(obj, (k, v) => (v === undefined ? null : v)));
+}
+
+/**
+ * Real-time listener for companies collection
+ */
+export function subscribeCompanies(callback: (companies: IndustryCompany[]) => void, onError?: (error: Error) => void) {
+  const q = query(collection(db, COMPANIES_COLLECTION));
+  return onSnapshot(q, (snapshot) => {
+    const list: IndustryCompany[] = [];
+    snapshot.forEach((docSnap) => {
+      list.push(docSnap.data() as IndustryCompany);
+    });
+    callback(list);
+  }, (err) => {
+    console.error('Firestore companies subscription error:', err);
+    if (onError) onError(err);
+  });
+}
+
+/**
+ * Save or update a company in Firestore
+ */
+export async function saveCompanyToFirebase(company: Partial<IndustryCompany>): Promise<void> {
+  const docId = company.id || `comp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const data = removeUndefined({ ...company, id: docId, updatedAt: new Date().toISOString() });
+  await setDoc(doc(db, COMPANIES_COLLECTION, docId), data, { merge: true });
+}
+
+/**
+ * Delete a company from Firestore
+ */
+export async function deleteCompanyFromFirebase(companyId: string): Promise<void> {
+  await deleteDoc(doc(db, COMPANIES_COLLECTION, companyId));
 }
 
 /**
@@ -158,9 +192,14 @@ export async function saveMarkahToFirebase(noMatrik: string, markData: any): Pro
 }
 
 /**
- * Initial Seeding: Seeds initial students, config & lecturers if Firestore is empty
+ * Initial Seeding: Seeds initial students, config, lecturers & companies if Firestore is empty
  */
-export async function seedFirebaseIfEmpty(initialStudents: Student[], initialConfig: SystemConfig, initialLecturers?: any[]): Promise<void> {
+export async function seedFirebaseIfEmpty(
+  initialStudents: Student[], 
+  initialConfig: SystemConfig, 
+  initialLecturers?: any[],
+  initialCompanies?: IndustryCompany[]
+): Promise<void> {
   try {
     const studentsSnap = await getDocs(collection(db, STUDENTS_COLLECTION));
     if (studentsSnap.empty && initialStudents.length > 0) {
@@ -192,6 +231,21 @@ export async function seedFirebaseIfEmpty(initialStudents: Student[], initialCon
           batch.set(ref, { ...lecturer, id: docId }, { merge: true });
         }
         await batch.commit();
+      }
+    }
+
+    if (initialCompanies && initialCompanies.length > 0) {
+      const companiesSnap = await getDocs(collection(db, COMPANIES_COLLECTION));
+      if (companiesSnap.empty || companiesSnap.size < 5) {
+        console.log('Seeding registered industry companies to Firestore...');
+        const batch = writeBatch(db);
+        for (const comp of initialCompanies) {
+          const docId = comp.id || `comp_${comp.bil || Math.random()}`;
+          const ref = doc(db, COMPANIES_COLLECTION, docId);
+          batch.set(ref, { ...comp, id: docId }, { merge: true });
+        }
+        await batch.commit();
+        console.log(`Successfully seeded ${initialCompanies.length} companies to Firestore.`);
       }
     }
   } catch (err) {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserCheck, Settings, Users, Building2 } from 'lucide-react';
-import { Student, Lecturer, SystemConfig } from '../types';
+import { Student, Lecturer, SystemConfig, IndustryCompany } from '../types';
 import { MaklumatPensyarah } from './MaklumatPensyarah';
 import { ConfigPanel } from './ConfigPanel';
 import { MaklumatPelajar } from './MaklumatPelajar';
@@ -9,10 +9,13 @@ import { MaklumatSyarikat } from './MaklumatSyarikat';
 interface TetapanPanelProps {
   students: Student[];
   lecturers: Lecturer[];
+  companies?: IndustryCompany[];
   config: SystemConfig;
   appsScriptUrl: string;
   onSaveLecturer: (lecturer: Partial<Lecturer>) => Promise<{ success: boolean; message?: string }>;
   onDeleteLecturer: (id: string) => Promise<void>;
+  onSaveCompany?: (company: Partial<IndustryCompany>) => Promise<{ success: boolean; message?: string }>;
+  onDeleteCompany?: (companyId: string) => Promise<void>;
   onSaveStudent: (student: Partial<Student>) => Promise<void>;
   onDeleteStudent: (studentId: string) => Promise<void>;
   onSaveConfig: (updatedConfig: SystemConfig) => void;
@@ -23,10 +26,13 @@ interface TetapanPanelProps {
 export const TetapanPanel: React.FC<TetapanPanelProps> = ({
   students,
   lecturers,
+  companies = [],
   config,
   appsScriptUrl,
   onSaveLecturer,
   onDeleteLecturer,
+  onSaveCompany,
+  onDeleteCompany,
   onSaveStudent,
   onDeleteStudent,
   onSaveConfig,
@@ -125,8 +131,9 @@ export const TetapanPanel: React.FC<TetapanPanelProps> = ({
 
         {activeSubTab === 'syarikat' && (
           <MaklumatSyarikat
-            students={students}
-            onViewStudentDetail={onViewStudentDetail}
+            companies={companies}
+            onSaveCompany={onSaveCompany}
+            onDeleteCompany={onDeleteCompany}
           />
         )}
       </div>
