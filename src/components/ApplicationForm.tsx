@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Student, SystemConfig, Lecturer, IndustryCompany, formatProgramName } from '../types';
 import { INITIAL_COMPANIES } from '../data/initialData';
-import { UserPlus, Send, User, Building, Award, BookOpen, Info } from 'lucide-react';
+import { UserPlus, Send, User, Building, Award, BookOpen, Info, Lock, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 
 interface ApplicationFormProps {
   students?: Student[];
@@ -139,8 +139,17 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
     }
   };
 
+  const isAccepted = 
+    formData.status === 'Diterima' || 
+    formData.status === 'Lulus / Diterima' || 
+    formData.bjpliData?.keputusan === 'DITERIMA';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAccepted) {
+      setErrorMessage('Permohonan yang telah berstatus Diterima tidak boleh dikemaskini.');
+      return;
+    }
     setLoading(true);
     setErrorMessage('');
 
@@ -210,16 +219,62 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-6 sm:p-8 max-w-3xl mx-auto my-6 font-sans">
-      {/* Form Header */}
-      <div className="border-b border-slate-200 pb-4 mb-6">
-        <h1 className="text-xl font-black uppercase text-slate-900 flex items-center gap-2">
-          <UserPlus className="w-6 h-6 text-blue-900" />
-          BORANG PERMOHONAN LATIHAN INDUSTRI (SLIP KKBS)
-        </h1>
-        <p className="text-xs text-slate-600 mt-0.5">
-          Kolej Komuniti Beaufort Sabah
-        </p>
+      {/* Form Header with Status */}
+      <div className="border-b border-slate-200 pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-black uppercase text-slate-900 flex items-center gap-2">
+            <UserPlus className="w-6 h-6 text-blue-900" />
+            BORANG PERMOHONAN LATIHAN INDUSTRI (SLIP KKBS)
+          </h1>
+          <p className="text-xs text-slate-600 mt-0.5">
+            Kolej Komuniti Beaufort Sabah
+          </p>
+        </div>
+
+        {/* Status Permohonan Badge */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className={`px-3.5 py-1.5 rounded-xl border text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-2xs ${
+            isAccepted
+              ? 'bg-emerald-600 text-white border-emerald-700'
+              : formData.status === 'Ditolak'
+              ? 'bg-rose-600 text-white border-rose-700'
+              : formData.status === 'Memohon' || formData.status === 'Permohonan Dihantar' || formData.status === 'Menunggu Jawapan'
+              ? 'bg-blue-800 text-white border-blue-900'
+              : 'bg-slate-700 text-white border-slate-800'
+          }`}>
+            {isAccepted ? (
+              <CheckCircle2 className="w-4 h-4" />
+            ) : formData.status === 'Ditolak' ? (
+              <AlertCircle className="w-4 h-4" />
+            ) : (
+              <Clock className="w-4 h-4" />
+            )}
+            <span>STATUS: {formData.status || 'BELUM MEMOHON'}</span>
+          </div>
+        </div>
       </div>
+
+      {/* Locked Alert Banner for Diterima */}
+      {isAccepted && (
+        <div className="bg-emerald-50 border-2 border-emerald-500 text-emerald-950 p-4 rounded-2xl flex items-start gap-3 shadow-xs mb-6 animate-fade-in">
+          <div className="p-2 bg-emerald-600 text-white rounded-xl shrink-0 mt-0.5 shadow-xs">
+            <Lock className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-black text-xs uppercase tracking-tight text-emerald-900">
+                STATUS PERMOHONAN: DITERIMA (LULUS) — DATA TERKUNCI
+              </h3>
+              <span className="px-2 py-0.5 bg-emerald-200 text-emerald-900 text-[10px] font-black rounded-md">
+                KEMASKINI DITUTUP
+              </span>
+            </div>
+            <p className="text-xs text-emerald-800 leading-relaxed font-medium">
+              Tahniah! Permohonan latihan industri anda telah <strong>DITERIMA / DILULUSKAN</strong> oleh pihak industri. Maklumat permohonan telah dikunci dan tidak boleh dikemaskini lagi. Sila maklum kepada Pegawai Perhubungan Industri dan Alumni (PPIA) sekiranya terdapat sebarang keperluan pertukaran atau pindaan.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Carian Kad Pengenalan (Hanya jika tidak dipanggil dari portal pelajar) */}
       {!initialIc && (
@@ -263,6 +318,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6 text-xs text-slate-800">
+        <fieldset disabled={isAccepted} className="space-y-6 disabled:opacity-85">
         {/* Section 1: Student Personal Details */}
         <div className="bg-slate-50 p-4.5 rounded-xl border border-slate-200 space-y-4">
           <h2 className="font-bold text-slate-900 uppercase text-xs flex items-center gap-2 border-b pb-2 border-slate-200">
@@ -627,17 +683,25 @@ JALAN MELALUGUS,
             </div>
           </div>
         </div>
+        </fieldset>
 
         {/* Form Actions */}
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full sm:w-auto px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 text-sm uppercase tracking-wider font-sans"
-          >
-            <Send className="w-4 h-4" />
-            {loading ? 'Menghantar / Mengemaskini...' : 'Hantar / Kemaskini'}
-          </button>
+          {isAccepted ? (
+            <div className="w-full sm:w-auto px-6 py-3.5 bg-slate-100 border border-slate-300 text-slate-500 font-black rounded-xl text-xs flex items-center justify-center gap-2 cursor-not-allowed shadow-2xs uppercase tracking-wider">
+              <Lock className="w-4 h-4 text-slate-400" />
+              <span>PERMOHONAN TELAH DITERIMA (KEMASKINI DIKUNCI)</span>
+            </div>
+          ) : (
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full sm:w-auto px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 text-sm uppercase tracking-wider font-sans"
+            >
+              <Send className="w-4 h-4" />
+              {loading ? 'Menghantar / Mengemaskini...' : 'Hantar / Kemaskini'}
+            </button>
+          )}
         </div>
       </form>
     </div>
