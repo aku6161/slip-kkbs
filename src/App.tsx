@@ -593,6 +593,7 @@ export default function App() {
       <StudentPortal
         icNumber={studentIc}
         students={students}
+        lecturers={lecturers}
         config={config}
         appsScriptUrl={appsScriptUrl}
         onSaveStudent={handleSaveStudentAsync}

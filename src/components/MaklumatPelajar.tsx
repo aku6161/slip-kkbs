@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Student, ApplicationStatus, formatProgramName } from '../types';
+import { Student, ApplicationStatus, Lecturer, formatProgramName } from '../types';
 import * as XLSX from 'xlsx';
 import { 
   Users, 
@@ -26,6 +26,7 @@ import {
 
 interface MaklumatPelajarProps {
   students: Student[];
+  lecturers?: Lecturer[];
   onSaveStudent: (student: Partial<Student>) => Promise<void>;
   onDeleteStudent: (studentId: string) => Promise<void>;
   onViewStudentDetail: (student: Student) => void;
@@ -33,6 +34,7 @@ interface MaklumatPelajarProps {
 
 export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
   students,
+  lecturers = [],
   onSaveStudent,
   onDeleteStudent,
   onViewStudentDetail,
@@ -945,14 +947,40 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="font-bold text-slate-700 block mb-1">Nama Penasihat Akademik (PA)</label>
-                    <input
-                      type="text"
+                    <select
                       value={formData.namaPa || ''}
-                      onChange={e => setFormData({ ...formData, namaPa: e.target.value.toUpperCase() })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg uppercase focus:ring-2 focus:ring-blue-900 bg-white"
-                    />
+                      onChange={e => {
+                        const selectedName = e.target.value;
+                        const matched = lecturers.find(
+                          l => l.nama.trim().toUpperCase() === selectedName.trim().toUpperCase()
+                        );
+                        setFormData(prev => ({
+                          ...prev,
+                          namaPa: selectedName,
+                          emelPa: matched?.emel ? matched.emel.toLowerCase() : (selectedName === '' ? '' : prev.emelPa || ''),
+                          noTelefonPa: matched?.noTelefon ? matched.noTelefon : (selectedName === '' ? '' : prev.noTelefonPa || '')
+                        }));
+                      }}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg uppercase bg-white focus:ring-2 focus:ring-blue-900 font-bold cursor-pointer"
+                    >
+                      <option value="">[SILA PILIH PENASIHAT AKADEMIK]</option>
+                      {lecturers && lecturers.length > 0 ? (
+                        [...lecturers]
+                          .sort((a, b) => a.nama.localeCompare(b.nama))
+                          .map(lec => (
+                            <option key={lec.id || lec.staffId || lec.nama} value={lec.nama}>
+                              {lec.nama} {lec.program ? `(${lec.program})` : ''}
+                            </option>
+                          ))
+                      ) : (
+                        <option value="" disabled>Tiada data pensyarah</option>
+                      )}
+                      {formData.namaPa && !lecturers?.some(l => l.nama.trim().toUpperCase() === formData.namaPa?.trim().toUpperCase()) && (
+                        <option value={formData.namaPa}>{formData.namaPa}</option>
+                      )}
+                    </select>
                   </div>
 
                   <div>
@@ -961,6 +989,16 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       type="text"
                       value={formData.noTelefonPa || ''}
                       onChange={e => setFormData({ ...formData, noTelefonPa: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-900 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Emel PA</label>
+                    <input
+                      type="email"
+                      value={formData.emelPa || ''}
+                      onChange={e => setFormData({ ...formData, emelPa: e.target.value.toLowerCase() })}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>

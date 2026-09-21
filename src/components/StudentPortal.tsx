@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Student, DocumentType, SystemConfig } from '../types';
+import { Student, DocumentType, SystemConfig, Lecturer } from '../types';
 import { ApplicationForm } from './ApplicationForm';
 import { Logo } from './Logo';
 import { Calendar, FileText, BookOpen, LogOut, ExternalLink, Utensils, Hotel, Zap, CheckCircle2, Clock } from 'lucide-react';
@@ -7,6 +7,7 @@ import { Calendar, FileText, BookOpen, LogOut, ExternalLink, Utensils, Hotel, Za
 interface StudentPortalProps {
   icNumber: string;
   students: Student[];
+  lecturers?: Lecturer[];
   config: SystemConfig;
   appsScriptUrl: string;
   onSaveStudent: (studentData: Partial<Student>) => Promise<{ success: boolean; student?: Student }>;
@@ -33,6 +34,7 @@ const cleanDate = (val: any): string => {
 export const StudentPortal: React.FC<StudentPortalProps> = ({
   icNumber,
   students,
+  lecturers = [],
   config,
   appsScriptUrl,
   onSaveStudent,
@@ -117,6 +119,7 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
           <div>
             <ApplicationForm
               students={students}
+              lecturers={lecturers}
               config={config}
               appsScriptUrl={appsScriptUrl}
               onSaveStudent={onSaveStudent}

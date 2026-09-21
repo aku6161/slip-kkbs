@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Student, SystemConfig, formatProgramName } from '../types';
+import { Student, SystemConfig, Lecturer, formatProgramName } from '../types';
 import { UserPlus, Send, User, Building, Award, BookOpen } from 'lucide-react';
 
 interface ApplicationFormProps {
   students?: Student[];
+  lecturers?: Lecturer[];
   config: SystemConfig;
   appsScriptUrl?: string;
   onSuccess?: (newStudent: Student, message?: string, emailError?: string) => void;
@@ -16,6 +17,7 @@ interface ApplicationFormProps {
 
 export const ApplicationForm: React.FC<ApplicationFormProps> = ({ 
   students = [], 
+  lecturers = [],
   config, 
   appsScriptUrl = '', 
   onSuccess, 
@@ -494,14 +496,40 @@ JALAN MELALUGUS,
           <div className="space-y-3">
             <div>
               <label className="block font-bold text-slate-700 mb-1">NAMA PENASIHAT AKADEMIK: *</label>
-              <input
-                type="text"
+              <select
                 required
-                placeholder="Contoh: SHAMSUDDIN BIN AMIN"
                 value={formData.namaPa || ''}
-                onChange={e => setFormData({ ...formData, namaPa: e.target.value.toUpperCase() })}
-                className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-800 outline-none font-bold text-slate-900 bg-white"
-              />
+                onChange={e => {
+                  const selectedName = e.target.value;
+                  const matched = lecturers.find(
+                    l => l.nama.trim().toUpperCase() === selectedName.trim().toUpperCase()
+                  );
+                  setFormData(prev => ({
+                    ...prev,
+                    namaPa: selectedName,
+                    emelPa: matched?.emel ? matched.emel.toLowerCase() : (selectedName === '' ? '' : prev.emelPa || ''),
+                    noTelefonPa: matched?.noTelefon ? matched.noTelefon : (selectedName === '' ? '' : prev.noTelefonPa || '')
+                  }));
+                }}
+                className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-800 outline-none font-bold text-slate-900 bg-white uppercase cursor-pointer"
+              >
+                <option value="">[SILA PILIH PENASIHAT AKADEMIK]</option>
+                {lecturers && lecturers.length > 0 ? (
+                  [...lecturers]
+                    .sort((a, b) => a.nama.localeCompare(b.nama))
+                    .map(lec => (
+                      <option key={lec.id || lec.staffId || lec.nama} value={lec.nama}>
+                        {lec.nama} {lec.program ? `(${lec.program})` : ''}
+                      </option>
+                    ))
+                ) : (
+                  <option value="" disabled>Tiada data pensyarah</option>
+                )}
+                {/* Sertakan pilihan jika nama sedia ada tiada dalam senarai pensyarah */}
+                {formData.namaPa && !lecturers?.some(l => l.nama.trim().toUpperCase() === formData.namaPa?.trim().toUpperCase()) && (
+                  <option value={formData.namaPa}>{formData.namaPa}</option>
+                )}
+              </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -512,7 +540,7 @@ JALAN MELALUGUS,
                   placeholder="Contoh: 012-3456789"
                   value={formData.noTelefonPa || ''}
                   onChange={e => setFormData({ ...formData, noTelefonPa: formatPhone(e.target.value) })}
-                  className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-800 outline-none font-mono text-blue-900 bg-white font-bold"
+                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-800 outline-none font-mono text-blue-900 bg-white font-bold"
                 />
               </div>
               <div>
@@ -520,10 +548,10 @@ JALAN MELALUGUS,
                 <input
                   type="email"
                   required
-                  placeholder="Contoh: shamsuddin.amin@kkbeaufort.edu.my"
+                  placeholder="Contoh: pensyarah@kkbeaufort.edu.my"
                   value={formData.emelPa || ''}
                   onChange={e => setFormData({ ...formData, emelPa: e.target.value.toLowerCase() })}
-                  className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-amber-800 outline-none font-mono text-blue-900 bg-white"
+                  className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-800 outline-none font-mono text-blue-900 bg-white"
                 />
               </div>
             </div>

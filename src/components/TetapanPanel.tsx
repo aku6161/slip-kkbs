@@ -116,6 +116,7 @@ export const TetapanPanel: React.FC<TetapanPanelProps> = ({
         {activeSubTab === 'pelajar' && (
           <MaklumatPelajar
             students={students}
+            lecturers={lecturers}
             onSaveStudent={onSaveStudent}
             onDeleteStudent={onDeleteStudent}
             onViewStudentDetail={onViewStudentDetail}
