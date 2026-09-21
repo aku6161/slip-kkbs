@@ -203,10 +203,10 @@ export const StudentList: React.FC<StudentListProps> = ({
               type="button"
               onClick={handleExportXLSX}
               className="w-full px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white border border-emerald-800 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
-              title="Cetak Laporan Pelajar (.xlsx)"
+              title="Cetak Laporan Pelajar"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
-              <span>Cetak Laporan (.xlsx)</span>
+              <span>Cetak Laporan</span>
             </button>
           </div>
         </div>
