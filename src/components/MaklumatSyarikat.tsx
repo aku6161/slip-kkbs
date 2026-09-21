@@ -344,7 +344,7 @@ export const MaklumatSyarikat: React.FC<MaklumatSyarikatProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100 font-sans">
                 {filteredCompanies.map((company, index) => {
-                  const displayBil = company.bil || index + 1;
+                  const displayBil = index + 1;
                   const hasAccommodation = company.penginapan === '/';
                   const hasFood = company.makan === '/';
                   const hasTransport = company.pengangkutan === '/';
