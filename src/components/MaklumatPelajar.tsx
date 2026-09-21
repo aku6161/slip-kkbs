@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Student, ApplicationStatus } from '../types';
+import * as XLSX from 'xlsx';
 import { 
   Users, 
-  UserPlus, 
+  Upload, 
   Search, 
   Edit3, 
   Trash2, 
@@ -15,7 +16,12 @@ import {
   GraduationCap, 
   IdCard, 
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  FileSpreadsheet,
+  Download,
+  Check,
+  RefreshCw,
+  FileUp
 } from 'lucide-react';
 
 interface MaklumatPelajarProps {
@@ -36,14 +42,23 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
   const [programFilter, setProgramFilter] = useState('SEMUA');
   const [kelasFilter, setKelasFilter] = useState('SEMUA');
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Modal State for Edit Single Student
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Form State
+  // Upload Modal State
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [parsedStudents, setParsedStudents] = useState<Partial<Student>[]>([]);
+  const [isParsing, setIsParsing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Form State for Single Edit
   const [formData, setFormData] = useState<Partial<Student>>({
     namaPelajar: '',
     noIc: '',
@@ -88,41 +103,19 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
     });
   }, [students, searchTerm, sessionFilter, programFilter, kelasFilter]);
 
-  const handleOpenAddModal = () => {
-    setEditingStudent(null);
-    setFormData({
-      namaPelajar: '',
-      noIc: '',
-      noMatrik: '',
-      program: 'Sijil Kulinari',
-      sesi: dynamicSessions[0] || 'SESI I 2026/2027',
-      kelas: '',
-      noTelefon: '',
-      emelPelajar: '',
-      alamat: '',
-      namaSekolahMenengah: '',
-      namaSyarikat: '',
-      emelHrSyarikat: '',
-      status: 'Belum Memohon',
-      namaPa: 'NUR AZHARI BIN AZHARUDDIN',
-      noTelefonPa: '012-3456789',
-      emelPa: '',
-    });
-    setIsModalOpen(true);
-  };
-
+  // Handle Edit Single Student
   const handleOpenEditModal = (student: Student) => {
     setEditingStudent(student);
     setFormData({ ...student });
-    setIsModalOpen(true);
+    setIsEditModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
     setEditingStudent(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.namaPelajar || !formData.noMatrik || !formData.noIc) {
       setNotification({ type: 'error', message: 'Sila lengkapkan Nama, No. IC dan No. Matrik.' });
@@ -140,9 +133,9 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
       await onSaveStudent(studentData);
       setNotification({
         type: 'success',
-        message: editingStudent ? 'Maklumat pelajar berjaya dikemaskini!' : 'Pelajar baharu berjaya didaftarkan!'
+        message: 'Maklumat pelajar berjaya dikemaskini!'
       });
-      handleCloseModal();
+      handleCloseEditModal();
     } catch (err: any) {
       setNotification({ type: 'error', message: err.message || 'Ralat semasa menyimpan maklumat pelajar.' });
     } finally {
@@ -161,6 +154,207 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
     } finally {
       setTimeout(() => setNotification(null), 4000);
     }
+  };
+
+  // Helper to normalize header names
+  const normalizeKey = (k: string) => {
+    return k.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+  };
+
+  // Process File Upload (.xlsx / .csv)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadedFile(file);
+    setIsParsing(true);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const workbook = XLSX.read(bstr, { type: 'binary', cellDates: true });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rawJson: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+        if (!rawJson || rawJson.length === 0) {
+          setNotification({ type: 'error', message: 'Fail yang dimuat naik kosong atau tiada data sah.' });
+          setIsParsing(false);
+          return;
+        }
+
+        const parsedList: Partial<Student>[] = [];
+
+        rawJson.forEach((row, index) => {
+          // Map fields dynamically based on normalized column header keys
+          const normRow: Record<string, any> = {};
+          Object.keys(row).forEach(key => {
+            normRow[normalizeKey(key)] = String(row[key] || '').trim();
+          });
+
+          // Helper to find value from possible key names
+          const getValue = (...keys: string[]) => {
+            for (const key of keys) {
+              const nKey = normalizeKey(key);
+              if (normRow[nKey] !== undefined && normRow[nKey] !== '') {
+                return normRow[nKey];
+              }
+            }
+            return '';
+          };
+
+          const namaPelajar = getValue('nama', 'namapelajar', 'namapenuh', 'studentname', 'name');
+          const noMatrik = getValue('nomatrik', 'matrik', 'matrix', 'matricno', 'nopendaftaran', 'matrikno');
+          const noIc = getValue('noic', 'nokadpengenalan', 'ic', 'nokp', 'kp', 'nric');
+
+          // Skip empty rows without name or matric
+          if (!namaPelajar && !noMatrik && !noIc) return;
+
+          const program = getValue('program', 'programpengajian', 'kursus', 'bidang', 'course') || 'Sijil Kulinari';
+          const sesi = getValue('sesi', 'sesipengajian', 'session') || 'SESI I 2026/2027';
+          const kelas = getValue('kelas', 'class');
+          const noTelefon = getValue('notelefon', 'notel', 'nohp', 'telefon', 'phone', 'contact');
+          const emelPelajar = getValue('emel', 'email', 'emelpelajar', 'studentemail');
+          const alamat = getValue('alamat', 'alamatkediaman', 'address');
+          const namaSekolahMenengah = getValue('sekolah', 'sekolahmenengah', 'namasekolahmenengah', 'school');
+          const namaSyarikat = getValue('syarikat', 'namasyarikat', 'syarikatindustri', 'company', 'companyname');
+          const emelHrSyarikat = getValue('emelhr', 'emelhrsyarikat', 'hremail', 'emelsyarikat');
+          const rawStatus = getValue('status', 'statuspermohonan', 'applicationstatus');
+          const namaPa = getValue('namapa', 'pa', 'penasihatakademik', 'advisor') || 'NUR AZHARI BIN AZHARUDDIN';
+          const noTelefonPa = getValue('notelefonpa', 'notelpa', 'telpa', 'paphone') || '012-3456789';
+          const emelPa = getValue('emelpa', 'paemail');
+
+          let status: ApplicationStatus = 'Belum Memohon';
+          if (rawStatus) {
+            const low = rawStatus.toLowerCase();
+            if (low.includes('lulus') || low.includes('terima')) status = 'Diterima';
+            else if (low.includes('mohon') || low.includes('hantar') || low.includes('tunggu')) status = 'Memohon';
+            else if (low.includes('tolak')) status = 'Ditolak';
+            else status = 'Belum Memohon';
+          }
+
+          const docId = noMatrik ? noMatrik.replace(/[\/\s]/g, '_') : (noIc ? noIc : `student_${Date.now()}_${index}`);
+
+          parsedList.push({
+            id: docId,
+            timestamp: new Date().toISOString(),
+            namaPelajar: namaPelajar.toUpperCase(),
+            noIc,
+            noMatrik: noMatrik.toUpperCase(),
+            program,
+            sesi,
+            kelas: kelas.toUpperCase(),
+            noTelefon,
+            emelPelajar,
+            alamat,
+            namaSekolahMenengah,
+            namaSyarikat: namaSyarikat.toUpperCase(),
+            emelHrSyarikat,
+            status,
+            namaPa: namaPa.toUpperCase(),
+            noTelefonPa,
+            emelPa,
+          });
+        });
+
+        if (parsedList.length === 0) {
+          setNotification({ type: 'error', message: 'Tiada rekod pelajar sah yang berjaya diproses daripada fail.' });
+        } else {
+          setParsedStudents(parsedList);
+        }
+      } catch (err: any) {
+        console.error('Error parsing spreadsheet:', err);
+        setNotification({ type: 'error', message: `Gagal membaca fail: ${err.message || 'Format tidak disokong'}` });
+      } finally {
+        setIsParsing(false);
+      }
+    };
+
+    reader.readAsBinaryString(file);
+  };
+
+  // Commit Parsed Students to Firebase
+  const handleSaveImportedStudents = async () => {
+    if (parsedStudents.length === 0) return;
+
+    setIsUploading(true);
+    setUploadProgress({ current: 0, total: parsedStudents.length });
+
+    try {
+      let count = 0;
+      for (const st of parsedStudents) {
+        await onSaveStudent(st);
+        count++;
+        setUploadProgress({ current: count, total: parsedStudents.length });
+      }
+
+      setNotification({
+        type: 'success',
+        message: `Tahniah! ${count} maklumat pelajar telah berjaya disimpan ke dalam pangkalan data.`
+      });
+      setIsUploadModalOpen(false);
+      setUploadedFile(null);
+      setParsedStudents([]);
+    } catch (err: any) {
+      setNotification({ type: 'error', message: `Ralat semasa menyimpan ke database: ${err.message}` });
+    } finally {
+      setIsUploading(false);
+      setTimeout(() => setNotification(null), 5000);
+    }
+  };
+
+  // Download Sample Template .xlsx
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'NAMA PELAJAR': 'MOHD AZIZI BIN ABDULLAH',
+        'NO. KAD PENGENALAN': '040512125543',
+        'NO. MATRIK': 'S04SKU23F001',
+        'PROGRAM PENGAJIAN': 'Sijil Kulinari',
+        'SESI': 'SESI I 2026/2027',
+        'KELAS': 'SKU4A',
+        'NO. TELEFON': '012-8889999',
+        'EMEL': 'azizi@gmail.com',
+        'ALAMAT': 'KG. KLIAS, BEAUFORT, SABAH',
+        'SEKOLAH MENENGAH': 'SMK ST PAUL BEAUFORT',
+        'NAMA SYARIKAT': 'THE MAGELLAN SUTERA RESORT',
+        'EMEL HR SYARIKAT': 'hr@suteraresort.com',
+        'STATUS PERMOHONAN': 'Memohon',
+        'NAMA PA': 'NUR AZHARI BIN AZHARUDDIN',
+        'NO. TEL PA': '018-9744013',
+        'EMEL PA': 'azhari@kkbeaufort.edu.my',
+      },
+      {
+        'NAMA PELAJAR': 'SITI NURHALIZA BINTI JAAFAR',
+        'NO. KAD PENGENALAN': '040920126622',
+        'NO. MATRIK': 'S04SOP23F015',
+        'PROGRAM PENGAJIAN': 'Sijil Operasi Perhotelan',
+        'SESI': 'SESI I 2026/2027',
+        'KELAS': 'SOP4A',
+        'NO. TELEFON': '019-7776655',
+        'EMEL': 'siti@gmail.com',
+        'ALAMAT': 'PEKAN BEAUFORT, SABAH',
+        'SEKOLAH MENENGAH': 'SMK BEAUFORT',
+        'NAMA SYARIKAT': 'HYATT REGENCY KINABALU',
+        'EMEL HR SYARIKAT': 'hr@hyatt.com',
+        'STATUS PERMOHONAN': 'Diterima',
+        'NAMA PA': 'NUR AZHARI BIN AZHARUDDIN',
+        'NO. TEL PA': '018-9744013',
+        'EMEL PA': 'azhari@kkbeaufort.edu.my',
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    ws['!cols'] = [
+      { wch: 30 }, { wch: 20 }, { wch: 16 }, { wch: 26 }, { wch: 18 }, { wch: 10 },
+      { wch: 16 }, { wch: 25 }, { wch: 30 }, { wch: 25 }, { wch: 32 }, { wch: 25 },
+      { wch: 18 }, { wch: 28 }, { wch: 16 }, { wch: 25 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Templat Pelajar');
+    XLSX.writeFile(wb, 'Templat_Maklumat_Pelajar_KKBS.xlsx');
   };
 
   return (
@@ -193,16 +387,21 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
               Pengurusan Maklumat Pelajar
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Urus profil pelajar, kemas kini perincian peribadi, program, syarikat dan status latihan industri.
+              Muat naik senarai pelajar daripada fail Excel/CSV, kemas kini profil, syarikat dan status latihan industri.
             </p>
           </div>
 
+          {/* Button: Muat Naik Maklumat Pelajar Baharu */}
           <button
-            onClick={handleOpenAddModal}
+            onClick={() => {
+              setUploadedFile(null);
+              setParsedStudents([]);
+              setIsUploadModalOpen(true);
+            }}
             className="px-4 py-2.5 bg-blue-900 hover:bg-blue-800 active:bg-blue-950 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer shrink-0"
           >
-            <UserPlus className="w-4 h-4" />
-            <span>Tambah Pelajar Baharu</span>
+            <Upload className="w-4 h-4 text-blue-200" />
+            <span>Muat Naik Maklumat Pelajar Baharu</span>
           </button>
         </div>
 
@@ -368,12 +567,192 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
         </div>
       </div>
 
-      {/* Modal: Tambah / Edit Pelajar */}
-      {isModalOpen && (
+      {/* Modal: Muat Naik Maklumat Pelajar (Excel / CSV) */}
+      {isUploadModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 relative animate-fade-in my-8 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => {
+                if (!isUploading) setIsUploadModalOpen(false);
+              }}
+              disabled={isUploading}
+              className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 hover:text-slate-800 transition-all cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex items-center gap-3 border-b border-slate-200 pb-4 mb-5">
+              <div className="w-11 h-11 rounded-xl bg-blue-900 text-white flex items-center justify-center font-bold shadow-xs">
+                <FileSpreadsheet className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 uppercase">
+                  Muat Naik Maklumat Pelajar Baharu
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Sokongan format fail <span className="font-bold text-slate-700">.xlsx, .xls</span> atau <span className="font-bold text-slate-700">.csv</span>. Sistem akan menyelaraskan header secara automatik.
+                </p>
+              </div>
+            </div>
+
+            {/* Step 1: Upload Box & Template Download */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-xs">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-blue-900 shrink-0" />
+                  <span className="text-slate-700 font-medium">
+                    Gunakan templat standard untuk memastikan padanan header yang tepat.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-900 border border-blue-300 rounded-lg font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer shrink-0"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Muat Turun Templat (.xlsx)</span>
+                </button>
+              </div>
+
+              {/* Drag and drop / Select File Box */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-slate-300 hover:border-blue-900 bg-slate-50 hover:bg-blue-50/30 rounded-2xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-3"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <div className="w-14 h-14 rounded-2xl bg-blue-100 text-blue-900 flex items-center justify-center font-bold">
+                  <FileUp className="w-7 h-7" />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-900 text-sm">
+                    {uploadedFile ? uploadedFile.name : 'Klik untuk memilih fail atau seret fail ke sini'}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Format yang disokong: .xlsx, .xls, atau .csv (Maksimum 10MB)
+                  </p>
+                </div>
+              </div>
+
+              {/* Parsing Indicator */}
+              {isParsing && (
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center text-xs font-bold text-slate-600 flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-blue-900" />
+                  <span>Sedang memproses dan membaca kandungan fail...</span>
+                </div>
+              )}
+
+              {/* Preview Extracted Students */}
+              {parsedStudents.length > 0 && !isParsing && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      Pratonton: {parsedStudents.length} Rekod Pelajar Dikesan
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Sila semak data sebelum disimpan ke database.
+                    </span>
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-slate-100 text-slate-700 font-bold sticky top-0">
+                        <tr>
+                          <th className="py-2 px-3">Bil</th>
+                          <th className="py-2 px-3">Nama Pelajar</th>
+                          <th className="py-2 px-3">No. Matrik</th>
+                          <th className="py-2 px-3">No. IC</th>
+                          <th className="py-2 px-3">Program</th>
+                          <th className="py-2 px-3">Syarikat</th>
+                          <th className="py-2 px-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-[11px]">
+                        {parsedStudents.map((st, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="py-2 px-3 font-bold text-slate-400">{idx + 1}</td>
+                            <td className="py-2 px-3 font-bold text-slate-900">{st.namaPelajar}</td>
+                            <td className="py-2 px-3 font-mono text-blue-900">{st.noMatrik}</td>
+                            <td className="py-2 px-3 font-mono">{st.noIc}</td>
+                            <td className="py-2 px-3 text-slate-600">{st.program}</td>
+                            <td className="py-2 px-3 text-slate-700">{st.namaSyarikat || '-'}</td>
+                            <td className="py-2 px-3 font-semibold">{st.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Upload Progress Bar */}
+              {isUploading && (
+                <div className="space-y-2 p-4 bg-blue-50 rounded-xl border border-blue-200 text-xs">
+                  <div className="flex items-center justify-between font-bold text-blue-950">
+                    <span>Sedang menyimpan data ke pangkalan data Firebase...</span>
+                    <span>{uploadProgress.current} / {uploadProgress.total}</span>
+                  </div>
+                  <div className="w-full bg-blue-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-blue-900 h-2 transition-all duration-300"
+                      style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => setIsUploadModalOpen(false)}
+                  className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl font-bold cursor-pointer transition-colors text-xs"
+                >
+                  Batal
+                </button>
+
+                <button
+                  type="button"
+                  disabled={parsedStudents.length === 0 || isUploading || isParsing}
+                  onClick={handleSaveImportedStudents}
+                  className={`px-5 py-2 rounded-xl font-bold flex items-center gap-2 text-xs shadow-sm transition-all cursor-pointer ${
+                    parsedStudents.length > 0 && !isUploading
+                      ? 'bg-blue-900 hover:bg-blue-800 text-white'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  {isUploading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Menyimpan ({uploadProgress.current}/{uploadProgress.total})...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Sahkan &amp; Simpan ke Database ({parsedStudents.length} Pelajar)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Profil Pelajar Tunggal */}
+      {isEditModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 relative animate-fade-in my-8 max-h-[90vh] overflow-y-auto">
             <button
-              onClick={handleCloseModal}
+              onClick={handleCloseEditModal}
               className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 hover:text-slate-800 transition-all cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -385,20 +764,20 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
               </div>
               <div>
                 <h3 className="text-base font-black text-slate-900 uppercase">
-                  {editingStudent ? 'Kemas Kini Maklumat Pelajar' : 'Daftar Pelajar Baharu'}
+                  Kemas Kini Maklumat Pelajar
                 </h3>
                 <p className="text-xs text-slate-500">
-                  {editingStudent ? `No. Matrik: ${editingStudent.noMatrik}` : 'Masukkan maklumat pelajar secara manual ke dalam pangkalan data.'}
+                  No. Matrik: {editingStudent?.noMatrik}
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
               {/* Personal Info */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                 <h4 className="font-bold text-slate-900 uppercase flex items-center gap-1.5 border-b pb-2 border-slate-200">
                   <IdCard className="w-4 h-4 text-blue-900" />
-                  Maklumat Peribadi & Pengajian
+                  Maklumat Peribadi &amp; Pengajian
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -409,8 +788,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       required
                       value={formData.namaPelajar || ''}
                       onChange={e => setFormData({ ...formData, namaPelajar: e.target.value.toUpperCase() })}
-                      placeholder="CONTOH: AHMAD BIN ALI"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold uppercase focus:ring-2 focus:ring-blue-900"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold uppercase focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
 
@@ -421,8 +799,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       required
                       value={formData.noIc || ''}
                       onChange={e => setFormData({ ...formData, noIc: e.target.value.replace(/[^0-9]/g, '') })}
-                      placeholder="CONTOH: 030512125543"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-900"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
 
@@ -433,8 +810,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       required
                       value={formData.noMatrik || ''}
                       onChange={e => setFormData({ ...formData, noMatrik: e.target.value.toUpperCase() })}
-                      placeholder="CONTOH: S04SKU23F001"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono uppercase focus:ring-2 focus:ring-blue-900"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono uppercase focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
 
@@ -457,8 +833,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       type="text"
                       value={formData.sesi || ''}
                       onChange={e => setFormData({ ...formData, sesi: e.target.value })}
-                      placeholder="CONTOH: SESI I 2026/2027"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
 
@@ -468,8 +843,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       type="text"
                       value={formData.kelas || ''}
                       onChange={e => setFormData({ ...formData, kelas: e.target.value.toUpperCase() })}
-                      placeholder="CONTOH: SKU4A"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono uppercase focus:ring-2 focus:ring-blue-900"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono uppercase focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
 
@@ -479,8 +853,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       type="text"
                       value={formData.noTelefon || ''}
                       onChange={e => setFormData({ ...formData, noTelefon: e.target.value })}
-                      placeholder="CONTOH: 012-8889999"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-900"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
 
@@ -490,8 +863,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       type="email"
                       value={formData.emelPelajar || ''}
                       onChange={e => setFormData({ ...formData, emelPelajar: e.target.value })}
-                      placeholder="CONTOH: pelajar@gmail.com"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
 
@@ -501,8 +873,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       rows={2}
                       value={formData.alamat || ''}
                       onChange={e => setFormData({ ...formData, alamat: e.target.value })}
-                      placeholder="Alamat tempat tinggal pelajar"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
                 </div>
@@ -512,7 +883,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
               <div className="bg-blue-50/60 p-4 rounded-xl border border-blue-200 space-y-3">
                 <h4 className="font-bold text-blue-950 uppercase flex items-center gap-1.5 border-b pb-2 border-blue-200">
                   <Building className="w-4 h-4 text-blue-900" />
-                  Syarikat Industri & Status Permohonan
+                  Syarikat Industri &amp; Status Permohonan
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -522,7 +893,6 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       type="text"
                       value={formData.namaSyarikat || ''}
                       onChange={e => setFormData({ ...formData, namaSyarikat: e.target.value.toUpperCase() })}
-                      placeholder="CONTOH: HOTEL SHANGRI-LA"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg uppercase focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
@@ -533,7 +903,6 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       type="email"
                       value={formData.emelHrSyarikat || ''}
                       onChange={e => setFormData({ ...formData, emelHrSyarikat: e.target.value })}
-                      placeholder="hr@syarikat.com"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
@@ -571,7 +940,6 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       type="text"
                       value={formData.namaPa || ''}
                       onChange={e => setFormData({ ...formData, namaPa: e.target.value.toUpperCase() })}
-                      placeholder="NUR AZHARI BIN AZHARUDDIN"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg uppercase focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
@@ -582,7 +950,6 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       type="text"
                       value={formData.noTelefonPa || ''}
                       onChange={e => setFormData({ ...formData, noTelefonPa: e.target.value })}
-                      placeholder="012-3456789"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
@@ -593,7 +960,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
                 <button
                   type="button"
-                  onClick={handleCloseModal}
+                  onClick={handleCloseEditModal}
                   className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl font-bold cursor-pointer transition-colors"
                 >
                   Batal
@@ -604,7 +971,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                   className="px-5 py-2 bg-blue-900 hover:bg-blue-800 active:bg-blue-950 text-white rounded-xl font-bold flex items-center gap-2 cursor-pointer shadow-sm transition-all"
                 >
                   <Save className="w-4 h-4" />
-                  <span>{isSaving ? 'Menyimpan...' : 'Simpan Maklumat'}</span>
+                  <span>{isSaving ? 'Menyimpan...' : 'Simpan Kemas Kini'}</span>
                 </button>
               </div>
             </form>
