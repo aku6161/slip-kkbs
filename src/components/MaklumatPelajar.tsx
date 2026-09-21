@@ -971,7 +971,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                           .sort((a, b) => a.nama.localeCompare(b.nama))
                           .map(lec => (
                             <option key={lec.id || lec.staffId || lec.nama} value={lec.nama}>
-                              {lec.nama} {lec.program ? `(${lec.program})` : ''}
+                              {lec.nama}
                             </option>
                           ))
                       ) : (
