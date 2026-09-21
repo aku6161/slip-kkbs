@@ -204,57 +204,46 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
             return '';
           };
 
-          const namaPelajar = getValue('nama', 'namapelajar', 'namapenuh', 'studentname', 'name');
+          // 6 Asas Maklumat Pelajar:
+          const sesi = getValue('sesi', 'sesipengajian', 'session') || 'SESI I 2026/2027';
+          const namaPelajar = getValue('namapelajar', 'nama', 'namapenuh', 'studentname', 'name');
           const noMatrik = getValue('nomatrik', 'matrik', 'matrix', 'matricno', 'nopendaftaran', 'matrikno');
-          const noIc = getValue('noic', 'nokadpengenalan', 'ic', 'nokp', 'kp', 'nric');
+          const noIc = getValue('nokadpengenalan', 'noic', 'ic', 'nokp', 'kp', 'nric', 'kadpengenalan');
+          const program = getValue('programpengajian', 'program', 'kursus', 'bidang', 'course') || 'Sijil Kulinari';
+          const kelas = getValue('kelas', 'class');
 
           // Skip empty rows without name or matric
           if (!namaPelajar && !noMatrik && !noIc) return;
 
-          const program = getValue('program', 'programpengajian', 'kursus', 'bidang', 'course') || 'Sijil Kulinari';
-          const sesi = getValue('sesi', 'sesipengajian', 'session') || 'SESI I 2026/2027';
-          const kelas = getValue('kelas', 'class');
-          const noTelefon = getValue('notelefon', 'notel', 'nohp', 'telefon', 'phone', 'contact');
-          const emelPelajar = getValue('emel', 'email', 'emelpelajar', 'studentemail');
-          const alamat = getValue('alamat', 'alamatkediaman', 'address');
-          const namaSekolahMenengah = getValue('sekolah', 'sekolahmenengah', 'namasekolahmenengah', 'school');
-          const namaSyarikat = getValue('syarikat', 'namasyarikat', 'syarikatindustri', 'company', 'companyname');
-          const emelHrSyarikat = getValue('emelhr', 'emelhrsyarikat', 'hremail', 'emelsyarikat');
-          const rawStatus = getValue('status', 'statuspermohonan', 'applicationstatus');
-          const namaPa = getValue('namapa', 'pa', 'penasihatakademik', 'advisor') || 'NUR AZHARI BIN AZHARUDDIN';
-          const noTelefonPa = getValue('notelefonpa', 'notelpa', 'telpa', 'paphone') || '012-3456789';
-          const emelPa = getValue('emelpa', 'paemail');
-
-          let status: ApplicationStatus = 'Belum Memohon';
-          if (rawStatus) {
-            const low = rawStatus.toLowerCase();
-            if (low.includes('lulus') || low.includes('terima')) status = 'Diterima';
-            else if (low.includes('mohon') || low.includes('hantar') || low.includes('tunggu')) status = 'Memohon';
-            else if (low.includes('tolak')) status = 'Ditolak';
-            else status = 'Belum Memohon';
-          }
+          // Check if student already exists to retain existing application data
+          const existing = students.find(
+            s => (noMatrik && s.noMatrik?.toUpperCase() === noMatrik.toUpperCase()) ||
+                 (noIc && s.noIc?.replace(/[^0-9]/g, '') === noIc.replace(/[^0-9]/g, ''))
+          );
 
           const docId = noMatrik ? noMatrik.replace(/[\/\s]/g, '_') : (noIc ? noIc : `student_${Date.now()}_${index}`);
 
           parsedList.push({
             id: docId,
-            timestamp: new Date().toISOString(),
+            timestamp: existing?.timestamp || new Date().toISOString(),
+            sesi: sesi || existing?.sesi || 'SESI I 2026/2027',
             namaPelajar: namaPelajar.toUpperCase(),
-            noIc,
             noMatrik: noMatrik.toUpperCase(),
-            program,
-            sesi,
-            kelas: kelas.toUpperCase(),
-            noTelefon,
-            emelPelajar,
-            alamat,
-            namaSekolahMenengah,
-            namaSyarikat: namaSyarikat.toUpperCase(),
-            emelHrSyarikat,
-            status,
-            namaPa: namaPa.toUpperCase(),
-            noTelefonPa,
-            emelPa,
+            noIc: noIc ? noIc.replace(/[^0-9]/g, '') : '',
+            program: program || existing?.program || 'Sijil Kulinari',
+            kelas: kelas ? kelas.toUpperCase() : (existing?.kelas || ''),
+            // Retain or initialize other fields that will be updated automatically upon student application
+            status: existing?.status || 'Belum Memohon',
+            namaSyarikat: existing?.namaSyarikat || '',
+            emelHrSyarikat: existing?.emelHrSyarikat || '',
+            noTelefon: existing?.noTelefon || '',
+            emelPelajar: existing?.emelPelajar || '',
+            alamat: existing?.alamat || '',
+            namaSekolahMenengah: existing?.namaSekolahMenengah || '',
+            namaPa: existing?.namaPa || 'NUR AZHARI BIN AZHARUDDIN',
+            noTelefonPa: existing?.noTelefonPa || '012-3456789',
+            emelPa: existing?.emelPa || '',
+            bjpliData: existing?.bjpliData,
           });
         });
 
@@ -291,7 +280,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
 
       setNotification({
         type: 'success',
-        message: `Tahniah! ${count} maklumat pelajar telah berjaya disimpan ke dalam pangkalan data.`
+        message: `Tahniah! ${count} maklumat asas pelajar telah berjaya disimpan ke dalam database.`
       });
       setIsUploadModalOpen(false);
       setUploadedFile(null);
@@ -304,57 +293,48 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
     }
   };
 
-  // Download Sample Template .xlsx
+  // Download Sample Template .xlsx with 6 Core Fields
   const handleDownloadTemplate = () => {
     const templateData = [
       {
-        'NAMA PELAJAR': 'MOHD AZIZI BIN ABDULLAH',
-        'NO. KAD PENGENALAN': '040512125543',
-        'NO. MATRIK': 'S04SKU23F001',
-        'PROGRAM PENGAJIAN': 'Sijil Kulinari',
         'SESI': 'SESI I 2026/2027',
+        'NAMA PELAJAR': 'MOHD AZIZI BIN ABDULLAH',
+        'NO. MATRIK': 'S04SKU23F001',
+        'NO. KAD PENGENALAN': '040512125543',
+        'PROGRAM PENGAJIAN': 'Sijil Kulinari',
         'KELAS': 'SKU4A',
-        'NO. TELEFON': '012-8889999',
-        'EMEL': 'azizi@gmail.com',
-        'ALAMAT': 'KG. KLIAS, BEAUFORT, SABAH',
-        'SEKOLAH MENENGAH': 'SMK ST PAUL BEAUFORT',
-        'NAMA SYARIKAT': 'THE MAGELLAN SUTERA RESORT',
-        'EMEL HR SYARIKAT': 'hr@suteraresort.com',
-        'STATUS PERMOHONAN': 'Memohon',
-        'NAMA PA': 'NUR AZHARI BIN AZHARUDDIN',
-        'NO. TEL PA': '018-9744013',
-        'EMEL PA': 'azhari@kkbeaufort.edu.my',
       },
       {
-        'NAMA PELAJAR': 'SITI NURHALIZA BINTI JAAFAR',
-        'NO. KAD PENGENALAN': '040920126622',
-        'NO. MATRIK': 'S04SOP23F015',
-        'PROGRAM PENGAJIAN': 'Sijil Operasi Perhotelan',
         'SESI': 'SESI I 2026/2027',
+        'NAMA PELAJAR': 'SITI NURHALIZA BINTI JAAFAR',
+        'NO. MATRIK': 'S04SOP23F015',
+        'NO. KAD PENGENALAN': '040920126622',
+        'PROGRAM PENGAJIAN': 'Sijil Operasi Perhotelan',
         'KELAS': 'SOP4A',
-        'NO. TELEFON': '019-7776655',
-        'EMEL': 'siti@gmail.com',
-        'ALAMAT': 'PEKAN BEAUFORT, SABAH',
-        'SEKOLAH MENENGAH': 'SMK BEAUFORT',
-        'NAMA SYARIKAT': 'HYATT REGENCY KINABALU',
-        'EMEL HR SYARIKAT': 'hr@hyatt.com',
-        'STATUS PERMOHONAN': 'Diterima',
-        'NAMA PA': 'NUR AZHARI BIN AZHARUDDIN',
-        'NO. TEL PA': '018-9744013',
-        'EMEL PA': 'azhari@kkbeaufort.edu.my',
+      },
+      {
+        'SESI': 'SESI I 2026/2027',
+        'NAMA PELAJAR': 'DANIEL LEE JIA WEI',
+        'NO. MATRIK': 'S04SKE23F008',
+        'NO. KAD PENGENALAN': '041103125891',
+        'PROGRAM PENGAJIAN': 'Sijil Teknologi Elektrik',
+        'KELAS': 'SKE4A',
       }
     ];
 
     const ws = XLSX.utils.json_to_sheet(templateData);
     ws['!cols'] = [
-      { wch: 30 }, { wch: 20 }, { wch: 16 }, { wch: 26 }, { wch: 18 }, { wch: 10 },
-      { wch: 16 }, { wch: 25 }, { wch: 30 }, { wch: 25 }, { wch: 32 }, { wch: 25 },
-      { wch: 18 }, { wch: 28 }, { wch: 16 }, { wch: 25 }
+      { wch: 20 }, // SESI
+      { wch: 32 }, // NAMA PELAJAR
+      { wch: 18 }, // NO. MATRIK
+      { wch: 22 }, // NO. KAD PENGENALAN
+      { wch: 28 }, // PROGRAM PENGAJIAN
+      { wch: 12 }, // KELAS
     ];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Templat Pelajar');
-    XLSX.writeFile(wb, 'Templat_Maklumat_Pelajar_KKBS.xlsx');
+    XLSX.writeFile(wb, 'Templat_Maklumat_Asas_Pelajar_KKBS.xlsx');
   };
 
   return (
@@ -588,10 +568,10 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
               </div>
               <div>
                 <h3 className="text-base font-black text-slate-900 uppercase">
-                  Muat Naik Maklumat Pelajar Baharu
+                  Muat Naik Maklumat Asas Pelajar Baharu
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Sokongan format fail <span className="font-bold text-slate-700">.xlsx, .xls</span> atau <span className="font-bold text-slate-700">.csv</span>. Sistem akan menyelaraskan header secara automatik.
+                  Sokongan fail <span className="font-bold text-slate-700">.xlsx, .xls</span> atau <span className="font-bold text-slate-700">.csv</span> untuk 6 medan asas.
                 </p>
               </div>
             </div>
@@ -602,7 +582,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                 <div className="flex items-center gap-2">
                   <FileSpreadsheet className="w-5 h-5 text-blue-900 shrink-0" />
                   <span className="text-slate-700 font-medium">
-                    Gunakan templat standard untuk memastikan padanan header yang tepat.
+                    Templat mengandungi 6 lajur asas: <span className="font-bold text-blue-950">Sesi, Nama Pelajar, No. Matrik, No. IC, Program, dan Kelas</span>.
                   </span>
                 </div>
                 <button
@@ -613,6 +593,14 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                   <Download className="w-3.5 h-3.5" />
                   <span>Muat Turun Templat (.xlsx)</span>
                 </button>
+              </div>
+
+              {/* Note on Auto-updates */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 flex items-start gap-2">
+                <span className="text-amber-500 font-bold">ℹ️</span>
+                <p>
+                  <span className="font-bold text-slate-800">Maklumat Automatik:</span> Data selebihnya (nama syarikat, emel HR, nombor telefon, alamat, dan dokumen latihan) akan dikemaskini secara automatik ke dalam database apabila pelajar mengisi borang permohonan dalam sistem SLIP.
+                </p>
               </div>
 
               {/* Drag and drop / Select File Box */}
@@ -654,10 +642,10 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      Pratonton: {parsedStudents.length} Rekod Pelajar Dikesan
+                      Pratonton: {parsedStudents.length} Rekod Asas Pelajar Dikesan
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      Sila semak data sebelum disimpan ke database.
+                      Sila semak 6 data asas sebelum disimpan ke database.
                     </span>
                   </div>
 
@@ -666,24 +654,24 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       <thead className="bg-slate-100 text-slate-700 font-bold sticky top-0">
                         <tr>
                           <th className="py-2 px-3">Bil</th>
+                          <th className="py-2 px-3">Sesi</th>
                           <th className="py-2 px-3">Nama Pelajar</th>
                           <th className="py-2 px-3">No. Matrik</th>
-                          <th className="py-2 px-3">No. IC</th>
-                          <th className="py-2 px-3">Program</th>
-                          <th className="py-2 px-3">Syarikat</th>
-                          <th className="py-2 px-3">Status</th>
+                          <th className="py-2 px-3">No. Kad Pengenalan</th>
+                          <th className="py-2 px-3">Program Pengajian</th>
+                          <th className="py-2 px-3">Kelas</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-[11px]">
                         {parsedStudents.map((st, idx) => (
                           <tr key={idx} className="hover:bg-slate-50">
                             <td className="py-2 px-3 font-bold text-slate-400">{idx + 1}</td>
-                            <td className="py-2 px-3 font-bold text-slate-900">{st.namaPelajar}</td>
-                            <td className="py-2 px-3 font-mono text-blue-900">{st.noMatrik}</td>
+                            <td className="py-2 px-3 text-slate-600">{st.sesi}</td>
+                            <td className="py-2 px-3 font-bold text-slate-900 uppercase">{st.namaPelajar}</td>
+                            <td className="py-2 px-3 font-mono text-blue-900 font-bold">{st.noMatrik}</td>
                             <td className="py-2 px-3 font-mono">{st.noIc}</td>
-                            <td className="py-2 px-3 text-slate-600">{st.program}</td>
-                            <td className="py-2 px-3 text-slate-700">{st.namaSyarikat || '-'}</td>
-                            <td className="py-2 px-3 font-semibold">{st.status}</td>
+                            <td className="py-2 px-3 text-slate-700">{st.program}</td>
+                            <td className="py-2 px-3 font-semibold">{st.kelas || '-'}</td>
                           </tr>
                         ))}
                       </tbody>
