@@ -1,10 +1,10 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { Users, UserPlus, RefreshCw, FileText, Lock, LogOut, ShieldCheck, Settings, Award, UserCheck } from 'lucide-react';
+import { Users, FileText, Lock, LogOut, ShieldCheck, Settings, Award } from 'lucide-react';
 
 interface NavbarProps {
-  currentView: 'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian' | 'pensyarah';
-  onNavigate: (view: 'dashboard' | 'form' | 'status' | 'industry' | 'config' | 'penilaian' | 'pensyarah') => void;
+  currentView: 'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian' | 'pensyarah' | 'tetapan';
+  onNavigate: (view: 'dashboard' | 'form' | 'status' | 'industry' | 'config' | 'penilaian' | 'pensyarah' | 'tetapan') => void;
   isSyncing?: boolean;
   isAdmin: boolean;
   onOpenAdminModal: () => void;
@@ -14,7 +14,6 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   currentView,
   onNavigate,
-  isSyncing = false,
   isAdmin,
   onOpenAdminModal,
   onLogoutAdmin,
@@ -110,27 +109,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <button
-            onClick={() => onNavigate('pensyarah')}
+            onClick={() => onNavigate('tetapan')}
             className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-              currentView === 'pensyarah'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <UserCheck className="w-4 h-4" />
-            4. Maklumat Pensyarah
-          </button>
-
-          <button
-            onClick={() => onNavigate('config')}
-            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-              currentView === 'config'
+              currentView === 'tetapan' || currentView === 'pensyarah' || currentView === 'config'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'text-slate-300 hover:bg-slate-800 hover:text-white'
             }`}
           >
             <Settings className="w-4 h-4" />
-            5. Maklumat Latihan
+            4. Tetapan
           </button>
         </div>
       </div>
