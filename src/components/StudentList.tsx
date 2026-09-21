@@ -237,12 +237,18 @@ export const StudentList: React.FC<StudentListProps> = ({
                     <tr key={student.id} className="hover:bg-slate-50/80 transition-all">
                       {/* Student Info */}
                       <td className="py-3.5 px-4">
-                        <div className="flex items-start gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-blue-900 text-white font-bold flex items-center justify-center text-xs shrink-0 mt-0.5">
+                        <div
+                          onClick={() => onViewStudentDetail(student)}
+                          className="flex items-start gap-2.5 cursor-pointer group w-fit"
+                          title="Klik untuk lihat maklumat permohonan pelajar"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-blue-900 text-white font-bold flex items-center justify-center text-xs shrink-0 mt-0.5 group-hover:bg-blue-700 group-hover:scale-105 transition-all shadow-2xs">
                             {student.namaPelajar.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-bold text-slate-900 uppercase leading-snug">{student.namaPelajar}</p>
+                            <p className="font-bold text-slate-900 group-hover:text-blue-900 group-hover:underline uppercase leading-snug transition-colors">
+                              {student.namaPelajar}
+                            </p>
                             <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
                               <span className="font-mono text-blue-900 font-bold">{student.noMatrik}</span>
                               {student.kelas && (
