@@ -12,7 +12,7 @@ import {
   FileCheck,
   Check
 } from 'lucide-react';
-import { Student, SystemConfig, Lecturer } from '../types';
+import { Student, SystemConfig, Lecturer, formatProgramName } from '../types';
 import { BorangFLI01Modal } from './evaluations/BorangFLI01Modal';
 import { BorangFLI02Modal } from './evaluations/BorangFLI02Modal';
 import { BorangFLI03Modal } from './evaluations/BorangFLI03Modal';
@@ -74,9 +74,9 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
   const availablePrograms = useMemo(() => {
     const set = new Set<string>();
     students.forEach(s => {
-      if (s.program) set.add(s.program.trim());
+      if (s.program) set.add(formatProgramName(s.program));
     });
-    return Array.from(set);
+    return Array.from(set).sort();
   }, [students]);
 
   // Helper to find markah row for a given student
@@ -148,7 +148,7 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
 
       // 2. Program Filter
       if (selectedProgram !== 'SEMUA') {
-        if ((student.program || '').trim() !== selectedProgram) return false;
+        if (formatProgramName(student.program) !== selectedProgram) return false;
       }
 
       // 3. Search Query
