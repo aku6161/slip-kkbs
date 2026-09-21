@@ -35,9 +35,6 @@ export const TetapanPanel: React.FC<TetapanPanelProps> = ({
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'pensyarah' | 'latihan' | 'pelajar' | 'syarikat'>(initialSubTab);
 
-  // Count metrics for badges
-  const uniqueCompaniesCount = new Set(students.map(s => s.namaSyarikat?.trim().toUpperCase()).filter(Boolean)).size;
-
   return (
     <div className="space-y-6">
       {/* Sub-Tab Navigation Header */}
@@ -54,11 +51,6 @@ export const TetapanPanel: React.FC<TetapanPanelProps> = ({
           >
             <UserCheck className="w-4 h-4" />
             <span>1. Maklumat Pensyarah</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              activeSubTab === 'pensyarah' ? 'bg-blue-800 text-blue-100' : 'bg-slate-200 text-slate-700'
-            }`}>
-              {lecturers.length}
-            </span>
           </button>
 
           {/* Sub-Tab 2: Maklumat Latihan */}
@@ -85,14 +77,9 @@ export const TetapanPanel: React.FC<TetapanPanelProps> = ({
           >
             <Users className="w-4 h-4" />
             <span>3. Maklumat Pelajar</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              activeSubTab === 'pelajar' ? 'bg-blue-800 text-blue-100' : 'bg-slate-200 text-slate-700'
-            }`}>
-              {students.length}
-            </span>
           </button>
 
-          {/* Sub-Tab 4: Maklumat Syarikat */}
+          {/* Sub-Tab 4: Maklumat Industri */}
           <button
             onClick={() => setActiveSubTab('syarikat')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
@@ -102,12 +89,7 @@ export const TetapanPanel: React.FC<TetapanPanelProps> = ({
             }`}
           >
             <Building2 className="w-4 h-4" />
-            <span>4. Maklumat Syarikat</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              activeSubTab === 'syarikat' ? 'bg-blue-800 text-blue-100' : 'bg-slate-200 text-slate-700'
-            }`}>
-              {uniqueCompaniesCount}
-            </span>
+            <span>4. Maklumat Industri</span>
           </button>
         </div>
       </div>
