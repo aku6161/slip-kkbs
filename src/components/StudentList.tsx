@@ -40,8 +40,9 @@ export const StudentList: React.FC<StudentListProps> = ({
       (s.namaSyarikat && s.namaSyarikat.toLowerCase().includes(searchTerm.toLowerCase())) ||
       s.emelHrSyarikat.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const isMemohon = s.status === 'Memohon' || s.status === 'Permohonan Dihantar' || s.status === 'Menunggu Jawapan' || s.status === 'Diterima' || s.status === 'Lulus / Diterima';
+    const isMemohon = s.status === 'Memohon' || s.status === 'Permohonan Dihantar' || s.status === 'Menunggu Jawapan';
     const isDiterima = s.status === 'Diterima' || s.status === 'Lulus / Diterima';
+    const isBelumMemohon = s.status === 'Belum Memohon' || (!isMemohon && !isDiterima);
 
     let matchesStatus = true;
     if (statusFilter === 'Memohon') {
@@ -49,7 +50,7 @@ export const StudentList: React.FC<StudentListProps> = ({
     } else if (statusFilter === 'Diterima') {
       matchesStatus = isDiterima;
     } else if (statusFilter === 'Belum Memohon') {
-      matchesStatus = !isMemohon;
+      matchesStatus = isBelumMemohon;
     }
 
     const matchesSession =
@@ -156,9 +157,6 @@ export const StudentList: React.FC<StudentListProps> = ({
                 </tr>
               ) : (
                 filteredStudents.map(student => {
-                  const isMemohon = student.status === 'Memohon' || student.status === 'Permohonan Dihantar' || student.status === 'Menunggu Jawapan' || student.status === 'Diterima' || student.status === 'Lulus / Diterima';
-                  const isDiterima = student.status === 'Diterima' || student.status === 'Lulus / Diterima';
-
                   return (
                     <tr key={student.id} className="hover:bg-slate-50/80 transition-all">
                       {/* Student Info */}
@@ -195,7 +193,13 @@ export const StudentList: React.FC<StudentListProps> = ({
                       {/* Status Dropdown Selector */}
                       <td className="py-3.5 px-4">
                         <select
-                          value={student.status === 'Lulus / Diterima' ? 'Diterima' : student.status}
+                          value={
+                            student.status === 'Diterima' || student.status === 'Lulus / Diterima'
+                              ? 'Diterima'
+                              : student.status === 'Memohon' || student.status === 'Permohonan Dihantar' || student.status === 'Menunggu Jawapan'
+                              ? 'Memohon'
+                              : 'Belum Memohon'
+                          }
                           onChange={(e) => {
                             if (onUpdateStudentStatus) {
                               onUpdateStudentStatus(student.id, e.target.value as ApplicationStatus);
@@ -204,9 +208,9 @@ export const StudentList: React.FC<StudentListProps> = ({
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold border cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-900 bg-white font-sans ${
                             student.status === 'Diterima' || student.status === 'Lulus / Diterima'
                               ? 'bg-blue-50 text-blue-900 border-blue-400'
-                              : student.status === 'Belum Memohon'
-                              ? 'bg-slate-100 text-slate-700 border-slate-300'
-                              : 'bg-emerald-50 text-emerald-800 border-emerald-400'
+                              : student.status === 'Memohon' || student.status === 'Permohonan Dihantar' || student.status === 'Menunggu Jawapan'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-400'
+                              : 'bg-slate-100 text-slate-700 border-slate-300'
                           }`}
                         >
                           <option value="Belum Memohon" className="bg-white text-slate-800 font-bold">Belum Memohon</option>
