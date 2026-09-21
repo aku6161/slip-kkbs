@@ -63,7 +63,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
     namaPelajar: '',
     noIc: '',
     noMatrik: '',
-    program: 'Sijil Kulinari',
+    program: 'SIJIL KULINARI',
     sesi: 'SESI I 2026/2027',
     kelas: '',
     noTelefon: '',
@@ -209,7 +209,18 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
           const namaPelajar = getValue('namapelajar', 'nama', 'namapenuh', 'studentname', 'name');
           const noMatrik = getValue('nomatrik', 'matrik', 'matrix', 'matricno', 'nopendaftaran', 'matrikno');
           const noIc = getValue('nokadpengenalan', 'noic', 'ic', 'nokp', 'kp', 'nric', 'kadpengenalan');
-          const program = getValue('programpengajian', 'program', 'kursus', 'bidang', 'course') || 'Sijil Kulinari';
+          const rawProg = getValue('programpengajian', 'program', 'kursus', 'bidang', 'course') || 'SIJIL KULINARI';
+          let program = 'SIJIL KULINARI';
+          const upProg = rawProg.toUpperCase();
+          if (upProg.includes('KULINARI') || upProg.includes('SKU')) {
+            program = 'SIJIL KULINARI';
+          } else if (upProg.includes('PERHOTELAN') || upProg.includes('HOTEL') || upProg.includes('SOP')) {
+            program = 'SIJIL OPERASI PERHOTELAN';
+          } else if (upProg.includes('ELEKTRIK') || upProg.includes('SKE') || upProg.includes('STE')) {
+            program = 'SIJIL TEKNOLOGI ELEKTRIK';
+          } else {
+            program = upProg;
+          }
           const kelas = getValue('kelas', 'class');
 
           // Skip empty rows without name or matric
@@ -230,7 +241,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
             namaPelajar: namaPelajar.toUpperCase(),
             noMatrik: noMatrik.toUpperCase(),
             noIc: noIc ? noIc.replace(/[^0-9]/g, '') : '',
-            program: program || existing?.program || 'Sijil Kulinari',
+            program: program || existing?.program || 'SIJIL KULINARI',
             kelas: kelas ? kelas.toUpperCase() : (existing?.kelas || ''),
             // Retain or initialize other fields that will be updated automatically upon student application
             status: existing?.status || 'Belum Memohon',
@@ -301,7 +312,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
         'NAMA PELAJAR': 'MOHD AZIZI BIN ABDULLAH',
         'NO. MATRIK': 'S04SKU23F001',
         'NO. KAD PENGENALAN': '040512125543',
-        'PROGRAM PENGAJIAN': 'Sijil Kulinari',
+        'PROGRAM PENGAJIAN': 'SIJIL KULINARI',
         'KELAS': 'SKU4A',
       },
       {
@@ -309,7 +320,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
         'NAMA PELAJAR': 'SITI NURHALIZA BINTI JAAFAR',
         'NO. MATRIK': 'S04SOP23F015',
         'NO. KAD PENGENALAN': '040920126622',
-        'PROGRAM PENGAJIAN': 'Sijil Operasi Perhotelan',
+        'PROGRAM PENGAJIAN': 'SIJIL OPERASI PERHOTELAN',
         'KELAS': 'SOP4A',
       },
       {
@@ -317,7 +328,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
         'NAMA PELAJAR': 'DANIEL LEE JIA WEI',
         'NO. MATRIK': 'S04SKE23F008',
         'NO. KAD PENGENALAN': '041103125891',
-        'PROGRAM PENGAJIAN': 'Sijil Teknologi Elektrik',
+        'PROGRAM PENGAJIAN': 'SIJIL TEKNOLOGI ELEKTRIK',
         'KELAS': 'SKE4A',
       }
     ];
@@ -805,13 +816,21 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Program Pengajian</label>
                     <select
-                      value={formData.program || 'Sijil Kulinari'}
+                      value={
+                        (formData.program || '').toUpperCase().includes('KULINARI')
+                          ? 'SIJIL KULINARI'
+                          : (formData.program || '').toUpperCase().includes('PERHOTELAN') || (formData.program || '').toUpperCase().includes('HOTEL') || (formData.program || '').toUpperCase().includes('SOP')
+                          ? 'SIJIL OPERASI PERHOTELAN'
+                          : (formData.program || '').toUpperCase().includes('ELEKTRIK') || (formData.program || '').toUpperCase().includes('SKE') || (formData.program || '').toUpperCase().includes('STE')
+                          ? 'SIJIL TEKNOLOGI ELEKTRIK'
+                          : formData.program?.toUpperCase() || 'SIJIL KULINARI'
+                      }
                       onChange={e => setFormData({ ...formData, program: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold bg-white focus:ring-2 focus:ring-blue-900"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold uppercase bg-white focus:ring-2 focus:ring-blue-900"
                     >
-                      <option value="Sijil Kulinari">Sijil Kulinari (SKU)</option>
-                      <option value="Sijil Operasi Perhotelan">Sijil Operasi Perhotelan (SOP)</option>
-                      <option value="Sijil Teknologi Elektrik">Sijil Teknologi Elektrik (SKE)</option>
+                      <option value="SIJIL KULINARI">SIJIL KULINARI</option>
+                      <option value="SIJIL OPERASI PERHOTELAN">SIJIL OPERASI PERHOTELAN</option>
+                      <option value="SIJIL TEKNOLOGI ELEKTRIK">SIJIL TEKNOLOGI ELEKTRIK</option>
                     </select>
                   </div>
 
