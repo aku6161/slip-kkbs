@@ -11,7 +11,7 @@ interface ApplicationFormProps {
   appsScriptUrl?: string;
   onSuccess?: (newStudent: Student, message?: string, emailError?: string) => void;
   onCancel?: () => void;
-  onSaveStudent?: (studentData: Partial<Student>) => Promise<{ success: boolean; student?: Student }>;
+  onSaveStudent?: (studentData: Partial<Student>) => Promise<{ success: boolean; student?: Student; emailError?: string }>;
   onSelectStudentForDoc?: (student: Student, docType: any) => void;
   initialIc?: string;
   onSuccessSubmit?: () => void;
@@ -186,7 +186,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
       if (onSaveStudent) {
         const result = await onSaveStudent(cleanedData);
         if (result.success && result.student) {
-          onSuccess?.(result.student, 'Permohonan latihan industri berjaya dihantar!');
+          onSuccess?.(result.student, 'Permohonan latihan industri berjaya dihantar!', result.emailError);
           onSuccessSubmit?.();
           return;
         }

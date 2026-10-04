@@ -323,7 +323,45 @@ export default function App() {
 
       await saveStudentToFirebase(fullStudent);
       setStudents(prev => [fullStudent, ...prev.filter(s => s.id !== docId)]);
-      return { success: true, student: fullStudent };
+
+      // 2. Hantar ke server Express /api/students yang akan:
+      //    - Simpan ke Google Sheets via Apps Script (menggunakan APPS_SCRIPT_URL dari Vercel env)
+      //    - Jana PDF surat permohonan (resume, BJPLI, Skop Latihan)
+      //    - Hantar emel ke HR Syarikat dengan lampiran PDF
+      //    - CC kepada pelajar, PA dan unitlatihanindustri
+      let emailError: string | undefined;
+      try {
+        // Sentiasa panggil /api/students — server ada APPS_SCRIPT_URL sebagai env var
+        // appsScriptUrl dari localStorage dihantar sebagai backup jika ada
+        const serverUrl = appsScriptUrl
+          ? `/api/students?appsScriptUrl=${encodeURIComponent(appsScriptUrl)}`
+          : '/api/students';
+        const serverRes = await fetch(serverUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...fullStudent, status: 'Memohon' }),
+        });
+
+        if (serverRes.ok) {
+          const serverData = await serverRes.json();
+          if (serverData.emailError) {
+            emailError = serverData.emailError;
+            console.warn('Email notification error from server:', emailError);
+          } else {
+            console.log('Email notification sent successfully for:', fullStudent.namaPelajar);
+          }
+        } else {
+          // Server tidak OK — log tapi jangan gagalkan simpanan Firebase
+          const errData = await serverRes.json().catch(() => ({}));
+          emailError = errData.error || `Server error: ${serverRes.status}`;
+          console.warn('Server /api/students error (non-blocking):', emailError);
+        }
+      } catch (serverErr: any) {
+        emailError = serverErr?.message || 'Ralat rangkaian semasa menghantar notifikasi emel.';
+        console.warn('Server call error (non-blocking):', serverErr);
+      }
+
+      return { success: true, student: fullStudent, emailError };
     } catch (err) {
       console.error('Failed to save student to Firebase:', err);
       return { success: false };

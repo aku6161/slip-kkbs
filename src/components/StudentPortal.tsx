@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Student, DocumentType, SystemConfig, Lecturer, IndustryCompany } from '../types';
 import { ApplicationForm } from './ApplicationForm';
 import { Logo } from './Logo';
-import { Calendar, FileText, BookOpen, LogOut, ExternalLink, Utensils, Hotel, Zap, CheckCircle2, Clock } from 'lucide-react';
+import { Calendar, FileText, BookOpen, LogOut, ExternalLink, Utensils, Hotel, Zap, CheckCircle2, Clock, Mail } from 'lucide-react';
 
 interface StudentPortalProps {
   icNumber: string;
@@ -11,7 +11,7 @@ interface StudentPortalProps {
   companies?: IndustryCompany[];
   config: SystemConfig;
   appsScriptUrl: string;
-  onSaveStudent: (studentData: Partial<Student>) => Promise<{ success: boolean; student?: Student }>;
+  onSaveStudent: (studentData: Partial<Student>) => Promise<{ success: boolean; student?: Student; emailError?: string }>;
   onSelectStudentForDoc: (student: Student, docType: DocumentType) => void;
   onLogout: () => void;
 }
@@ -44,10 +44,21 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
   onLogout,
 }) => {
   const [activeTab, setActiveTab] = useState<'permohonan' | 'takwim' | 'bukulog'>('permohonan');
+  const [successNotification, setSuccessNotification] = useState<{ message: string; emailError?: string } | null>(null);
 
   // Check if student already exists
   const cleanIc = icNumber.replace(/\D/g, '');
   const existingStudent = students.find(s => (s.noIc || '').replace(/\D/g, '') === cleanIc);
+
+  const handleSubmitSuccess = (student: Student, message?: string, emailError?: string) => {
+    setSuccessNotification({
+      message: message || 'Permohonan latihan industri berjaya dihantar/dikemaskini!',
+      emailError
+    });
+    // Auto-hide after 8 seconds
+    setTimeout(() => setSuccessNotification(null), 8000);
+    setActiveTab('takwim');
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -76,6 +87,36 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
           </button>
         </div>
       </header>
+
+      {/* Success Notification Banner */}
+      {successNotification && (
+        <div className="bg-emerald-600 text-white px-4 py-3 shadow-lg animate-fade-in">
+          <div className="max-w-5xl mx-auto flex items-start gap-3">
+            <div className="shrink-0 mt-0.5">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-black text-sm">{successNotification.message}</p>
+              {successNotification.emailError ? (
+                <p className="text-emerald-100 text-xs mt-0.5 font-medium">
+                  ⚠️ Nota: Emel notifikasi gagal dihantar ({successNotification.emailError}). Sila maklumkan kepada PPIA.
+                </p>
+              ) : appsScriptUrl ? (
+                <p className="text-emerald-100 text-xs mt-0.5 font-medium flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 shrink-0" />
+                  Notifikasi emel sedang dihantar kepada HR Syarikat, pelajar dan PA.
+                </p>
+              ) : null}
+            </div>
+            <button
+              onClick={() => setSuccessNotification(null)}
+              className="shrink-0 text-emerald-200 hover:text-white text-lg leading-none cursor-pointer font-bold"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Student Nav Tabs */}
       <div className="bg-white border-b border-slate-200 shadow-2xs">
@@ -130,6 +171,7 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
               config={config}
               appsScriptUrl={appsScriptUrl}
               onSaveStudent={onSaveStudent}
+              onSuccess={handleSubmitSuccess}
               onSelectStudentForDoc={onSelectStudentForDoc}
               initialIc={icNumber}
               onSuccessSubmit={() => setActiveTab('takwim')}
