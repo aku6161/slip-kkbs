@@ -76,73 +76,85 @@ export function renderBorangFLI04Html(row: any, config?: any): string {
       box-sizing: border-box;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
-      font-family: Arial, Helvetica, sans-serif !important;
     }
     body {
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 11px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 10.5px;
       color: #0f172a;
       background: white;
-      padding: 10px 20px;
-      line-height: 1.25;
+      padding: 20px 30px;
+      line-height: 1.35;
     }
     @media print {
-      body { padding: 0; }
+      body { padding: 10px 15px; }
       .no-print { display: none !important; }
       @page { 
-        margin: 6mm 14mm 6mm 14mm; 
+        margin: 6mm 10mm 6mm 10mm; 
         size: A4 portrait; 
       }
     }
-    table { border-collapse: collapse; width: 100%; font-family: Arial, Helvetica, sans-serif; }
-    td, th { padding: 2px 5px; vertical-align: middle; }
-    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #0f172a; padding-bottom: 3px; margin-bottom: 3px; }
-    .header-text h1 { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.3px; }
-    .header-text p { font-size: 9.5px; font-weight: 700; color: #334155; }
-    .doc-code { font-size: 9.5px; font-family: monospace; font-weight: 800; border: 1.2px solid #334155; padding: 2px 7px; border-radius: 2px; }
-    .title-banner { text-align: center; background: #0f172a; color: white; padding: 3px; border-radius: 3px; margin-bottom: 4px; }
-    .title-banner h2 { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { padding: 2.5px 5px; vertical-align: middle; }
+    .header { display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
+    .header img { width: 50px; height: auto; }
+    .header-text h1 { font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+    .header-text p { font-size: 9px; font-weight: 600; color: #334155; }
+    .doc-code { font-size: 9px; font-family: monospace; font-weight: 700; border: 1px solid #334155; padding: 3px 8px; border-radius: 3px; }
+    .title-banner { text-align: center; background: #0f172a; color: white; padding: 8px; border-radius: 4px; margin-bottom: 12px; }
+    .title-banner h2 { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+    .title-banner p { font-size: 9px; font-weight: 600; color: #cbd5e1; margin-top: 2px; }
     
-    .info-table { border: 1.2px solid #0f172a; margin-bottom: 4px; background: #f8fafc; width: 100%; }
-    .info-table td { padding: 2px 6px; font-size: 11px; line-height: 1.25; }
+    .info-table { border: 1.2px solid #0f172a; margin-bottom: 5px; background: #f8fafc; width: 100%; }
+    .info-table td { padding: 2.5px 6px; font-size: 10.5px; line-height: 1.25; }
     .info-label { font-weight: 800; color: #334155; width: 26%; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; }
     .info-val { font-weight: 700; color: #0f172a; width: 74%; border-bottom: 1px solid #e2e8f0; }
     
-    .summary-table { border: 1.2px solid #0f172a; margin-top: 3px; }
-    .summary-table th { background: #0f172a; color: white; font-weight: 800; font-size: 11px; text-transform: uppercase; border: 1px solid #334155; text-align: center; padding: 2.5px 5px; }
-    .summary-table td { border: 1px solid #cbd5e1; font-size: 11px; padding: 2px 5px; }
-    .section-head { background: #e2e8f0; font-weight: 800; text-transform: uppercase; font-size: 11px; color: #0f172a; }
-    .subtotal-row { background: #f1f5f9; font-weight: 800; font-size: 11px; }
+    .summary-table { border: 1.2px solid #0f172a; margin-top: 4px; }
+    .summary-table th { background: #0f172a; color: white; font-weight: 800; font-size: 10.5px; text-transform: uppercase; border: 1px solid #334155; text-align: center; padding: 3px 5px; }
+    .summary-table td { border: 1px solid #cbd5e1; font-size: 10px; padding: 2px 5px; }
+    .section-head { background: #e2e8f0; font-weight: 800; text-transform: uppercase; font-size: 10.5px; color: #0f172a; }
+    .subtotal-row { background: #f1f5f9; font-weight: 800; font-size: 10.5px; }
     .grand-total-row { background: #0f172a; color: white; font-weight: 900; font-size: 11px; }
-    .sig-section { margin-top: 10px; page-break-inside: avoid; font-size: 11px; line-height: 1.25; }
-    .sig-line { margin-top: 30px; border-bottom: 1px solid #0f172a; width: 220px; }
+    .sig-section { margin-top: 12px; page-break-inside: avoid; font-size: 10.5px; line-height: 1.25; }
+    .sig-line { margin-top: 35px; border-bottom: 1px solid #0f172a; width: 220px; }
+    
+    /* Print button */
+    .print-bar { background: #0f172a; color: white; padding: 10px 16px; border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
+    .print-bar span { font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+    .print-btn { background: #1e3a8a; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 900; font-size: 11px; text-transform: uppercase; cursor: pointer; }
+    .print-btn:hover { background: #1e40af; }
+    .close-btn { background: #334155; color: #e2e8f0; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 900; font-size: 11px; text-transform: uppercase; cursor: pointer; margin-left: 8px; }
+    .close-btn:hover { background: #475569; color: white; }
   </style>
 </head>
 <body>
 
-  <!-- No-print Top Bar -->
-  <div class="no-print" style="background:#0f172a;color:white;padding:8px 15px;margin:-10px -20px 10px -20px;display:flex;justify-content:space-between;align-items:center;">
+  <!-- Print Control Bar -->
+  <div class="print-bar no-print">
+    <span>📊 Pratinjau Rumusan Penilaian Latihan Industri (FLI 04)</span>
     <div>
-      <span style="font-weight:800;font-size:11px;">📊 Pratinjau Rumusan Penilaian Latihan Industri (FLI 04)</span>
-      <span style="font-size:11px;color:#94a3b8;margin-left:8px;">${getNama()} (${getMatrik()})</span>
+      <button class="print-btn" onclick="window.print()">🖨️ Cetak Borang</button>
+      <button class="close-btn" onclick="window.close()">✕ Tutup</button>
     </div>
-    <button onclick="window.print()" style="background:#2563eb;color:white;border:none;padding:5px 14px;border-radius:4px;font-weight:700;cursor:pointer;font-size:11px;">
-      🖨️ Cetak Borang (1 Halaman A4)
-    </button>
   </div>
 
-  <!-- Header -->
+  <!-- Header / Letterhead -->
   <div class="header">
-    <div class="header-text">
-      <h1>KOLEJ KOMUNITI BEAUFORT SABAH</h1>
-      <p>KEMENTERIAN PENDIDIKAN TINGGI</p>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/2/26/Coat_of_arms_of_Malaysia.svg" alt="Jata Negara" />
+    <div class="header-text" style="flex:1;">
+      <h1>KOLEJ KOMUNITI BEAUFORT</h1>
+      <p>JABATAN PENDIDIKAN POLITEKNIK DAN KOLEJ KOMUNITI</p>
+      <p style="font-size:8px;color:#64748b;">KEMENTERIAN PENDIDIKAN TINGGI MALAYSIA</p>
     </div>
-    <div class="doc-code">FLI 04</div>
+    <div style="text-align:right;">
+      <span class="doc-code">KOD DOKUMEN: FLI 04</span>
+    </div>
   </div>
 
   <!-- Title Banner -->
   <div class="title-banner">
     <h2>RUMUSAN PENILAIAN LATIHAN INDUSTRI (FLI 04)</h2>
+    <p>KURSUS: SUT40078 - LATIHAN INDUSTRI (SESI: ${getSesi()})</p>
   </div>
 
   <!-- Student Info Table: 1 Column Key-Value format (Font 11px) -->
