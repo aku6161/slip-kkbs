@@ -554,19 +554,13 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                     <th className="py-3.5 px-5 text-center min-w-[200px] bg-indigo-950/40 border-x border-slate-800">
                       Penilaian FLI 02 (Temubual 20%)
                     </th>
-                    <th className="py-3.5 px-5 text-center min-w-[200px] bg-teal-950/40 border-r border-slate-800">
+                    <th className="py-3.5 px-5 text-center min-w-[200px] bg-teal-950/40">
                       Penilaian FLI 03 (Laporan 20%)
                     </th>
-                    <th className="py-3.5 px-4 text-center w-28">Jumlah (40%)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-xs">
                   {filteredStudents.map((item, idx) => {
-                    const totalLecturerScore = (
-                      (item.assignedFli02 && item.fli02.completed ? item.fli02.score : 0) +
-                      (item.assignedFli03 && item.fli03.completed ? item.fli03.score : 0)
-                    );
-
                     const studentSesi = (item.student.sesi || item.student['SESI'] || item.markData?.SESI || item.markData?.sesi || config?.sesi || '').toUpperCase().trim();
                     const isFli02Locked = isEvaluationLocked(config, studentSesi, 'fli02');
                     const isFli03Locked = isEvaluationLocked(config, studentSesi, 'fli03');
@@ -672,7 +666,7 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                         </td>
 
                         {/* FLI 03 Column */}
-                        <td className="py-4 px-5 text-center bg-teal-50/20 border-r border-slate-100">
+                        <td className="py-4 px-5 text-center bg-teal-50/20">
                           {item.assignedFli03 ? (
                             <div className="space-y-2">
                               {/* Status Badge */}
@@ -734,20 +728,6 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                             <span className="text-[10px] font-bold text-slate-400 italic">
                               Bukan Penilai FLI 03
                             </span>
-                          )}
-                        </td>
-
-                        {/* Overall Lecturer Total (40%) */}
-                        <td className="py-4 px-4 text-center">
-                          {totalLecturerScore > 0 ? (
-                            <div className="font-extrabold text-slate-900 flex flex-col items-center">
-                              <span className="text-sm font-black text-blue-950 font-mono">
-                                {totalLecturerScore.toFixed(1)}%
-                              </span>
-                              <span className="text-[9px] text-slate-400 font-semibold">/ 40.0%</span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 font-bold">-</span>
                           )}
                         </td>
                       </tr>
