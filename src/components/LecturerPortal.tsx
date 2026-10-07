@@ -13,9 +13,11 @@ import {
   FileText, 
   User, 
   BookOpen, 
-  SlidersHorizontal 
+  SlidersHorizontal,
+  Calendar,
+  Lock
 } from 'lucide-react';
-import { Student, SystemConfig, Lecturer } from '../types';
+import { Student, SystemConfig, Lecturer, isEvaluationLocked } from '../types';
 import { renderBorangFLI02Html } from './documents/BorangFLI02Html';
 import { renderBorangFLI03Html } from './documents/BorangFLI03Html';
 import { BorangFLI02Modal } from './evaluations/BorangFLI02Modal';
@@ -42,6 +44,7 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
   config,
   lecturers = []
 }) => {
+  const [selectedSesi, setSelectedSesi] = useState<string>('SEMUA');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTab, setFilterTab] = useState<'all' | 'fli02' | 'fli03'>('all');
   
@@ -50,6 +53,7 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
     type: 'fli02' | 'fli03';
     student: any;
     markData: any;
+    isLocked?: boolean;
   } | null>(null);
 
   // Match current lecturer details from `lecturers`
@@ -248,9 +252,26 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
     return combinedList;
   }, [students, markah, getMarkDataForStudent, isAssignedFli02, isAssignedFli03]);
 
-  // Filter based on tab and search
+  // Available sessions for lecturer's assigned students
+  const availableSesi = useMemo(() => {
+    const set = new Set<string>();
+    if (config?.sesi) set.add(config.sesi.toUpperCase().trim());
+    assignedStudents.forEach(item => {
+      const s = (item.student.sesi || item.student['SESI'] || item.markData?.SESI || item.markData?.sesi || '').toUpperCase().trim();
+      if (s) set.add(s);
+    });
+    return Array.from(set);
+  }, [config, assignedStudents]);
+
+  // Filter based on sesi, tab and search
   const filteredStudents = useMemo(() => {
     return assignedStudents.filter(item => {
+      // Sesi filter
+      if (selectedSesi !== 'SEMUA') {
+        const studentSesi = (item.student.sesi || item.student['SESI'] || item.markData?.SESI || item.markData?.sesi || config?.sesi || '').toUpperCase().trim();
+        if (studentSesi !== selectedSesi) return false;
+      }
+
       // Tab filter
       if (filterTab === 'fli02' && !item.assignedFli02) return false;
       if (filterTab === 'fli03' && !item.assignedFli03) return false;
@@ -266,18 +287,26 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
 
       return true;
     });
-  }, [assignedStudents, filterTab, searchQuery]);
+  }, [assignedStudents, selectedSesi, filterTab, searchQuery, config]);
 
-  // Statistics
+  // Statistics (respecting selectedSesi)
   const stats = useMemo(() => {
-    const fli02List = assignedStudents.filter(item => item.assignedFli02);
+    const listForStats = assignedStudents.filter(item => {
+      if (selectedSesi !== 'SEMUA') {
+        const studentSesi = (item.student.sesi || item.student['SESI'] || item.markData?.SESI || item.markData?.sesi || config?.sesi || '').toUpperCase().trim();
+        if (studentSesi !== selectedSesi) return false;
+      }
+      return true;
+    });
+
+    const fli02List = listForStats.filter(item => item.assignedFli02);
     const fli02Done = fli02List.filter(item => item.fli02.completed).length;
 
-    const fli03List = assignedStudents.filter(item => item.assignedFli03);
+    const fli03List = listForStats.filter(item => item.assignedFli03);
     const fli03Done = fli03List.filter(item => item.fli03.completed).length;
 
     return {
-      total: assignedStudents.length,
+      total: listForStats.length,
       fli02Total: fli02List.length,
       fli02Done,
       fli02Pending: fli02List.length - fli02Done,
@@ -285,7 +314,7 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
       fli03Done,
       fli03Pending: fli03List.length - fli03Done,
     };
-  }, [assignedStudents]);
+  }, [assignedStudents, selectedSesi, config]);
 
   // Print Handlers
   const handlePrintFli02 = useCallback((student: any, markData: any) => {
@@ -438,45 +467,63 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
         {/* Students List Table Card */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           
-          {/* Controls Bar (Filter Tabs + Search) */}
-          <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/70 flex flex-col md:flex-row items-center justify-between gap-4">
+          {/* Controls Bar (Sesi Dropdown + Filter Tabs + Search) */}
+          <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/70 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
             
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-1.5 bg-slate-200/70 p-1 rounded-2xl w-full md:w-auto">
-              <button
-                onClick={() => setFilterTab('all')}
-                className={`flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  filterTab === 'all'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Semua Pelajar ({stats.total})
-              </button>
-              <button
-                onClick={() => setFilterTab('fli02')}
-                className={`flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  filterTab === 'fli02'
-                    ? 'bg-indigo-900 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                FLI 02: Temubual ({stats.fli02Total})
-              </button>
-              <button
-                onClick={() => setFilterTab('fli03')}
-                className={`flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  filterTab === 'fli03'
-                    ? 'bg-teal-900 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                FLI 03: Laporan Akhir ({stats.fli03Total})
-              </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Sesi Filter Dropdown */}
+              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border border-slate-200 shadow-xs">
+                <Calendar className="w-4 h-4 text-blue-900 shrink-0" />
+                <span className="text-xs font-black text-slate-800 uppercase tracking-wide">Sesi:</span>
+                <select
+                  value={selectedSesi}
+                  onChange={(e) => setSelectedSesi(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-900 outline-none cursor-pointer pr-1"
+                >
+                  <option value="SEMUA">Semua Sesi</option>
+                  {availableSesi.map(sesi => (
+                    <option key={sesi} value={sesi}>{sesi}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1.5 bg-slate-200/70 p-1 rounded-2xl flex-wrap">
+                <button
+                  onClick={() => setFilterTab('all')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    filterTab === 'all'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Semua ({stats.total})
+                </button>
+                <button
+                  onClick={() => setFilterTab('fli02')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    filterTab === 'fli02'
+                      ? 'bg-indigo-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  FLI 02: Temubual ({stats.fli02Total})
+                </button>
+                <button
+                  onClick={() => setFilterTab('fli03')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    filterTab === 'fli03'
+                      ? 'bg-teal-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  FLI 03: Laporan Akhir ({stats.fli03Total})
+                </button>
+              </div>
             </div>
 
             {/* Search Input */}
-            <div className="relative w-full md:w-72">
+            <div className="relative w-full xl:w-72">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -520,6 +567,10 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                       (item.assignedFli03 && item.fli03.completed ? item.fli03.score : 0)
                     );
 
+                    const studentSesi = (item.student.sesi || item.student['SESI'] || item.markData?.SESI || item.markData?.sesi || config?.sesi || '').toUpperCase().trim();
+                    const isFli02Locked = isEvaluationLocked(config, studentSesi, 'fli02');
+                    const isFli03Locked = isEvaluationLocked(config, studentSesi, 'fli03');
+
                     return (
                       <tr key={idx} className="hover:bg-slate-50/80 transition-all">
                         {/* Bil */}
@@ -545,6 +596,11 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                                   {item.kelas}
                                 </span>
                               )}
+                              {studentSesi && (
+                                <span className="px-1.5 py-0.2 bg-blue-50 text-blue-700 rounded font-bold text-[9px] border border-blue-200">
+                                  {studentSesi}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -554,39 +610,49 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                           {item.assignedFli02 ? (
                             <div className="space-y-2">
                               {/* Status Badge */}
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                                item.fli02.completed
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                  : 'bg-amber-50 text-amber-800 border-amber-300'
-                              }`}>
-                                {item.fli02.completed ? (
-                                  <>
-                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                    <span>{item.fli02.score.toFixed(1)} / 20%</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Clock className="w-3 h-3 text-amber-600" />
-                                    <span>Belum Dinilai</span>
-                                  </>
+                              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                                  item.fli02.completed
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                    : 'bg-amber-50 text-amber-800 border-amber-300'
+                                }`}>
+                                  {item.fli02.completed ? (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      <span>{item.fli02.score.toFixed(1)} / 20%</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Clock className="w-3 h-3 text-amber-600" />
+                                      <span>Belum Dinilai</span>
+                                    </>
+                                  )}
+                                </span>
+
+                                {isFli02Locked && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300" title="Markah dikunci oleh pentadbir">
+                                    <Lock className="w-2.5 h-2.5 text-amber-700" /> Dikunci
+                                  </span>
                                 )}
-                              </span>
+                              </div>
 
                               {/* Action Buttons */}
-                              <div className="flex items-center justify-center gap-1.5">
+                              <div className="flex items-center justify-center gap-1.5 flex-wrap">
                                 <button
-                                  onClick={() => setActiveModal({ type: 'fli02', student: item.student, markData: item.markData })}
+                                  onClick={() => setActiveModal({ type: 'fli02', student: item.student, markData: item.markData, isLocked: isFli02Locked })}
                                   className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs ${
-                                    item.fli02.completed
-                                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300'
-                                      : 'bg-indigo-900 hover:bg-indigo-800 text-white'
+                                    isFli02Locked
+                                      ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                                      : item.fli02.completed
+                                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300'
+                                        : 'bg-indigo-900 hover:bg-indigo-800 text-white'
                                   }`}
                                 >
-                                  {item.fli02.completed ? <Edit className="w-3 h-3" /> : <ClipboardList className="w-3 h-3" />}
-                                  <span>{item.fli02.completed ? 'Kemaskini' : 'Isi Markah'}</span>
+                                  {isFli02Locked ? <Lock className="w-3 h-3 text-amber-800" /> : item.fli02.completed ? <Edit className="w-3 h-3" /> : <ClipboardList className="w-3 h-3" />}
+                                  <span>{isFli02Locked ? 'Lihat (Dikunci)' : item.fli02.completed ? 'Kemaskini' : 'Isi Markah'}</span>
                                 </button>
 
-                                {item.fli02.completed && (
+                                {(item.fli02.completed || isFli02Locked) && (
                                   <button
                                     onClick={() => handlePrintFli02(item.student, item.markData)}
                                     className="px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs bg-emerald-700 hover:bg-emerald-600 text-white"
@@ -610,39 +676,49 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
                           {item.assignedFli03 ? (
                             <div className="space-y-2">
                               {/* Status Badge */}
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                                item.fli03.completed
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                  : 'bg-amber-50 text-amber-800 border-amber-300'
-                              }`}>
-                                {item.fli03.completed ? (
-                                  <>
-                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                    <span>{item.fli03.score.toFixed(1)} / 20%</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Clock className="w-3 h-3 text-amber-600" />
-                                    <span>Belum Dinilai</span>
-                                  </>
+                              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                                  item.fli03.completed
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                    : 'bg-amber-50 text-amber-800 border-amber-300'
+                                }`}>
+                                  {item.fli03.completed ? (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                      <span>{item.fli03.score.toFixed(1)} / 20%</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Clock className="w-3 h-3 text-amber-600" />
+                                      <span>Belum Dinilai</span>
+                                    </>
+                                  )}
+                                </span>
+
+                                {isFli03Locked && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300" title="Markah dikunci oleh pentadbir">
+                                    <Lock className="w-2.5 h-2.5 text-amber-700" /> Dikunci
+                                  </span>
                                 )}
-                              </span>
+                              </div>
 
                               {/* Action Buttons */}
-                              <div className="flex items-center justify-center gap-1.5">
+                              <div className="flex items-center justify-center gap-1.5 flex-wrap">
                                 <button
-                                  onClick={() => setActiveModal({ type: 'fli03', student: item.student, markData: item.markData })}
+                                  onClick={() => setActiveModal({ type: 'fli03', student: item.student, markData: item.markData, isLocked: isFli03Locked })}
                                   className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs ${
-                                    item.fli03.completed
-                                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300'
-                                      : 'bg-teal-900 hover:bg-teal-800 text-white'
+                                    isFli03Locked
+                                      ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                                      : item.fli03.completed
+                                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300'
+                                        : 'bg-teal-900 hover:bg-teal-800 text-white'
                                   }`}
                                 >
-                                  {item.fli03.completed ? <Edit className="w-3 h-3" /> : <BookOpen className="w-3 h-3" />}
-                                  <span>{item.fli03.completed ? 'Kemaskini' : 'Isi Markah'}</span>
+                                  {isFli03Locked ? <Lock className="w-3 h-3 text-amber-800" /> : item.fli03.completed ? <Edit className="w-3 h-3" /> : <BookOpen className="w-3 h-3" />}
+                                  <span>{isFli03Locked ? 'Lihat (Dikunci)' : item.fli03.completed ? 'Kemaskini' : 'Isi Markah'}</span>
                                 </button>
 
-                                {item.fli03.completed && (
+                                {(item.fli03.completed || isFli03Locked) && (
                                   <button
                                     onClick={() => handlePrintFli03(item.student, item.markData)}
                                     className="px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs bg-emerald-700 hover:bg-emerald-600 text-white"
@@ -691,6 +767,7 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
           markData={activeModal.markData}
           onClose={() => setActiveModal(null)}
           onSave={onSaveMark}
+          isLocked={activeModal.isLocked}
         />
       )}
 
@@ -701,6 +778,7 @@ export const LecturerPortal: React.FC<LecturerPortalProps> = ({
           onClose={() => setActiveModal(null)}
           onSave={onSaveMark}
           config={config}
+          isLocked={activeModal.isLocked}
         />
       )}
 

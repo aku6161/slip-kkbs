@@ -810,6 +810,10 @@ export default function App() {
             config={config}
             onSaveMark={handleSaveEvaluationMark}
             onAssignLecturers={handleAssignLecturers}
+            onSaveConfig={async (updatedConfig) => {
+              await saveSystemConfigToFirebase(updatedConfig);
+              setConfig(updatedConfig);
+            }}
           />
         )}
 

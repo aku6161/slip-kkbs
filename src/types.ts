@@ -109,7 +109,23 @@ export interface SystemConfig {
   tarikhPemantauan?: string;
   tarikhPembentangan?: string;
   tarikhKeputusan?: string;
+  lockedEvaluations?: Record<string, {
+    fli02?: boolean;
+    fli03?: boolean;
+  }>;
 }
+
+export const isEvaluationLocked = (
+  config: SystemConfig | undefined,
+  session: string | undefined,
+  type: 'fli02' | 'fli03'
+): boolean => {
+  if (!config?.lockedEvaluations || !session) return false;
+  const cleanSession = session.toUpperCase().trim();
+  const sessionLocks = config.lockedEvaluations[cleanSession];
+  if (!sessionLocks) return false;
+  return Boolean(sessionLocks[type]);
+};
 
 export interface Lecturer {
   id: string;

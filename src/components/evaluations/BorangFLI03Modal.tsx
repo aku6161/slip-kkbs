@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, Printer, AlertCircle, CheckCircle2, Award } from 'lucide-react';
+import { X, Save, Printer, AlertCircle, CheckCircle2, Award, Lock } from 'lucide-react';
 import { Student, SystemConfig } from '../../types';
 import { renderBorangFLI03Html } from '../documents/BorangFLI03Html';
 
@@ -9,6 +9,7 @@ interface BorangFLI03ModalProps {
   onClose: () => void;
   onSave: (noMatrik: string, dataToSave: Record<string, any>) => Promise<{ success: boolean; message?: string }>;
   config?: SystemConfig;
+  isLocked?: boolean;
 }
 
 export const BorangFLI03Modal: React.FC<BorangFLI03ModalProps> = ({
@@ -16,7 +17,8 @@ export const BorangFLI03Modal: React.FC<BorangFLI03ModalProps> = ({
   markData,
   onClose,
   onSave,
-  config
+  config,
+  isLocked = false
 }) => {
   const getInitialScore = (key: string, fallback = 1): number => {
     if (markData && markData[key] !== undefined && markData[key] !== '') {
@@ -123,7 +125,9 @@ export const BorangFLI03Modal: React.FC<BorangFLI03ModalProps> = ({
         {[1, 2, 3, 4, 5].map((num) => (
           <label
             key={num}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black cursor-pointer transition-all ${
+            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black transition-all ${
+              isLocked ? 'cursor-not-allowed' : 'cursor-pointer'
+            } ${
               value === num
                 ? 'bg-blue-900 text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -134,7 +138,8 @@ export const BorangFLI03Modal: React.FC<BorangFLI03ModalProps> = ({
               name={label}
               value={num}
               checked={value === num}
-              onChange={() => onChange(num)}
+              disabled={isLocked}
+              onChange={() => !isLocked && onChange(num)}
               className="sr-only"
             />
             {num}
@@ -154,7 +159,14 @@ export const BorangFLI03Modal: React.FC<BorangFLI03ModalProps> = ({
               FLI 03
             </div>
             <div>
-              <h2 className="text-base font-black uppercase tracking-wide">Borang Penilaian Laporan Akhir (FLI 03)</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-black uppercase tracking-wide">Borang Penilaian Laporan Akhir (FLI 03)</h2>
+                {isLocked && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                    <Lock className="w-3 h-3" /> Dikunci
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-slate-300">
                 {student.namaPelajar || student['NAMA PELAJAR']} • <span className="font-mono text-amber-300 font-bold">{student.noMatrik || student['No. Pendaftaran']}</span>
               </p>
@@ -167,6 +179,13 @@ export const BorangFLI03Modal: React.FC<BorangFLI03ModalProps> = ({
 
         {/* Modal Content */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+          {isLocked && (
+            <div className="p-3.5 bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl text-xs font-bold flex items-center gap-2.5">
+              <Lock className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>Markah FLI 03 bagi sesi ini telah dikunci oleh pentadbir. Borang berada dalam mod bacaan dan cetakan sahaja.</span>
+            </div>
+          )}
+
           {/* BAHAGIAN D: LAPORAN AKHIR (20%) */}
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-200">
@@ -208,9 +227,12 @@ export const BorangFLI03Modal: React.FC<BorangFLI03ModalProps> = ({
               <textarea
                 rows={3}
                 value={ulasan}
+                disabled={isLocked}
                 onChange={(e) => setUlasan(e.target.value)}
                 placeholder="Masukkan ulasan penilaian laporan akhir pelajar..."
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-teal-900 outline-none"
+                className={`w-full px-4 py-3 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-teal-900 outline-none ${
+                  isLocked ? 'bg-slate-100 cursor-not-allowed opacity-80' : ''
+                }`}
               />
             </div>
           </div>
@@ -263,11 +285,11 @@ export const BorangFLI03Modal: React.FC<BorangFLI03ModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={loading}
-                className="px-6 py-3 bg-teal-900 hover:bg-teal-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                disabled={loading || isLocked}
+                className="px-6 py-3 bg-teal-900 hover:bg-teal-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="w-4 h-4" />
-                <span>{loading ? 'Menyimpan...' : 'Simpan Markah FLI 03'}</span>
+                {isLocked ? <Lock className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                <span>{isLocked ? 'Markah Dikunci' : loading ? 'Menyimpan...' : 'Simpan Markah FLI 03'}</span>
               </button>
             </div>
           </div>

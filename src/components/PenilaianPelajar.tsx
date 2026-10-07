@@ -10,9 +10,11 @@ import {
   GraduationCap,
   UserCheck,
   FileCheck,
-  Check
+  Check,
+  Lock,
+  Unlock
 } from 'lucide-react';
-import { Student, SystemConfig, Lecturer, formatProgramName } from '../types';
+import { Student, SystemConfig, Lecturer, formatProgramName, isEvaluationLocked } from '../types';
 import { BorangFLI01Modal } from './evaluations/BorangFLI01Modal';
 import { BorangFLI02Modal } from './evaluations/BorangFLI02Modal';
 import { BorangFLI03Modal } from './evaluations/BorangFLI03Modal';
@@ -33,6 +35,7 @@ interface PenilaianPelajarProps {
       namaPemantau2?: string;
     }
   ) => Promise<{ success: boolean; message?: string }>;
+  onSaveConfig?: (updatedConfig: SystemConfig) => Promise<void> | void;
 }
 
 export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
@@ -41,19 +44,22 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
   lecturers,
   config,
   onSaveMark,
-  onAssignLecturers
+  onAssignLecturers,
+  onSaveConfig
 }) => {
   // 1. Filter States
   const [selectedSesi, setSelectedSesi] = useState<string>('SEMUA');
   const [selectedProgram, setSelectedProgram] = useState<string>('SEMUA');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [savedFeedback, setSavedFeedback] = useState<{ [key: string]: boolean }>({});
+  const [lockingLoading, setLockingLoading] = useState(false);
 
   // 2. Active Modals State
   const [activeModal, setActiveModal] = useState<{
     type: 'fli01' | 'fli02' | 'fli03' | 'fli04' | null;
     student: Student | any;
     markData: any;
+    isLocked?: boolean;
   } | null>(null);
 
   // Available sessions extracted from data + config
@@ -234,6 +240,43 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
     }, 2000);
   };
 
+  // Active session target for locking (FLI 02 & FLI 03)
+  const targetLockSession = useMemo(() => {
+    if (selectedSesi !== 'SEMUA') return selectedSesi.toUpperCase().trim();
+    if (config?.sesi) return config.sesi.toUpperCase().trim();
+    if (availableSesi.length > 0) return availableSesi[0].toUpperCase().trim();
+    return 'SESI I 2026/2027';
+  }, [selectedSesi, config, availableSesi]);
+
+  const isTargetFli02Locked = isEvaluationLocked(config, targetLockSession, 'fli02');
+  const isTargetFli03Locked = isEvaluationLocked(config, targetLockSession, 'fli03');
+
+  const handleToggleLock = async (type: 'fli02' | 'fli03') => {
+    if (!onSaveConfig) return;
+    const currentStatus = isEvaluationLocked(config, targetLockSession, type);
+    const currentSessionLocks = config.lockedEvaluations?.[targetLockSession] || {};
+    const updatedConfig: SystemConfig = {
+      ...config,
+      lockedEvaluations: {
+        ...(config.lockedEvaluations || {}),
+        [targetLockSession]: {
+          ...currentSessionLocks,
+          [type]: !currentStatus
+        }
+      }
+    };
+
+    setLockingLoading(true);
+    try {
+      await onSaveConfig(updatedConfig);
+    } catch (err) {
+      console.error('Ralat mengemas kini status kunci:', err);
+      alert('Ralat semasa mengemas kini status kunci penilaian.');
+    } finally {
+      setLockingLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner & Title */}
@@ -344,6 +387,67 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
             />
           </div>
         </div>
+
+        {/* 4. Kawalan Kunci Markah Sesi (Khas FLI 02 & FLI 03) */}
+        <div className="pt-3 border-t border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+              <Lock className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                  Kunci Markah Sesi:
+                </span>
+                <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-blue-900 text-white shadow-xs">
+                  {targetLockSession}
+                </span>
+                {selectedSesi === 'SEMUA' && (
+                  <span className="text-[10px] text-slate-500 font-semibold italic">
+                    (Mengikut sesi aktif. Pilih sesi di atas jika ingin menukar sesi sasaran)
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                Khas untuk FLI 02 (Pemantauan) dan FLI 03 (Laporan Akhir). Pensyarah tidak dapat menyunting markah apabila dikunci.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Butang Kunci / Buka FLI 02 */}
+            <button
+              type="button"
+              disabled={lockingLoading || !onSaveConfig}
+              onClick={() => handleToggleLock('fli02')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50 ${
+                isTargetFli02Locked
+                  ? 'bg-rose-600 hover:bg-rose-700 text-white border border-rose-700 shadow-rose-600/20'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700 shadow-emerald-600/20'
+              }`}
+              title={isTargetFli02Locked ? `Klik untuk buka kunci FLI 02 bagi ${targetLockSession}` : `Klik untuk kunci markah FLI 02 bagi ${targetLockSession}`}
+            >
+              {isTargetFli02Locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+              <span>{isTargetFli02Locked ? 'Kunci FLI 02: AKTIF' : 'Kunci FLI 02: DIBUKA'}</span>
+            </button>
+
+            {/* Butang Kunci / Buka FLI 03 */}
+            <button
+              type="button"
+              disabled={lockingLoading || !onSaveConfig}
+              onClick={() => handleToggleLock('fli03')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50 ${
+                isTargetFli03Locked
+                  ? 'bg-rose-600 hover:bg-rose-700 text-white border border-rose-700 shadow-rose-600/20'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700 shadow-emerald-600/20'
+              }`}
+              title={isTargetFli03Locked ? `Klik untuk buka kunci FLI 03 bagi ${targetLockSession}` : `Klik untuk kunci markah FLI 03 bagi ${targetLockSession}`}
+            >
+              {isTargetFli03Locked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+              <span>{isTargetFli03Locked ? 'Kunci FLI 03: AKTIF' : 'Kunci FLI 03: DIBUKA'}</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Student Evaluations List */}
@@ -378,6 +482,11 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
 
               const isFli02Saved = savedFeedback[`${student.noMatrik || student.id}_fli02`];
               const isFli03Saved = savedFeedback[`${student.noMatrik || student.id}_fli03`];
+
+              // Check if locked for this student's session
+              const studentSesi = (student.sesi || markData.SESI || config?.sesi || '').toUpperCase().trim();
+              const isStudentFli02Locked = isEvaluationLocked(config, studentSesi, 'fli02');
+              const isStudentFli03Locked = isEvaluationLocked(config, studentSesi, 'fli03');
 
               return (
                 <div
@@ -462,27 +571,29 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
                     {/* Kad FLI 02 */}
                     <button
                       type="button"
-                      onClick={() => setActiveModal({ type: 'fli02', student, markData })}
-                      className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs border ${
+                      onClick={() => setActiveModal({ type: 'fli02', student, markData, isLocked: isStudentFli02Locked })}
+                      className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs border flex items-center gap-1.5 ${
                         fli02.completed
                           ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-emerald-600/20'
                           : 'bg-rose-600 hover:bg-rose-700 text-white border-rose-700 shadow-rose-600/20'
                       }`}
                     >
-                      FLI 02
+                      {isStudentFli02Locked && <Lock className="w-3 h-3 text-amber-300" />}
+                      <span>FLI 02</span>
                     </button>
 
                     {/* Kad FLI 03 */}
                     <button
                       type="button"
-                      onClick={() => setActiveModal({ type: 'fli03', student, markData })}
-                      className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs border ${
+                      onClick={() => setActiveModal({ type: 'fli03', student, markData, isLocked: isStudentFli03Locked })}
+                      className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs border flex items-center gap-1.5 ${
                         fli03.completed
                           ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-emerald-600/20'
                           : 'bg-rose-600 hover:bg-rose-700 text-white border-rose-700 shadow-rose-600/20'
                       }`}
                     >
-                      FLI 03
+                      {isStudentFli03Locked && <Lock className="w-3 h-3 text-amber-300" />}
+                      <span>FLI 03</span>
                     </button>
 
                     {/* Kad FLI 04 */}
@@ -522,6 +633,7 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
           markData={activeModal.markData}
           onClose={() => setActiveModal(null)}
           onSave={onSaveMark}
+          isLocked={activeModal.isLocked}
         />
       )}
 
@@ -533,6 +645,7 @@ export const PenilaianPelajar: React.FC<PenilaianPelajarProps> = ({
           onClose={() => setActiveModal(null)}
           onSave={onSaveMark}
           config={config}
+          isLocked={activeModal.isLocked}
         />
       )}
 
