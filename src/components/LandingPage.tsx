@@ -125,7 +125,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStudentLogin, onAdmi
               className="w-full py-4 px-6 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm sm:text-base rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 uppercase tracking-wide cursor-pointer border border-slate-700 hover:scale-[1.01] active:scale-[0.99]"
             >
               <GraduationCap className="w-5 h-5 text-amber-400" />
-              <span>Log Masuk Pensyarah Pemantau</span>
+              <span>Log Masuk Pensyarah</span>
             </button>
           </div>
         </div>
@@ -261,7 +261,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStudentLogin, onAdmi
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-base">Log Masuk Pensyarah</h3>
-                  <p className="text-xs text-slate-500">Gunakan ID Staff untuk akses Portal Pemantauan</p>
+                  <p className="text-xs text-slate-500">Gunakan ID Staf untuk akses Portal Penilaian Pensyarah</p>
                 </div>
               </div>
               <button
@@ -275,7 +275,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStudentLogin, onAdmi
             <form onSubmit={handleLecturerSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-black text-slate-700 uppercase tracking-wide mb-1.5">
-                  No. ID Staf Pensyarah Pemantau: *
+                  No. ID Staf Pensyarah: *
                 </label>
                 <input
                   type="text"

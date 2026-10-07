@@ -713,12 +713,13 @@ export default function App() {
         students={students}
         markah={markah}
         markahHeaders={markahHeaders}
-        onSaveMark={handleSaveStudentMark}
+        onSaveMark={handleSaveEvaluationMark}
         onLogout={() => {
           setUserRole('landing');
           saveSession('landing');
         }}
         config={config}
+        lecturers={lecturers}
       />
     );
   }
