@@ -153,7 +153,12 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
   }
 
   // 2. Alamat Kolej Komuniti Beaufort (Sebelah kanan logo jata negara)
-  // Syarat: KOLEJ KOMUNITI BEAUFORT saiz 14 bold; alamat saiz 12 normal (tanpa perkataan malaysia)
+  // Syarat:
+  // - KOLEJ KOMUNITI BEAUFORT saiz 14 bold
+  // - JABATAN PENDIDIKAN POLITEKNIK DAN KOLEJ KOMUNITI saiz 12 normal
+  // - KEMENTERIAN PENDIDIKAN TINGGI saiz 12 normal
+  // - JALAN MELALUGUS saiz 12 normal
+  // - 89807 BEAUFORT, SABAH. saiz 12 normal
   const addrX = logoX + logoWidth + 4; // 48mm
   let addrY = 16.5;
 
@@ -161,68 +166,72 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.text('KOLEJ KOMUNITI BEAUFORT', addrX, addrY);
-  addrY += 4.8;
+  addrY += 5.0;
 
-  // Jabatan & Kementerian (Saiz 9, Normal)
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.text('JABATAN PENDIDIKAN POLITEKNIK DAN KOLEJ KOMUNITI', addrX, addrY);
-  addrY += 3.8;
-  doc.text('KEMENTERIAN PENDIDIKAN TINGGI', addrX, addrY);
-  addrY += 4.5;
-
-  // Alamat 2 Baris: JALAN MEMALUGUS & 89807 BEAUFORT, SABAH. (Saiz 12, Normal - Tanpa perkataan Malaysia)
+  // Jabatan & Kementerian (Saiz 12, Normal)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(12);
-  doc.text('JALAN MEMALUGUS', addrX, addrY);
-  addrY += 4.8;
+  doc.text('JABATAN PENDIDIKAN POLITEKNIK DAN KOLEJ KOMUNITI', addrX, addrY);
+  addrY += 5.0;
+  doc.text('KEMENTERIAN PENDIDIKAN TINGGI', addrX, addrY);
+  addrY += 5.0;
+
+  // Alamat: JALAN MELALUGUS & 89807 BEAUFORT, SABAH. (Saiz 12, Normal - Tanpa perkataan Malaysia)
+  doc.text('JALAN MELALUGUS', addrX, addrY);
+  addrY += 5.0;
   doc.text('89807 BEAUFORT, SABAH.', addrX, addrY);
 
   // Bahagian Kanan Kepala Surat (No. Telefon, Faks, Web, Emel)
+  // Syarat: Turunkan maklumat tel, faks, laman web dan emel ke bawah sedikit
+  // sehingga bahagian emel sebaris dengan perkataan 89807 BEAUFORT, SABAH. (addrY)
   const rightHeaderX = pageWidth - marginX; // 190mm
-  let rhY = 16.5;
+  const emailY = addrY; // Sebaris dengan 89807 BEAUFORT, SABAH.
+  const webY = emailY - 3.8;
+  const faksY = webY - 3.8;
+  const telY = faksY - 3.8;
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.text('Tel : 087212528', rightHeaderX, rhY, { align: 'right' });
-  rhY += 3.2;
-  doc.text('Faks : 087212530', rightHeaderX, rhY, { align: 'right' });
-  rhY += 3.2;
-  doc.text('Laman web : https://kkbeaufort.mypolycc.edu.my/', rightHeaderX, rhY, { align: 'right' });
-  rhY += 3.2;
-  doc.text('E-mel : adminkkbs@kkbeaufort.edu.my', rightHeaderX, rhY, { align: 'right' });
+  doc.text('Tel : 087212528', rightHeaderX, telY, { align: 'right' });
+  doc.text('Faks : 087212530', rightHeaderX, faksY, { align: 'right' });
+  doc.text('Laman web : https://kkbeaufort.mypolycc.edu.my/', rightHeaderX, webY, { align: 'right' });
+  doc.text('E-mel : adminkkbs@kkbeaufort.edu.my', rightHeaderX, emailY, { align: 'right' });
 
   // Garisan Melintang Pemisah Kepala Surat
-  const dividerY = 38.5;
+  const dividerY = addrY + 4.5; // ~41mm
   doc.setLineWidth(0.5);
   doc.setDrawColor(0, 0, 0);
   doc.line(marginX, dividerY, pageWidth - marginX, dividerY);
 
   // =========================================================================
-  // ISI SURAT: SELARASKAN SAIZ FONT KEPADA 12 (ALAMAT SYARIKAT KE ALAMAT PENGARAH)
-  // SUSUNAN AYAT JUSTIFY AGAR KEMAS
+  // ISI SURAT:
+  // - Ruj. Kami & Tarikh: KEKALKAN SAIZ 10
+  // - Alamat Syarikat hingga Tandatangan Pengarah: SAIZ 12
   // =========================================================================
-  const bodyFontSize = 12;
-  doc.setFontSize(bodyFontSize);
+  let y = dividerY + 6.0;
 
-  let y = dividerY + 6.5;
-
-  // 3. Rujukan & Tarikh (Sebelah Kanan)
+  // 3. Rujukan & Tarikh (Sebelah Kanan) - KEKALKAN SAIZ 10
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
   const refLabel = `Ruj. Kami  : KKBS - ${rujukanSurat}`;
   const dateLabel = `Tarikh     : ${tarikhSurat}`;
   doc.text(refLabel, rightHeaderX, y, { align: 'right' });
-  y += 5.2;
+  y += 4.5;
   doc.text(dateLabel, rightHeaderX, y, { align: 'right' });
   
-  // Syarat: Turunkan satu space daripada kedudukan asal
-  y += 10.5;
+  // Turun satu space ke alamat syarikat
+  y += 9.5;
 
-  // 4. Penerima Industri (Sebelah Kiri)
-  // Syarat: Boldkan [Pengarah/PENGURUS], nama & alamat syarikat normal
+  // 4. Penerima Industri (Sebelah Kiri) - SAIZ 12
+  const bodyFontSize = 12;
+  doc.setFontSize(bodyFontSize);
+
+  // Boldkan [Pengarah/PENGURUS]
   doc.setFont('helvetica', 'bold');
   doc.text('PENGARAH/PENGURUS,', marginX, y);
   y += 5.2;
 
+  // Nama dan alamat syarikat normal
   doc.setFont('helvetica', 'normal');
   doc.text(`${namaSyarikat.toUpperCase()},`, marginX, y);
   y += 5.2;
@@ -238,7 +247,9 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
 
   y += 2.5;
   doc.text('Tuan,', marginX, y);
-  y += 6.5;
+  
+  // Syarat: Selepas Tuan, jarak 1 space kemudian tajuk surat
+  y += 8.5;
 
   // 5. Tajuk Perkara (Bold, saiz seragam 12)
   doc.setFont('helvetica', 'bold');
@@ -292,19 +303,25 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
   // 10. Penutup & Slogan (Saiz 12)
   doc.setFont('helvetica', 'normal');
   doc.text('Kerjasama dari pihak tuan amat dihargai.', marginX, y);
-  y += 5.0;
+  
+  // Syarat: Selepas kerjasama dari pihak tuan ... jarak satu space kemudian sekian terima kasih
+  y += 8.5;
   doc.text('Sekian, terima kasih.', marginX, y);
-  y += 6.0;
+
+  // Syarat: Kemudian jarak 1 space baru perkataan malaysia madani
+  y += 8.5;
 
   doc.setFont('helvetica', 'bold');
   doc.text('“MALAYSIA MADANI”', marginX, y);
   y += 4.8;
   doc.text('“BERKHIDMAT UNTUK NEGARA”', marginX, y);
-  y += 6.5;
+
+  // Syarat: Jarak satu space juga dari berkhidmat untuk negara kemudian saya yang menjalankan amanah
+  y += 8.5;
 
   doc.setFont('helvetica', 'normal');
   doc.text('Saya yang menjalankan amanah,', marginX, y);
-  y += 12;
+  y += 12.5;
 
   // 11. Tandatangan Pengarah (Saiz 12)
   // Syarat: Boldkan pengarah sahaja, kolej komuniti beaufort dan kementerian pendidikan tinggi tidak perlu bold
@@ -330,18 +347,18 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
   doc.addPage();
   y = 20;
 
-  // Rujukan di sebelah kanan atas
+  // Syarat: No rujukan surat pada lampiran A juga ubah kepada saiz 10
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(bodyFontSize);
+  doc.setFontSize(10);
   doc.text(`KKBS - ${rujukanSurat}`, rightHeaderX, y, { align: 'right' });
   y += 8;
 
-  // LAMPIRAN A
+  // LAMPIRAN A (Saiz 12 bold)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.text('LAMPIRAN A', rightHeaderX, y, { align: 'right' });
   
-  // Syarat: Senarai pelajar bawah satu space dari lampiran A
+  // Senarai pelajar bawah satu space dari lampiran A
   y += 8; // Bawah satu space dari LAMPIRAN A
 
   doc.setFont('helvetica', 'bold');
