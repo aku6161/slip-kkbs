@@ -23,7 +23,7 @@ interface TextSegment {
 
 /**
  * Pembantu untuk melukis perenggan dengan gabungan teks biasa dan tebal (bold)
- * secara lancar pada baris dan saiz fon yang seragam.
+ * secara justified (lurus kiri & kanan) pada saiz fon yang seragam.
  */
 function renderRichParagraph(
   doc: jsPDF,
@@ -31,37 +31,74 @@ function renderRichParagraph(
   startX: number,
   startY: number,
   maxWidth: number,
-  lineHeight: number = 4.8
+  lineHeight: number = 5.2
 ): number {
-  let curX = startX;
   let curY = startY;
 
+  // 1. Ekstrak setiap patah perkataan bersama status bold
+  const words: { text: string; bold: boolean; width: number }[] = [];
   for (const seg of segments) {
     const isBold = !!seg.bold;
-    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-
-    const words = seg.text.split(/(\s+)/);
-    for (const word of words) {
-      if (word === '') continue;
-
-      if (/^\s+$/.test(word)) {
-        const spaceW = doc.getTextWidth(word);
-        if (curX > startX) {
-          curX += spaceW;
-        }
-      } else {
-        const wordW = doc.getTextWidth(word);
-        if (curX + wordW > startX + maxWidth && curX > startX) {
-          curY += lineHeight;
-          curX = startX;
-        }
-        doc.text(word, curX, curY);
-        curX += wordW;
+    const parts = seg.text.split(/\s+/);
+    for (const p of parts) {
+      if (p.length > 0) {
+        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+        const w = doc.getTextWidth(p);
+        words.push({ text: p, bold: isBold, width: w });
       }
     }
   }
 
-  return curY + lineHeight;
+  // 2. Pecahkan perkataan ke dalam baris mengikut maxWidth
+  const lines: { text: string; bold: boolean; width: number }[][] = [];
+  let currentLine: { text: string; bold: boolean; width: number }[] = [];
+  let currentLineWidth = 0;
+
+  for (const w of words) {
+    doc.setFont('helvetica', 'normal');
+    const standardSpaceW = doc.getTextWidth(' ');
+    const neededWidth = currentLine.length === 0 ? w.width : currentLineWidth + standardSpaceW + w.width;
+
+    if (neededWidth > maxWidth && currentLine.length > 0) {
+      lines.push(currentLine);
+      currentLine = [w];
+      currentLineWidth = w.width;
+    } else {
+      currentLine.push(w);
+      currentLineWidth = neededWidth;
+    }
+  }
+  if (currentLine.length > 0) {
+    lines.push(currentLine);
+  }
+
+  // 3. Lukis setiap baris secara Justify (kecuali baris terakhir perenggan)
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isLastLine = i === lines.length - 1;
+
+    let totalWordsWidth = 0;
+    for (const item of line) {
+      totalWordsWidth += item.width;
+    }
+
+    doc.setFont('helvetica', 'normal');
+    let spaceWidth = doc.getTextWidth(' ');
+    // Jika bukan baris terakhir dan mempunyai lebih daripada 1 perkataan, bahagikan ruang baki (justify)
+    if (!isLastLine && line.length > 1) {
+      spaceWidth = (maxWidth - totalWordsWidth) / (line.length - 1);
+    }
+
+    let curX = startX;
+    for (const item of line) {
+      doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
+      doc.text(item.text, curX, curY);
+      curX += item.width + spaceWidth;
+    }
+    curY += lineHeight;
+  }
+
+  return curY;
 }
 
 /**
@@ -106,8 +143,8 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
   // 1. Logo Jata Negara (Sebelah kiri alamat kolej komuniti beaufort)
   const logoX = marginX;
   const logoY = 12.5;
-  const logoWidth = 20;
-  const logoHeight = 15.1; // nisbah aspek rasmi jata negara
+  const logoWidth = 24;
+  const logoHeight = 18.1;
 
   try {
     doc.addImage(JATA_NEGARA_BASE64, 'PNG', logoX, logoY, logoWidth, logoHeight);
@@ -116,29 +153,33 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
   }
 
   // 2. Alamat Kolej Komuniti Beaufort (Sebelah kanan logo jata negara)
-  // Syarat: Boldkan nama kolej sahaja, alamat lain TIDAK PERLU BOLD
-  const addrX = logoX + logoWidth + 4; // 44mm
+  // Syarat: KOLEJ KOMUNITI BEAUFORT saiz 14 bold; alamat saiz 12 normal (tanpa perkataan malaysia)
+  const addrX = logoX + logoWidth + 4; // 48mm
   let addrY = 16.5;
 
-  // Nama Kolej (BOLD)
+  // Nama Kolej (Saiz 14, BOLD)
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
+  doc.setFontSize(14);
   doc.text('KOLEJ KOMUNITI BEAUFORT', addrX, addrY);
-  addrY += 4.2;
+  addrY += 4.8;
 
-  // Bahagian lain (TIDAK BOLD / NORMAL)
+  // Jabatan & Kementerian (Saiz 9, Normal)
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.8);
+  doc.setFontSize(9);
   doc.text('JABATAN PENDIDIKAN POLITEKNIK DAN KOLEJ KOMUNITI', addrX, addrY);
-  addrY += 3.5;
+  addrY += 3.8;
   doc.text('KEMENTERIAN PENDIDIKAN TINGGI', addrX, addrY);
-  addrY += 3.5;
-  doc.text('JALAN MELALUGUS  89807 BEAUFORT  SABAH', addrX, addrY);
-  addrY += 3.2;
-  doc.text('MALAYSIA', addrX, addrY);
+  addrY += 4.5;
+
+  // Alamat 2 Baris: JALAN MEMALUGUS & 89807 BEAUFORT, SABAH. (Saiz 12, Normal - Tanpa perkataan Malaysia)
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(12);
+  doc.text('JALAN MEMALUGUS', addrX, addrY);
+  addrY += 4.8;
+  doc.text('89807 BEAUFORT, SABAH.', addrX, addrY);
 
   // Bahagian Kanan Kepala Surat (No. Telefon, Faks, Web, Emel)
-  const rightHeaderX = pageWidth - marginX;
+  const rightHeaderX = pageWidth - marginX; // 190mm
   let rhY = 16.5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
@@ -151,64 +192,71 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
   doc.text('E-mel : adminkkbs@kkbeaufort.edu.my', rightHeaderX, rhY, { align: 'right' });
 
   // Garisan Melintang Pemisah Kepala Surat
-  const dividerY = 32.5;
+  const dividerY = 38.5;
   doc.setLineWidth(0.5);
   doc.setDrawColor(0, 0, 0);
   doc.line(marginX, dividerY, pageWidth - marginX, dividerY);
 
-  // ==========================================
-  // ISI SURAT: JENIS & SAIZ FON SERAGAM (9.5pt)
-  // ==========================================
+  // =========================================================================
+  // ISI SURAT: SELARASKAN SAIZ FONT KEPADA 12 (ALAMAT SYARIKAT KE ALAMAT PENGARAH)
+  // SUSUNAN AYAT JUSTIFY AGAR KEMAS
+  // =========================================================================
+  const bodyFontSize = 12;
+  doc.setFontSize(bodyFontSize);
+
   let y = dividerY + 6.5;
-  const uniformFontSize = 9.5;
-  doc.setFontSize(uniformFontSize);
 
   // 3. Rujukan & Tarikh (Sebelah Kanan)
   doc.setFont('helvetica', 'normal');
   const refLabel = `Ruj. Kami  : KKBS - ${rujukanSurat}`;
   const dateLabel = `Tarikh     : ${tarikhSurat}`;
   doc.text(refLabel, rightHeaderX, y, { align: 'right' });
-  y += 4.5;
+  y += 5.2;
   doc.text(dateLabel, rightHeaderX, y, { align: 'right' });
-  y += 6.5;
+  
+  // Syarat: Turunkan satu space daripada kedudukan asal
+  y += 10.5;
 
   // 4. Penerima Industri (Sebelah Kiri)
-  // Syarat: Nama dan alamat syarikat TIDAK PERLU BOLD
-  doc.setFont('helvetica', 'normal');
+  // Syarat: Boldkan [Pengarah/PENGURUS], nama & alamat syarikat normal
+  doc.setFont('helvetica', 'bold');
   doc.text('PENGARAH/PENGURUS,', marginX, y);
-  y += 4.5;
+  y += 5.2;
 
+  doc.setFont('helvetica', 'normal');
   doc.text(`${namaSyarikat.toUpperCase()},`, marginX, y);
-  y += 4.5;
+  y += 5.2;
 
   if (alamatBaris1 && alamatBaris1.trim() !== '') {
     doc.text(`${alamatBaris1.toUpperCase()},`, marginX, y);
-    y += 4.5;
+    y += 5.2;
   }
   if (alamatBaris2 && alamatBaris2.trim() !== '') {
     doc.text(`${alamatBaris2.toUpperCase()}.`, marginX, y);
-    y += 4.5;
+    y += 5.2;
   }
 
   y += 2.5;
   doc.text('Tuan,', marginX, y);
-  y += 6;
+  y += 6.5;
 
-  // 5. Tajuk Perkara (Bold, saiz seragam 9.5pt)
+  // 5. Tajuk Perkara (Bold, saiz seragam 12)
   doc.setFont('helvetica', 'bold');
   const cleanSesi = sesi.toUpperCase().startsWith('SESI') ? sesi.toUpperCase() : `SESI ${sesi.toUpperCase()}`;
   const subjectText = `PENEMPATAN PELAJAR UNTUK LATIHAN INDUSTRI SIJIL KOLEJ KOMUNITI ${cleanSesi}`;
   const splitSubject = doc.splitTextToSize(subjectText, contentWidth);
   doc.text(splitSubject, marginX, y);
-  y += splitSubject.length * 4.5 + 2.5;
+  y += splitSubject.length * 5.2 + 3.0;
 
-  // 6. Perenggan 1 (Normal)
+  // 6. Perenggan 1 (Justify, saiz 12)
   doc.setFont('helvetica', 'normal');
-  const p1 = 'Dengan segala hormatnya saya merujuk kepada perkara yang tersebut di atas.';
-  doc.text(p1, marginX, y);
-  y += 6.5;
+  const p1Segments: TextSegment[] = [
+    { text: 'Dengan segala hormatnya saya merujuk kepada perkara yang tersebut di atas.' }
+  ];
+  y = renderRichParagraph(doc, p1Segments, marginX, y, contentWidth, 5.2);
+  y += 2.8;
 
-  // 7. Perenggan 2
+  // 7. Perenggan 2 (Justify, saiz 12)
   // Syarat: Boldkan tarikh lapor diri dan jam lapor diri
   const p2Segments: TextSegment[] = [
     { text: '2.   Sukacita dimaklumkan bahawa pelajar seperti yang tersenarai dalam lampiran akan ditempatkan di syarikat/firma tuan bagi menjalani Latihan Industri bermula ' },
@@ -219,16 +267,17 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
     { text: 'jam 9.00 pagi', bold: true },
     { text: '.' }
   ];
-  y = renderRichParagraph(doc, p2Segments, marginX, y, contentWidth, 4.6);
-  y += 2.5;
+  y = renderRichParagraph(doc, p2Segments, marginX, y, contentWidth, 5.2);
+  y += 2.8;
 
-  // 8. Perenggan 3 (Normal)
-  const p3 = '3.   Untuk makluman pihak tuan, pelajar yang menjalani Latihan Industri di syarikat tuan adalah dilindungi oleh insurans kemalangan diri berkelompok.';
-  const splitP3 = doc.splitTextToSize(p3, contentWidth);
-  doc.text(splitP3, marginX, y);
-  y += splitP3.length * 4.5 + 2.5;
+  // 8. Perenggan 3 (Justify, saiz 12)
+  const p3Segments: TextSegment[] = [
+    { text: '3.   Untuk makluman pihak tuan, pelajar yang menjalani Latihan Industri di syarikat tuan adalah dilindungi oleh insurans kemalangan diri berkelompok.' }
+  ];
+  y = renderRichParagraph(doc, p3Segments, marginX, y, contentWidth, 5.2);
+  y += 2.8;
 
-  // 9. Perenggan 4
+  // 9. Perenggan 4 (Justify, saiz 12)
   // Syarat: Boldkan nama PPIA dan no. tel PPIA
   const p4Segments: TextSegment[] = [
     { text: '4.   Pihak Kolej Komuniti Beaufort amat berbesar hati sekiranya pihak tuan dapat mempertimbangkan untuk menyerap pelajar tersebut sebagai pekerja setelah mereka tamat menjalani Program Latihan Industri ini. Sebarang pertanyaan berhubung perkara ini boleh diajukan kepada Pegawai Perhubungan Industri dan Alumni, ' },
@@ -237,35 +286,35 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
     { text: noTelefonPpia, bold: true },
     { text: '.' }
   ];
-  y = renderRichParagraph(doc, p4Segments, marginX, y, contentWidth, 4.6);
-  y += 2.5;
+  y = renderRichParagraph(doc, p4Segments, marginX, y, contentWidth, 5.2);
+  y += 2.8;
 
-  // 10. Penutup & Slogan
+  // 10. Penutup & Slogan (Saiz 12)
   doc.setFont('helvetica', 'normal');
   doc.text('Kerjasama dari pihak tuan amat dihargai.', marginX, y);
-  y += 4.5;
+  y += 5.0;
   doc.text('Sekian, terima kasih.', marginX, y);
-  y += 5.5;
+  y += 6.0;
 
   doc.setFont('helvetica', 'bold');
   doc.text('“MALAYSIA MADANI”', marginX, y);
-  y += 4.2;
+  y += 4.8;
   doc.text('“BERKHIDMAT UNTUK NEGARA”', marginX, y);
-  y += 6;
+  y += 6.5;
 
   doc.setFont('helvetica', 'normal');
   doc.text('Saya yang menjalankan amanah,', marginX, y);
-  y += 13;
+  y += 12;
 
-  // 11. Tandatangan
+  // 11. Tandatangan Pengarah (Saiz 12)
   // Syarat: Boldkan pengarah sahaja, kolej komuniti beaufort dan kementerian pendidikan tinggi tidak perlu bold
   doc.setFont('helvetica', 'bold');
   doc.text('Pengarah,', marginX, y);
-  y += 4.2;
+  y += 5.0;
 
   doc.setFont('helvetica', 'normal');
   doc.text('Kolej Komuniti Beaufort,', marginX, y);
-  y += 4.2;
+  y += 5.0;
   doc.text('Kementerian Pendidikan Tinggi.', marginX, y);
 
   // Nota kaki muka surat 1
@@ -283,27 +332,27 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
 
   // Rujukan di sebelah kanan atas
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(uniformFontSize);
+  doc.setFontSize(bodyFontSize);
   doc.text(`KKBS - ${rujukanSurat}`, rightHeaderX, y, { align: 'right' });
   y += 8;
 
   // LAMPIRAN A
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
+  doc.setFontSize(12);
   doc.text('LAMPIRAN A', rightHeaderX, y, { align: 'right' });
   
   // Syarat: Senarai pelajar bawah satu space dari lampiran A
-  y += 7; // Bawah satu space dari LAMPIRAN A
+  y += 8; // Bawah satu space dari LAMPIRAN A
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
+  doc.setFontSize(12);
   doc.text('SENARAI PELAJAR', marginX, y);
-  y += 6.5;
+  y += 7.0;
 
   // Jadual Lampiran A: BIL (15mm) | NAMA (100mm) | PROGRAM (55mm) = 170mm
   const colWidths = [15, 100, 55];
   const tableX = marginX;
-  const rowHeight = 9.5;
+  const rowHeight = 10;
 
   // Header Jadual
   doc.setLineWidth(0.3);
@@ -312,15 +361,15 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
   doc.line(tableX + colWidths[0] + colWidths[1], y, tableX + colWidths[0] + colWidths[1], y + rowHeight);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(uniformFontSize);
-  doc.text('BIL', tableX + colWidths[0] / 2, y + 6, { align: 'center' });
-  doc.text('NAMA', tableX + colWidths[0] + 4, y + 6);
-  doc.text('PROGRAM', tableX + colWidths[0] + colWidths[1] + 4, y + 6);
+  doc.setFontSize(11);
+  doc.text('BIL', tableX + colWidths[0] / 2, y + 6.5, { align: 'center' });
+  doc.text('NAMA', tableX + colWidths[0] + 4, y + 6.5);
+  doc.text('PROGRAM', tableX + colWidths[0] + colWidths[1] + 4, y + 6.5);
   y += rowHeight;
 
   // Data Senarai Pelajar
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(uniformFontSize);
+  doc.setFontSize(10.5);
 
   for (let i = 0; i < students.length; i++) {
     const st = students[i];
@@ -338,13 +387,13 @@ export function generatePlacementPdfDocument(params: GeneratePlacementPdfParams)
     doc.line(tableX + colWidths[0], y, tableX + colWidths[0], y + rowHeight);
     doc.line(tableX + colWidths[0] + colWidths[1], y, tableX + colWidths[0] + colWidths[1], y + rowHeight);
 
-    doc.text(bilStr, tableX + colWidths[0] / 2, y + 6, { align: 'center' });
+    doc.text(bilStr, tableX + colWidths[0] / 2, y + 6.5, { align: 'center' });
 
     const splitNama = doc.splitTextToSize(namaStr, colWidths[1] - 8);
-    doc.text(splitNama[0] || '', tableX + colWidths[0] + 4, y + 6);
+    doc.text(splitNama[0] || '', tableX + colWidths[0] + 4, y + 6.5);
 
     const splitProg = doc.splitTextToSize(progStr, colWidths[2] - 8);
-    doc.text(splitProg[0] || '', tableX + colWidths[0] + colWidths[1] + 4, y + 6);
+    doc.text(splitProg[0] || '', tableX + colWidths[0] + colWidths[1] + 4, y + 6.5);
 
     y += rowHeight;
   }
