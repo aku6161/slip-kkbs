@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Student, DocumentType, BJPLIFormData, SystemConfig, Lecturer, IndustryCompany, formatProgramName } from './types';
+import { Student, DocumentType, BJPLIFormData, SystemConfig, Lecturer, IndustryCompany, PlacementRecord, formatProgramName } from './types';
 import { INITIAL_STUDENTS, INITIAL_LECTURERS, INITIAL_COMPANIES } from './data/initialData';
 import { Navbar } from './components/Navbar';
 import { MainDashboard } from './components/MainDashboard';
@@ -16,7 +16,8 @@ import { LecturerPortal } from './components/LecturerPortal';
 import { PenilaianPelajar } from './components/PenilaianPelajar';
 import { MaklumatPensyarah } from './components/MaklumatPensyarah';
 import { TetapanPanel } from './components/TetapanPanel';
-import { RefreshCw, Lock, ShieldCheck, X, AlertCircle } from 'lucide-react';
+import { PenempatanSubTab } from './components/PenempatanSubTab';
+import { RefreshCw, Lock, ShieldCheck, X, AlertCircle, Building2, FileText, UserCheck } from 'lucide-react';
 
 import { 
   subscribeStudents, 
@@ -32,8 +33,11 @@ import {
   subscribeCompanies,
   saveCompanyToFirebase,
   deleteCompanyFromFirebase,
+  subscribePlacements,
+  savePlacementToFirebase,
   seedFirebaseIfEmpty 
 } from './firebase';
+
 
 const SESSION_KEY = 'SLIP_AUTH_SESSION';
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
@@ -87,6 +91,10 @@ export default function App() {
   const [markahHeaders, setMarkahHeaders] = useState<string[]>([]);
   const [lecturers, setLecturers] = useState<Lecturer[]>(INITIAL_LECTURERS);
   const [companies, setCompanies] = useState<IndustryCompany[]>(INITIAL_COMPANIES);
+  const [placements, setPlacements] = useState<PlacementRecord[]>([]);
+
+  // Sub-tab in Permohonan: 'status' (Status Permohonan) | 'penempatan' (Penempatan)
+  const [activeApplicationSubTab, setActiveApplicationSubTab] = useState<'status' | 'penempatan'>('status');
   
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedDocType, setSelectedDocType] = useState<DocumentType>('surat');
@@ -234,12 +242,20 @@ export default function App() {
       }
     });
 
+    // Subscribe to placements in real-time
+    const unsubscribePlacements = subscribePlacements((firebasePlacements) => {
+      if (firebasePlacements) {
+        setPlacements(firebasePlacements);
+      }
+    });
+
     return () => {
       unsubscribeStudents();
       unsubscribeConfig();
       unsubscribeMarkah();
       unsubscribeLecturers();
       unsubscribeCompanies();
+      unsubscribePlacements();
     };
   }, []);
 
@@ -763,23 +779,72 @@ export default function App() {
           />
         )}
 
-        {/* Admin Tab 2: Status Permohonan */}
+        {/* Admin Tab 2: Permohonan (Sub-tab: Status Permohonan & Penempatan) */}
         {currentView === 'status' && (
-          <StudentList
-            students={students}
-            appsScriptUrl={appsScriptUrl}
-            onSelectStudent={handleSelectStudentForDoc}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            onOpenAiAssist={student => {
-              setSelectedStudent(student);
-              setIsAiModalOpen(true);
-            }}
-            onViewStudentDetail={student => {
-              setSelectedStudent(student);
-              setIsDetailModalOpen(true);
-            }}
-            onUpdateStudentStatus={(id, status) => handleUpdateStudent(id, { status })}
-          />
+          <div className="space-y-6">
+            {/* Sub-tab Navigation */}
+            <div className="bg-white p-2 rounded-2xl shadow-xs border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveApplicationSubTab('status')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                    activeApplicationSubTab === 'status'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  Status Permohonan
+                </button>
+
+                <button
+                  onClick={() => setActiveApplicationSubTab('penempatan')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                    activeApplicationSubTab === 'penempatan'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <Building2 className="w-4 h-4" />
+                  Penempatan
+                </button>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 font-medium pr-3">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Sesi Aktif: <strong className="text-slate-800">{config.sesi}</strong></span>
+              </div>
+            </div>
+
+            {/* Sub-tab 1: Status Permohonan */}
+            {activeApplicationSubTab === 'status' && (
+              <StudentList
+                students={students}
+                appsScriptUrl={appsScriptUrl}
+                onSelectStudent={handleSelectStudentForDoc}
+                onOpenSettings={() => setIsSettingsOpen(true)}
+                onOpenAiAssist={student => {
+                  setSelectedStudent(student);
+                  setIsAiModalOpen(true);
+                }}
+                onViewStudentDetail={student => {
+                  setSelectedStudent(student);
+                  setIsDetailModalOpen(true);
+                }}
+                onUpdateStudentStatus={(id, status) => handleUpdateStudent(id, { status })}
+              />
+            )}
+
+            {/* Sub-tab 2: Penempatan */}
+            {activeApplicationSubTab === 'penempatan' && (
+              <PenempatanSubTab
+                students={students}
+                config={config}
+                placements={placements}
+                appsScriptUrl={appsScriptUrl}
+              />
+            )}
+          </div>
         )}
 
         {/* Document Viewer (accessible by Admin) */}

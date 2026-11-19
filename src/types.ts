@@ -156,3 +156,38 @@ export interface IndustryCompany {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface PlacementStudentInfo {
+  namaPelajar: string;
+  noMatrik: string;
+  noIc: string;
+  program: string;
+  noTelefon?: string;
+  emelPelajar?: string;
+  status?: string;
+}
+
+export interface PlacementRecord {
+  id: string;
+  companyName: string;
+  companyEmail: string;
+  sesi: string;
+  tarikhLi: string;
+  tarikhMulaLi: string;
+  studentMatriks: string[];
+  students: PlacementStudentInfo[];
+  rujukanSurat?: string;
+  tarikhSurat?: string;
+  letterGenerated: boolean;
+  letterPdfUrl?: string;
+  letterDownloadUrl?: string;
+  letterFileId?: string;
+  letterGeneratedAt?: string;
+  emailSent: boolean;
+  emailSentAt?: string;
+  emailSentTo?: string;
+  emailSentCc?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+

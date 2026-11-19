@@ -12,7 +12,7 @@ import {
   orderBy,
   writeBatch
 } from 'firebase/firestore';
-import { Student, SystemConfig, Lecturer, IndustryCompany } from './types';
+import { Student, SystemConfig, Lecturer, IndustryCompany, PlacementRecord } from './types';
 
 // Firebase configuration
 export const firebaseConfig = {
@@ -34,10 +34,45 @@ export const MARKAH_COLLECTION = 'markah';
 export const CONFIG_COLLECTION = 'config';
 export const LECTURERS_COLLECTION = 'lecturers';
 export const COMPANIES_COLLECTION = 'companies';
+export const PLACEMENTS_COLLECTION = 'placements';
 
 export function removeUndefined<T extends Record<string, any>>(obj: T): T {
   return JSON.parse(JSON.stringify(obj, (k, v) => (v === undefined ? null : v)));
 }
+
+/**
+ * Real-time listener for placements collection
+ */
+export function subscribePlacements(callback: (placements: PlacementRecord[]) => void, onError?: (error: Error) => void) {
+  const q = query(collection(db, PLACEMENTS_COLLECTION));
+  return onSnapshot(q, (snapshot) => {
+    const list: PlacementRecord[] = [];
+    snapshot.forEach((docSnap) => {
+      list.push(docSnap.data() as PlacementRecord);
+    });
+    callback(list);
+  }, (err) => {
+    console.error('Firestore placements subscription error:', err);
+    if (onError) onError(err);
+  });
+}
+
+/**
+ * Save or update a placement record in Firestore
+ */
+export async function savePlacementToFirebase(placement: Partial<PlacementRecord> & { id: string }): Promise<void> {
+  const docId = placement.id;
+  const data = removeUndefined({ ...placement, updatedAt: new Date().toISOString() });
+  await setDoc(doc(db, PLACEMENTS_COLLECTION, docId), data, { merge: true });
+}
+
+/**
+ * Delete a placement record from Firestore
+ */
+export async function deletePlacementFromFirebase(placementId: string): Promise<void> {
+  await deleteDoc(doc(db, PLACEMENTS_COLLECTION, placementId));
+}
+
 
 /**
  * Real-time listener for companies collection

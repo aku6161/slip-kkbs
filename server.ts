@@ -653,6 +653,77 @@ app.post('/api/send-email', async (req: Request, res: Response) => {
   }
 });
 
+// 3.6. POST /api/placement/generate-letter - Generate placement letter using Google Slides template
+app.post('/api/placement/generate-letter', async (req: Request, res: Response) => {
+  const appsScriptUrl = getAppsScriptUrl(req);
+  if (!appsScriptUrl) {
+    return res.status(400).json({ 
+      error: 'Sila konfigurasikan APPS_SCRIPT_URL di dalam Tetapan Admin untuk menjana surat melalui Google Drive & Slides.' 
+    });
+  }
+
+  try {
+    const scriptRes = await fetch(appsScriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'generate_placement_letter',
+        ...req.body
+      })
+    });
+    const result = await scriptRes.json();
+    if (result.success) {
+      res.json({ 
+        success: true, 
+        message: result.message || 'Surat penempatan lapor diri berjaya dijana!',
+        pdfUrl: result.pdfUrl,
+        downloadUrl: result.downloadUrl,
+        fileId: result.fileId
+      });
+    } else {
+      res.status(500).json({ error: result.error || 'Gagal menjana surat penempatan.' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Ralat semasa menghubungi Google Apps Script untuk menjana surat penempatan.' });
+  }
+});
+
+// 3.7. POST /api/placement/send-email - Send placement letter email to industry HR
+app.post('/api/placement/send-email', async (req: Request, res: Response) => {
+  const appsScriptUrl = getAppsScriptUrl(req);
+  if (!appsScriptUrl) {
+    return res.status(400).json({ 
+      error: 'Sila konfigurasikan APPS_SCRIPT_URL di dalam Tetapan Admin untuk menghantar emel melalui Gmail Apps Script.' 
+    });
+  }
+
+  try {
+    const scriptRes = await fetch(appsScriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'send_placement_email',
+        ...req.body
+      })
+    });
+    const result = await scriptRes.json();
+    if (result.success) {
+      res.json({ 
+        success: true, 
+        message: result.message || 'Emel penempatan berjaya dihantar kepada pihak industri!',
+        pdfFileId: result.pdfFileId,
+        sentTo: result.sentTo,
+        sentCc: result.sentCc
+      });
+    } else {
+      res.status(500).json({ error: result.error || 'Gagal menghantar emel penempatan.' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Ralat semasa menghubungi pelayan emel Google Apps Script.' });
+  }
+});
+
+
 
 // 4. POST /api/ai/assist - Gemini AI feature for Cover Letter, Resume Enhancement & Thinking Mode
 app.post('/api/ai/assist', async (req: Request, res: Response) => {

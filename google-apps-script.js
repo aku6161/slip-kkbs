@@ -21,6 +21,7 @@ var GOOGLE_DRIVE_PARENT_FOLDER_ID = "17Lha5OMy2st2W_hpJmZgaOVx5NjofkIH";
 var TEMPLATE_KULINARI_ID = "1CWGwlsXoCB6o-rR3WnAg2nyttBOT8chVZ1qtnwvAfZ8";
 var TEMPLATE_HOTEL_ID = "1jDt2oVc57XMCfC-hwsLuE0vDQbPkwNyNyjD-gkj-fks";
 var TEMPLATE_ELEKTRIK_ID = "1m0x1MMTsXbTaKupFt4j7cPrQrEMwgPAmP1LNwGQVHHg";
+var TEMPLATE_SURAT_PENEMPATAN_ID = "1Eo8sOvLi5BJMWUHOobJhLXcMhDBa7WvxqzSQTPyZC8Y";
 
 /**
  * SETUP: Jalankan fungsi ini sekali sahaja di Editor Apps Script untuk persediaan.
@@ -190,6 +191,10 @@ function doPost(e) {
       return handleUpdateStudent(postData);
     } else if (action === "send_email") {
       return handleSendEmail(postData);
+    } else if (action === "generate_placement_letter") {
+      return handleGeneratePlacementLetter(postData);
+    } else if (action === "send_placement_email") {
+      return handleSendPlacementEmail(postData);
     } else if (action === "add_student") {
       return handleAddStudent(postData);
     } else if (action === "update_config") {
@@ -631,6 +636,283 @@ function handleSendEmail(payload) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
+
+/**
+ * Dapatkan atau bina folder khas Surat Penempatan mengikut Sesi
+ */
+function getOrCreatePlacementFolder(sesi) {
+  var parentFolderId = GOOGLE_DRIVE_PARENT_FOLDER_ID;
+  var parentFolder = DriveApp.getFolderById(parentFolderId);
+  var folderName = "SURAT_PENEMPATAN_" + (sesi || "UMUM").toString().replace(/[^a-zA-Z0-9]/g, "_");
+  var folders = parentFolder.getFoldersByName(folderName);
+  if (folders.hasNext()) {
+    return folders.next();
+  } else {
+    return parentFolder.createFolder(folderName);
+  }
+}
+
+/**
+ * Format nama rasmi program pengajian
+ */
+function formatPlacementProgramName(prog) {
+  if (!prog) return "";
+  var up = prog.toString().toUpperCase().trim();
+  if (up.indexOf("KULINARI") !== -1 || up === "SKU") {
+    return "SIJIL KULINARI";
+  } else if (up.indexOf("PERHOTELAN") !== -1 || up.indexOf("HOTEL") !== -1 || up === "SOP") {
+    return "SIJIL OPERASI PERHOTELAN";
+  } else if (up.indexOf("ELEKTRIK") !== -1 || up === "SKE" || up === "STE") {
+    return "SIJIL TEKNOLOGI ELEKTRIK";
+  }
+  return up.replace(/\s*\([^)]*\)/g, '').trim();
+}
+
+/**
+ * Jana Surat Penempatan Lapor Diri daripada Template Google Slides
+ * Template: https://docs.google.com/presentation/d/1Eo8sOvLi5BJMWUHOobJhLXcMhDBa7WvxqzSQTPyZC8Y/edit?usp=sharing
+ */
+function handleGeneratePlacementLetter(payload) {
+  try {
+    var namaSyarikat = payload.namaSyarikat || "SYARIKAT INDUSTRI";
+    var emelIndustri = payload.emelIndustri || "";
+    var sesi = payload.sesi || "SESI I 2026/2027";
+    var tarikhLi = payload.tarikhLi || "30 NOVEMBER 2026 HINGGA 19 MAC 2027";
+    var tarikhMulaLi = payload.tarikhMulaLi || "30 NOVEMBER 2026";
+    var namaPpia = payload.namaPpia || "SHAMSUDDIN BIN AMIN";
+    var noTelefonPpia = payload.noTelefonPpia || "012-2455616";
+    var rujukanSurat = payload.rujukanSurat || ("KKBS.100-1/1/1 (" + (new Date().getFullYear()) + ")");
+    var tarikhSurat = payload.tarikhSurat || (new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }));
+    var students = payload.students || [];
+
+    var folder = getOrCreatePlacementFolder(sesi);
+    var docName = "SURAT_PENEMPATAN_" + namaSyarikat.replace(/[^a-zA-Z0-9]/g, "_") + "_" + sesi.replace(/[^a-zA-Z0-9]/g, "_");
+    
+    // Salin template presentation
+    var templateFile = DriveApp.getFileById(TEMPLATE_SURAT_PENEMPATAN_ID);
+    var tempFile = templateFile.makeCopy(docName, folder);
+    var tempId = tempFile.getId();
+
+    var presentation = SlidesApp.openById(tempId);
+
+    // Gantikan placeholders teks umum
+    var placeholders = {
+      "[NAMA SYARIKAT]": namaSyarikat,
+      "[NAMA_SYARIKAT]": namaSyarikat,
+      "[NAMA INDUSTRI]": namaSyarikat,
+      "[NAMA_INDUSTRI]": namaSyarikat,
+      "[INDUSTRI]": namaSyarikat,
+      "[EMEL INDUSTRI]": emelIndustri,
+      "[EMEL_INDUSTRI]": emelIndustri,
+      "[EMEL HR]": emelIndustri,
+      "[EMEL_HR]": emelIndustri,
+      "[SESI LI]": sesi,
+      "[SESI_LI]": sesi,
+      "[SESI]": sesi,
+      "[TARIKH LI]": tarikhLi,
+      "[TARIKH_LI]": tarikhLi,
+      "[TARIKH LATIHAN]": tarikhLi,
+      "[TARIKH MULA LI]": tarikhMulaLi,
+      "[TARIKH_MULA_LI]": tarikhMulaLi,
+      "[NAMA PPIA]": namaPpia,
+      "[NAMA_PPIA]": namaPpia,
+      "[NO TEL PPIA]": noTelefonPpia,
+      "[NO. TEL PPIA]": noTelefonPpia,
+      "[NO. TEL. PPIA]": noTelefonPpia,
+      "[NO TELEFON PPIA]": noTelefonPpia,
+      "[RUJUKAN SURAT]": rujukanSurat,
+      "[RUJUKAN KAMI]": rujukanSurat,
+      "[RUJUKAN]": rujukanSurat,
+      "[TARIKH SURAT]": tarikhSurat,
+      "[TARIKH]": tarikhSurat,
+
+      "{{NAMA_SYARIKAT}}": namaSyarikat,
+      "{{SESI_LI}}": sesi,
+      "{{SESI}}": sesi,
+      "{{TARIKH_LI}}": tarikhLi,
+      "{{TARIKH_MULA_LI}}": tarikhMulaLi,
+      "{{NAMA_PPIA}}": namaPpia,
+      "{{NO_TEL_PPIA}}": noTelefonPpia,
+      "{{RUJUKAN_SURAT}}": rujukanSurat,
+      "{{TARIKH_SURAT}}": tarikhSurat
+    };
+
+    for (var key in placeholders) {
+      presentation.replaceAllText(key, placeholders[key]);
+    }
+
+    // Masukkan senarai pelajar ke dalam Jadual di Lampiran A
+    var slides = presentation.getSlides();
+    for (var s = 0; s < slides.length; s++) {
+      var slide = slides[s];
+      var tables = slide.getTables();
+      if (tables.length > 0) {
+        var table = tables[0];
+        var numCols = table.getNumColumns();
+        var startRow = 1; // Selepas row header
+
+        for (var i = 0; i < students.length; i++) {
+          var targetRowIdx = startRow + i;
+          if (targetRowIdx < table.getNumRows()) {
+            // Gunakan baris sedia ada
+          } else {
+            table.appendRow();
+          }
+
+          var st = students[i];
+          var bilStr = (i + 1).toString();
+          var namaStr = (st.namaPelajar || "").toUpperCase();
+          var progStr = formatPlacementProgramName(st.program);
+
+          if (numCols >= 3) {
+            table.getCell(targetRowIdx, 0).getText().setText(bilStr);
+            table.getCell(targetRowIdx, 1).getText().setText(namaStr);
+            table.getCell(targetRowIdx, 2).getText().setText(progStr);
+          } else if (numCols === 2) {
+            table.getCell(targetRowIdx, 0).getText().setText(bilStr + ". " + namaStr);
+            table.getCell(targetRowIdx, 1).getText().setText(progStr);
+          }
+        }
+
+        // Buang baris kosong berlebihan jika ada template placeholder rows
+        while (table.getNumRows() > startRow + students.length) {
+          try {
+            table.getRow(table.getNumRows() - 1).remove();
+          } catch(re) {
+            break;
+          }
+        }
+      }
+    }
+
+    presentation.saveAndClose();
+
+    // Eksport sebagai fail PDF
+    var pdfBlob = tempFile.getAs(MimeType.PDF).setName(docName + ".pdf");
+    var pdfFile = folder.createFile(pdfBlob);
+    try {
+      pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch(se) {}
+
+    var pdfUrl = pdfFile.getUrl();
+    var downloadUrl = "https://drive.google.com/uc?export=download&id=" + pdfFile.getId();
+
+    // Padam presentation salinan sementara
+    try { DriveApp.getFileById(tempId).setTrashed(true); } catch(e) {}
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: "Surat Penempatan berjaya dijana!",
+        pdfUrl: pdfUrl,
+        downloadUrl: downloadUrl,
+        fileId: pdfFile.getId()
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch(err) {
+    Logger.log("Ralat menjana surat penempatan: " + err.toString());
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Hantar Emel Surat Penempatan kepada Syarikat Industri
+ */
+function handleSendPlacementEmail(payload) {
+  try {
+    var namaSyarikat = payload.namaSyarikat || "SYARIKAT INDUSTRI";
+    var emelIndustri = payload.emelIndustri;
+    var sesi = payload.sesi || "SESI I 2026/2027";
+    var tarikhLi = payload.tarikhLi || "30 NOVEMBER 2026 HINGGA 19 MAC 2027";
+    var tarikhMulaLi = payload.tarikhMulaLi || "30 NOVEMBER 2026";
+    var namaPpia = payload.namaPpia || "SHAMSUDDIN BIN AMIN";
+    var noTelefonPpia = payload.noTelefonPpia || "012-2455616";
+    var students = payload.students || [];
+    var pdfFileId = payload.pdfFileId || payload.fileId;
+
+    if (!emelIndustri) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ success: false, error: "Emel Industri tidak diisi." }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var attachments = [];
+    if (pdfFileId) {
+      try {
+        var file = DriveApp.getFileById(pdfFileId);
+        attachments.push(file.getAs(MimeType.PDF));
+      } catch(fe) {
+        Logger.log("Gagal memuat turun PDF sedia ada: " + fe.toString());
+      }
+    }
+
+    // Jika lampiran belum ada, jana sekarang
+    if (attachments.length === 0) {
+      var genRes = handleGeneratePlacementLetter(payload);
+      var genData = JSON.parse(genRes.getContent());
+      if (genData.success && genData.fileId) {
+        var file = DriveApp.getFileById(genData.fileId);
+        attachments.push(file.getAs(MimeType.PDF));
+        pdfFileId = genData.fileId;
+      }
+    }
+
+    var subject = "PENEMPATAN PELAJAR UNTUK LATIHAN INDUSTRI SIJIL KOLEJ KOMUNITI BEAUFORT [" + sesi + "]";
+
+    var bodyPlain = "Tuan,\n\n" +
+      "Dengan segala hormatnya saya merujuk kepada perkara yang tersebut di atas.\n\n" +
+      "2.    Sukacita dimaklumkan bahawa pelajar seperti yang tersenarai dalam lampiran akan ditempatkan di syarikat/firma tuan bagi menjalani Latihan Industri bermula " + tarikhLi + ". Pelajar dikehendaki melapor diri di jabatan/firma tuan pada " + tarikhMulaLi + ", jam 9.00 pagi.\n\n" +
+      "3. Untuk makluman pihak tuan, pelajar yang menjalani Latihan Industri di syarikat tuan adalah dilindungi oleh insurans kemalangan diri berkelompok.\n\n" +
+      "4. Pihak Kolej Komuniti Beaufort amat berbesar hati sekiranya pihak tuan dapat mempertimbangkan untuk menyerap pelajar tersebut sebagai pekerja setelah mereka tamat menjalani Program Latihan Industri ini. Sebarang pertanyaan berhubung perkara ini boleh diajukan kepada Pegawai Perhubungan Industri dan Alumni, " + namaPpia + " di talian " + noTelefonPpia + ".\n\n" +
+      "Kerjasama dari pihak tuan amat dihargai.\n\n" +
+      "Sekian terima kasih.\n\n" +
+      "“MALAYSIA MADANI”\n" +
+      "“BERKHIDMAT UNTUK NEGARA”\n\n\n" +
+      "Saya yang menjalankan amanah,\n\n\n" +
+      "Pengarah,\n" +
+      "Kolej Komuniti Beaufort,  \n" +
+      "Kementerian Pendidikan tinggi.";
+
+    // CC kepada emel pelajar & unitlatihanindustri@kkbeaufort.edu.my
+    var ccList = ["unitlatihanindustri@kkbeaufort.edu.my"];
+    for (var i = 0; i < students.length; i++) {
+      if (students[i].emelPelajar && students[i].emelPelajar.trim() !== "") {
+        var em = students[i].emelPelajar.trim();
+        if (ccList.indexOf(em) === -1) {
+          ccList.push(em);
+        }
+      }
+    }
+
+    var mailOptions = {
+      name: "Unit Perhubungan Industri & Alumni KKBS",
+      cc: ccList.join(","),
+      attachments: attachments
+    };
+
+    GmailApp.sendEmail(emelIndustri, subject, bodyPlain, mailOptions);
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: "Surat Penempatan berjaya dihantar ke " + emelIndustri + "!",
+        pdfFileId: pdfFileId,
+        sentTo: emelIndustri,
+        sentCc: ccList.join(", ")
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch(err) {
+    Logger.log("Ralat menghantar emel penempatan: " + err.toString());
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 
 /**
  * Menambah permohonan pelajar baru ke Google Sheet

@@ -93,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <FileText className="w-4 h-4" />
-            2. Status Permohonan
+            2. Permohonan
           </button>
 
           <button
