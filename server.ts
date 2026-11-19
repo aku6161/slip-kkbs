@@ -677,6 +677,7 @@ app.post('/api/placement/generate-letter', async (req: Request, res: Response) =
         success: true, 
         message: result.message || 'Surat penempatan lapor diri berjaya dijana!',
         pdfUrl: result.pdfUrl,
+        previewUrl: result.previewUrl || (result.fileId ? `https://drive.google.com/file/d/${result.fileId}/preview` : result.pdfUrl),
         downloadUrl: result.downloadUrl,
         fileId: result.fileId
       });

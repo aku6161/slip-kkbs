@@ -797,6 +797,7 @@ function handleGeneratePlacementLetter(payload) {
     } catch(se) {}
 
     var pdfUrl = pdfFile.getUrl();
+    var previewUrl = "https://drive.google.com/file/d/" + pdfFile.getId() + "/preview";
     var downloadUrl = "https://drive.google.com/uc?export=download&id=" + pdfFile.getId();
 
     // Padam presentation salinan sementara
@@ -807,6 +808,7 @@ function handleGeneratePlacementLetter(payload) {
         success: true, 
         message: "Surat Penempatan berjaya dijana!",
         pdfUrl: pdfUrl,
+        previewUrl: previewUrl,
         downloadUrl: downloadUrl,
         fileId: pdfFile.getId()
       }))
