@@ -674,15 +674,17 @@ function formatPlacementProgramName(prog) {
  */
 function handleGeneratePlacementLetter(payload) {
   try {
-    var namaSyarikat = payload.namaSyarikat || "SYARIKAT INDUSTRI";
-    var emelIndustri = payload.emelIndustri || "";
-    var sesi = payload.sesi || "SESI I 2026/2027";
-    var tarikhLi = payload.tarikhLi || "30 NOVEMBER 2026 HINGGA 19 MAC 2027";
-    var tarikhMulaLi = payload.tarikhMulaLi || "30 NOVEMBER 2026";
-    var namaPpia = payload.namaPpia || "SHAMSUDDIN BIN AMIN";
-    var noTelefonPpia = payload.noTelefonPpia || "012-2455616";
-    var rujukanSurat = payload.rujukanSurat || ("KKBS.100-1/1/1 (" + (new Date().getFullYear()) + ")");
-    var tarikhSurat = payload.tarikhSurat || (new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }));
+    var namaSyarikat = (payload.namaSyarikat || "SYARIKAT INDUSTRI").toString().trim();
+    var alamatBaris1 = (payload.alamatBaris1 || "").toString().trim();
+    var alamatBaris2 = (payload.alamatBaris2 || "").toString().trim();
+    var emelIndustri = (payload.emelIndustri || "").toString().trim();
+    var sesi = (payload.sesi || "SESI I 2026/2027").toString().trim();
+    var tarikhLi = (payload.tarikhLi || "30 NOVEMBER 2026 HINGGA 19 MAC 2027").toString().trim();
+    var tarikhMulaLi = (payload.tarikhMulaLi || "30 NOVEMBER 2026").toString().trim();
+    var namaPpia = (payload.namaPpia || "SHAMSUDDIN BIN AMIN").toString().trim();
+    var noTelefonPpia = (payload.noTelefonPpia || "012-2455616").toString().trim();
+    var rujukanSurat = (payload.rujukanSurat || ("2026/001")).toString().trim();
+    var tarikhSurat = (payload.tarikhSurat || (new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }))).toString().trim();
     var students = payload.students || [];
 
     var folder = getOrCreatePlacementFolder(sesi);
@@ -695,91 +697,91 @@ function handleGeneratePlacementLetter(payload) {
 
     var presentation = SlidesApp.openById(tempId);
 
-    // Gantikan placeholders teks umum
+    // Gantikan placeholders teks umum (tepat mengikut teks di templat Google Slides)
     var placeholders = {
-      "[NAMA SYARIKAT]": namaSyarikat,
-      "[NAMA_SYARIKAT]": namaSyarikat,
-      "[NAMA INDUSTRI]": namaSyarikat,
-      "[NAMA_INDUSTRI]": namaSyarikat,
-      "[INDUSTRI]": namaSyarikat,
-      "[EMEL INDUSTRI]": emelIndustri,
-      "[EMEL_INDUSTRI]": emelIndustri,
-      "[EMEL HR]": emelIndustri,
-      "[EMEL_HR]": emelIndustri,
-      "[SESI LI]": sesi,
-      "[SESI_LI]": sesi,
-      "[SESI]": sesi,
-      "[TARIKH LI]": tarikhLi,
-      "[TARIKH_LI]": tarikhLi,
-      "[TARIKH LATIHAN]": tarikhLi,
-      "[TARIKH MULA LI]": tarikhMulaLi,
-      "[TARIKH_MULA_LI]": tarikhMulaLi,
-      "[NAMA PPIA]": namaPpia,
-      "[NAMA_PPIA]": namaPpia,
-      "[NO TEL PPIA]": noTelefonPpia,
-      "[NO. TEL PPIA]": noTelefonPpia,
-      "[NO. TEL. PPIA]": noTelefonPpia,
-      "[NO TELEFON PPIA]": noTelefonPpia,
-      "[RUJUKAN SURAT]": rujukanSurat,
-      "[RUJUKAN KAMI]": rujukanSurat,
       "[RUJUKAN]": rujukanSurat,
       "[TARIKH SURAT]": tarikhSurat,
       "[TARIKH]": tarikhSurat,
+      "[NAMA SYARIKAT]": namaSyarikat.toUpperCase(),
+      "[ALAMAT BARIS 1]": alamatBaris1.toUpperCase(),
+      "[ALAMAT BARIS 2]": alamatBaris2.toUpperCase(),
+      "[SESI LI]": sesi.toUpperCase(),
+      "[SESI]": sesi.toUpperCase(),
+      "[TARIKH LI]": tarikhLi.toUpperCase(),
+      "[TARIKH_LI]": tarikhLi.toUpperCase(),
+      "[TARIKH LATIHAN]": tarikhLi.toUpperCase(),
+      "[TARIKH MULA LI]": tarikhMulaLi.toUpperCase(),
+      "[TARIKH_MULA_LI]": tarikhMulaLi.toUpperCase(),
+      "[NAMA PPIA]": namaPpia.toUpperCase(),
+      "[NO. TEL. PPIA]": noTelefonPpia,
+      "[NO TEL PPIA]": noTelefonPpia,
+      "[NO. TEL PPIA]": noTelefonPpia,
+      "[NO TELEFON PPIA]": noTelefonPpia,
+      "[NAMA INDUSTRI]": namaSyarikat.toUpperCase(),
+      "[INDUSTRI]": namaSyarikat.toUpperCase(),
+      "[EMEL INDUSTRI]": emelIndustri,
+      "[EMEL HR]": emelIndustri,
+      "[RUJUKAN SURAT]": rujukanSurat,
 
-      "{{NAMA_SYARIKAT}}": namaSyarikat,
-      "{{SESI_LI}}": sesi,
-      "{{SESI}}": sesi,
-      "{{TARIKH_LI}}": tarikhLi,
-      "{{TARIKH_MULA_LI}}": tarikhMulaLi,
-      "{{NAMA_PPIA}}": namaPpia,
-      "{{NO_TEL_PPIA}}": noTelefonPpia,
-      "{{RUJUKAN_SURAT}}": rujukanSurat,
-      "{{TARIKH_SURAT}}": tarikhSurat
+      // Format Double-Brace
+      "{{RUJUKAN}}": rujukanSurat,
+      "{{TARIKH_SURAT}}": tarikhSurat,
+      "{{NAMA_SYARIKAT}}": namaSyarikat.toUpperCase(),
+      "{{ALAMAT_BARIS_1}}": alamatBaris1.toUpperCase(),
+      "{{ALAMAT_BARIS_2}}": alamatBaris2.toUpperCase(),
+      "{{SESI_LI}}": sesi.toUpperCase(),
+      "{{TARIKH_LI}}": tarikhLi.toUpperCase(),
+      "{{TARIKH_MULA_LI}}": tarikhMulaLi.toUpperCase(),
+      "{{NAMA_PPIA}}": namaPpia.toUpperCase(),
+      "{{NO_TEL_PPIA}}": noTelefonPpia
     };
 
     for (var key in placeholders) {
-      presentation.replaceAllText(key, placeholders[key]);
+      try {
+        presentation.replaceAllText(key, placeholders[key]);
+      } catch(e) {}
     }
 
-    // Masukkan senarai pelajar ke dalam Jadual di Lampiran A
+    // Masukkan senarai pelajar ke dalam Jadual di Lampiran A (Slide 2)
     var slides = presentation.getSlides();
     for (var s = 0; s < slides.length; s++) {
       var slide = slides[s];
       var tables = slide.getTables();
-      if (tables.length > 0) {
-        var table = tables[0];
+      for (var t = 0; t < tables.length; t++) {
+        var table = tables[t];
         var numCols = table.getNumColumns();
-        var startRow = 1; // Selepas row header
+        // Pastikan ini adalah table Lampiran A (mempunyai sekurang-kurangnya 3 lajur)
+        if (numCols >= 3) {
+          var startRow = 1; // Row 0 adalah header: BIL | NAMA | PROGRAM
 
-        for (var i = 0; i < students.length; i++) {
-          var targetRowIdx = startRow + i;
-          if (targetRowIdx < table.getNumRows()) {
-            // Gunakan baris sedia ada
-          } else {
-            table.appendRow();
+          for (var i = 0; i < students.length; i++) {
+            var targetRowIdx = startRow + i;
+            if (targetRowIdx >= table.getNumRows()) {
+              table.appendRow();
+            }
+
+            var st = students[i];
+            var bilStr = (i + 1).toString();
+            var namaStr = (st.namaPelajar || "").toString().toUpperCase().trim();
+            var progStr = formatPlacementProgramName(st.program || "");
+
+            var cell0 = table.getCell(targetRowIdx, 0);
+            cell0.getText().setText(bilStr);
+
+            var cell1 = table.getCell(targetRowIdx, 1);
+            cell1.getText().setText(namaStr);
+
+            var cell2 = table.getCell(targetRowIdx, 2);
+            cell2.getText().setText(progStr);
           }
 
-          var st = students[i];
-          var bilStr = (i + 1).toString();
-          var namaStr = (st.namaPelajar || "").toUpperCase();
-          var progStr = formatPlacementProgramName(st.program);
-
-          if (numCols >= 3) {
-            table.getCell(targetRowIdx, 0).getText().setText(bilStr);
-            table.getCell(targetRowIdx, 1).getText().setText(namaStr);
-            table.getCell(targetRowIdx, 2).getText().setText(progStr);
-          } else if (numCols === 2) {
-            table.getCell(targetRowIdx, 0).getText().setText(bilStr + ". " + namaStr);
-            table.getCell(targetRowIdx, 1).getText().setText(progStr);
-          }
-        }
-
-        // Buang baris kosong berlebihan jika ada template placeholder rows
-        while (table.getNumRows() > startRow + students.length) {
-          try {
-            table.getRow(table.getNumRows() - 1).remove();
-          } catch(re) {
-            break;
+          // Buang baris kosong berlebihan jika template ada baris kosong sedia ada
+          while (table.getNumRows() > startRow + students.length) {
+            try {
+              table.removeRow(table.getNumRows() - 1);
+            } catch(re) {
+              break;
+            }
           }
         }
       }

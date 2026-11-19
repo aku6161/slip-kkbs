@@ -841,6 +841,7 @@ export default function App() {
                 students={students}
                 config={config}
                 placements={placements}
+                companies={companies}
                 appsScriptUrl={appsScriptUrl}
               />
             )}

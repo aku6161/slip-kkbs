@@ -178,6 +178,8 @@ export interface PlacementRecord {
   students: PlacementStudentInfo[];
   rujukanSurat?: string;
   tarikhSurat?: string;
+  alamatBaris1?: string;
+  alamatBaris2?: string;
   letterGenerated: boolean;
   letterPdfUrl?: string;
   letterDownloadUrl?: string;

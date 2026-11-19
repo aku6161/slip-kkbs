@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Student, SystemConfig, PlacementRecord, PlacementStudentInfo, formatProgramName } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Student, SystemConfig, PlacementRecord, PlacementStudentInfo, IndustryCompany, formatProgramName } from '../types';
 import { 
   Building2, 
   Users, 
@@ -20,7 +20,10 @@ import {
   Calendar,
   Sparkles,
   Save,
-  Check
+  Check,
+  Eye,
+  X,
+  Copy
 } from 'lucide-react';
 import { savePlacementToFirebase } from '../firebase';
 
@@ -28,6 +31,7 @@ interface PenempatanSubTabProps {
   students: Student[];
   config: SystemConfig;
   placements: PlacementRecord[];
+  companies?: IndustryCompany[];
   appsScriptUrl?: string;
   onRefreshData?: () => void;
 }
@@ -37,12 +41,14 @@ interface CompanyGroup {
   companyEmail: string;
   students: Student[];
   placementRecord?: PlacementRecord;
+  index: number;
 }
 
 export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
   students,
   config,
   placements,
+  companies = [],
   appsScriptUrl = '',
 }) => {
   // Session selection (defaults to current system session)
@@ -53,6 +59,14 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
   const [selectedCompany, setSelectedCompany] = useState<CompanyGroup | null>(null);
 
   // Form states for letter generation & email
+  const currentYear = new Date().getFullYear();
+  const [rujukanSurat, setRujukanSurat] = useState<string>(`${currentYear}/001`);
+  const [tarikhSurat, setTarikhSurat] = useState<string>(() => 
+    new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase()
+  );
+  const [alamatBaris1, setAlamatBaris1] = useState<string>('');
+  const [alamatBaris2, setAlamatBaris2] = useState<string>('');
+
   const [tarikhLi, setTarikhLi] = useState<string>(config.tarikh || '30 NOVEMBER 2026 HINGGA 19 MAC 2027');
   
   // Extract initial start date from tarikhLi if possible
@@ -63,13 +77,13 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     return '30 NOVEMBER 2026';
   };
   const [tarikhMulaLi, setTarikhMulaLi] = useState<string>(getInitialStartDate());
-  const [rujukanSurat, setRujukanSurat] = useState<string>(`KKBS.100-1/1/1 (${new Date().getFullYear()})`);
 
   // Action status indicators
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
   const [actionErrorMsg, setActionErrorMsg] = useState<string | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
   // Available sessions in student data
   const availableSessions = useMemo(() => {
@@ -90,10 +104,12 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     });
 
     const groupsMap = new Map<string, CompanyGroup>();
+    let orderIndex = 0;
 
     filteredBySession.forEach(st => {
       const compKey = st.namaSyarikat!.trim().toUpperCase();
       if (!groupsMap.has(compKey)) {
+        orderIndex++;
         // Find existing placement record in Firestore if available
         const record = placements.find(p => 
           p.companyName.trim().toUpperCase() === compKey && 
@@ -104,7 +120,8 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
           companyName: st.namaSyarikat!.trim(),
           companyEmail: st.emelHrSyarikat || record?.companyEmail || '',
           students: [],
-          placementRecord: record
+          placementRecord: record,
+          index: orderIndex
         });
       }
 
@@ -117,6 +134,15 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
 
     return Array.from(groupsMap.values());
   }, [students, selectedSession, placements]);
+
+  // Helper: Kira No Rujukan Berurutan auto: [TAHUN/001], cth: 2026/001
+  const getAutoRujukanForCompany = (compGroup: CompanyGroup): string => {
+    if (compGroup.placementRecord?.rujukanSurat && compGroup.placementRecord.rujukanSurat.trim() !== '') {
+      return compGroup.placementRecord.rujukanSurat.trim();
+    }
+    const seqStr = String(compGroup.index).padStart(3, '0');
+    return `${currentYear}/${seqStr}`;
+  };
 
   // Filter company groups by search term
   const filteredCompanyGroups = useMemo(() => {
@@ -138,13 +164,49 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     ) || selectedCompany.placementRecord;
   }, [selectedCompany, placements, selectedSession]);
 
-  // Open detail view for a company
+  // Open detail view for a company & auto-populate alamat and rujukan
   const handleOpenCompanyDetail = (comp: CompanyGroup) => {
     setSelectedCompany(comp);
     setActionSuccessMsg(null);
     setActionErrorMsg(null);
     setTarikhLi(config.tarikh || '30 NOVEMBER 2026 HINGGA 19 MAC 2027');
     setTarikhMulaLi(getInitialStartDate());
+    setTarikhSurat(new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase());
+
+    // 1. Auto Rujukan Berurutan
+    const autoRuj = getAutoRujukanForCompany(comp);
+    setRujukanSurat(autoRuj);
+
+    // 2. Cari Alamat Syarikat dari Database Syarikat / Rekod Pelajar
+    const matchedComp = companies.find(c => 
+      c.namaSyarikat.trim().toUpperCase() === comp.companyName.trim().toUpperCase()
+    );
+
+    let a1 = currentPlacementRecord?.alamatBaris1 || matchedComp?.alamat1 || '';
+    let a2 = currentPlacementRecord?.alamatBaris2 || matchedComp?.alamat2 || '';
+
+    if (!a1 && !a2) {
+      // Cari daripada rekod pelajar jika ada BJPLI
+      const withBjpli = comp.students.find(s => s.bjpliData?.alamatSyarikat);
+      if (withBjpli?.bjpliData?.alamatSyarikat) {
+        const fullAddr = withBjpli.bjpliData.alamatSyarikat.trim();
+        const parts = fullAddr.split(',');
+        if (parts.length >= 2) {
+          const mid = Math.ceil(parts.length / 2);
+          a1 = parts.slice(0, mid).join(', ').trim();
+          a2 = parts.slice(mid).join(', ').trim();
+        } else {
+          a1 = fullAddr;
+          a2 = 'SABAH, MALAYSIA';
+        }
+      } else {
+        a1 = matchedComp?.alamat1 || 'PETI SURAT / JALAN UTAMA';
+        a2 = matchedComp?.alamat2 || '89808 BEAUFORT, SABAH';
+      }
+    }
+
+    setAlamatBaris1(a1);
+    setAlamatBaris2(a2);
   };
 
   // Close detail view
@@ -152,6 +214,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     setSelectedCompany(null);
     setActionSuccessMsg(null);
     setActionErrorMsg(null);
+    setIsPreviewModalOpen(false);
   };
 
   // Prepare student payload info
@@ -192,6 +255,8 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
           },
           body: JSON.stringify({
             namaSyarikat: selectedCompany.companyName,
+            alamatBaris1: alamatBaris1,
+            alamatBaris2: alamatBaris2,
             emelIndustri: selectedCompany.companyEmail,
             sesi: selectedSession,
             tarikhLi: tarikhLi,
@@ -199,7 +264,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
             namaPpia: config.namaPpia,
             noTelefonPpia: config.noTelefonPpia,
             rujukanSurat: rujukanSurat,
-            tarikhSurat: new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }),
+            tarikhSurat: tarikhSurat,
             students: studentsPayload,
             appsScriptUrl: appsScriptUrl
           })
@@ -217,9 +282,6 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
         console.warn('Google Apps Script call error, proceeding with cloud record saving:', err);
       }
 
-      // Default URL if not generated via Apps Script yet
-      const fallbackTemplateUrl = 'https://docs.google.com/presentation/d/1Eo8sOvLi5BJMWUHOobJhLXcMhDBa7WvxqzSQTPyZC8Y/edit?usp=sharing';
-
       // Simpan rekod lengkap ke dalam database cloud utama (Firebase Firestore)
       const placementRecordData: PlacementRecord = {
         id: placementId,
@@ -231,9 +293,11 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
         studentMatriks: selectedCompany.students.map(s => s.noMatrik),
         students: studentsPayload,
         rujukanSurat: rujukanSurat,
-        tarikhSurat: new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }),
+        tarikhSurat: tarikhSurat,
+        alamatBaris1: alamatBaris1,
+        alamatBaris2: alamatBaris2,
         letterGenerated: true,
-        letterPdfUrl: pdfUrl || fallbackTemplateUrl,
+        letterPdfUrl: pdfUrl || (fileId ? `https://drive.google.com/file/d/${fileId}/view` : ''),
         letterDownloadUrl: downloadUrl || '',
         letterFileId: fileId || '',
         letterGeneratedAt: new Date().toISOString(),
@@ -247,7 +311,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
       await savePlacementToFirebase(placementRecordData);
 
       setActionSuccessMsg(
-        `Surat penempatan lapor diri bagi ${selectedCompany.companyName} berjaya dijana dan disimpan ke database cloud!`
+        `Surat penempatan lapor diri No Rujukan KKBS - ${rujukanSurat} bagi ${selectedCompany.companyName} berjaya dijana dan disimpan ke database cloud!`
       );
     } catch (err: any) {
       setActionErrorMsg(`Ralat semasa menjana & menyimpan surat: ${err.message || err}`);
@@ -284,6 +348,8 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
           },
           body: JSON.stringify({
             namaSyarikat: selectedCompany.companyName,
+            alamatBaris1: alamatBaris1,
+            alamatBaris2: alamatBaris2,
             emelIndustri: selectedCompany.companyEmail,
             sesi: selectedSession,
             tarikhLi: tarikhLi,
@@ -291,7 +357,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
             namaPpia: config.namaPpia,
             noTelefonPpia: config.noTelefonPpia,
             rujukanSurat: rujukanSurat,
-            tarikhSurat: new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }),
+            tarikhSurat: tarikhSurat,
             students: studentsPayload,
             pdfFileId: currentPlacementRecord?.letterFileId || '',
             appsScriptUrl: appsScriptUrl
@@ -306,7 +372,6 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
           throw new Error(data.error || 'Gagal menghantar emel penempatan melalui pelayan.');
         }
       } catch (apiErr: any) {
-        // Jika Apps Script URL belum dikonfigurasi, beri panduan mesra
         if (!appsScriptUrl) {
           throw new Error('Sila masukkan Pautan API Google Apps Script di Tetapan Admin untuk menghantar emel terus melalui akaun Google rasmi.');
         } else {
@@ -327,6 +392,10 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
         tarikhMulaLi: tarikhMulaLi,
         studentMatriks: selectedCompany.students.map(s => s.noMatrik),
         students: studentsPayload,
+        rujukanSurat: rujukanSurat,
+        tarikhSurat: tarikhSurat,
+        alamatBaris1: alamatBaris1,
+        alamatBaris2: alamatBaris2,
         emailSent: true,
         emailSentAt: new Date().toISOString(),
         emailSentTo: selectedCompany.companyEmail,
@@ -346,6 +415,11 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     } finally {
       setIsSending(false);
     }
+  };
+
+  // Cetak Surat Penempatan Rasmi (window.print)
+  const handlePrintDocument = () => {
+    window.print();
   };
 
   // ==========================================
@@ -454,7 +528,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-black uppercase text-slate-600 tracking-wider">
-                    <th className="py-3 px-4">Bil</th>
+                    <th className="py-3 px-4">No. Rujukan Auto</th>
                     <th className="py-3 px-4">Nama Syarikat Industri</th>
                     <th className="py-3 px-4">Emel HR / Industri</th>
                     <th className="py-3 px-4 text-center">Bilangan Pelajar</th>
@@ -463,14 +537,17 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
-                  {filteredCompanyGroups.map((group, idx) => {
+                  {filteredCompanyGroups.map((group) => {
                     const record = group.placementRecord;
                     const isGenerated = record?.letterGenerated;
                     const isSent = record?.emailSent;
+                    const autoRuj = getAutoRujukanForCompany(group);
 
                     return (
                       <tr key={group.companyName} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3.5 px-4 font-mono font-bold text-slate-500">{idx + 1}</td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-blue-700">
+                          KKBS - {autoRuj}
+                        </td>
                         <td className="py-3.5 px-4">
                           <strong className="text-slate-900 font-bold block">{group.companyName}</strong>
                           <span className="text-[10px] text-slate-400 font-medium">
@@ -556,6 +633,8 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium flex items-center gap-3 mt-0.5">
+              <span>No. Rujukan Auto: <strong className="text-blue-700 font-mono">KKBS - {rujukanSurat}</strong></span>
+              <span>•</span>
               <span>Emel Industri: <strong>{selectedCompany.companyEmail || 'Tiada'}</strong></span>
               <span>•</span>
               <span>Jumlah Pelajar: <strong>{selectedCompany.students.length} Orang</strong></span>
@@ -563,23 +642,33 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
           </div>
         </div>
 
-        {/* Status Badge */}
-        <div>
-          {currentPlacementRecord?.emailSent ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              Surat Penempatan Telah Dihantar Ke Industri
-            </span>
-          ) : currentPlacementRecord?.letterGenerated ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-              <Clock className="w-4 h-4 text-amber-600" />
-              Surat Dijana (Sedia Dihantar)
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
-              Surat Belum Dijana
-            </span>
-          )}
+        {/* Action Buttons: Preview Modal Button */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setIsPreviewModalOpen(true)}
+            className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+          >
+            <Eye className="w-4 h-4 text-indigo-600" />
+            Pratonton & Cetak Surat Rasmi
+          </button>
+
+          <div>
+            {currentPlacementRecord?.emailSent ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                Emel Telah Dihantar Ke Industri
+              </span>
+            ) : currentPlacementRecord?.letterGenerated ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                <Clock className="w-4 h-4 text-amber-600" />
+                Surat Dijana (Sedia Dihantar)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                Surat Belum Dijana
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -670,36 +759,91 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
           <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
             <FileText className="w-4 h-4 text-blue-600" />
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Parameter Surat Penempatan Lapor Diri
+              Data & Parameter Surat Penempatan Lapor Diri
             </h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            {/* No Rujukan Auto */}
             <div>
               <label className="font-bold text-slate-700 block mb-1">
-                Sesi Latihan Industri
+                No. Rujukan Auto [RUJUKAN] <span className="text-blue-600 font-mono font-normal">(cth: 2026/001)</span>
+              </label>
+              <div className="flex items-center">
+                <span className="px-3 py-2 bg-slate-100 border border-r-0 border-slate-300 rounded-l-lg font-mono font-bold text-slate-700">
+                  KKBS -
+                </span>
+                <input
+                  type="text"
+                  value={rujukanSurat}
+                  onChange={e => setRujukanSurat(e.target.value)}
+                  placeholder="2026/001"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-r-lg text-slate-800 font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Tarikh Surat */}
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">
+                Tarikh Surat [TARIKH SURAT]
               </label>
               <input
                 type="text"
-                value={selectedSession}
-                readOnly
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-bold"
+                value={tarikhSurat}
+                onChange={e => setTarikhSurat(e.target.value)}
+                placeholder="19 NOVEMBER 2026"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
             </div>
 
-            <div>
+            {/* Nama Syarikat */}
+            <div className="sm:col-span-2">
               <label className="font-bold text-slate-700 block mb-1">
-                No. Rujukan Surat Penempatan
+                Nama Syarikat Industri [NAMA SYARIKAT]
               </label>
               <input
                 type="text"
-                value={rujukanSurat}
-                onChange={e => setRujukanSurat(e.target.value)}
-                placeholder="Contoh: KKBS.100-1/1/1 (2026)"
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                value={selectedCompany.companyName}
+                onChange={e => {
+                  setSelectedCompany({
+                    ...selectedCompany,
+                    companyName: e.target.value
+                  });
+                }}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
             </div>
 
+            {/* Alamat Baris 1 */}
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">
+                Alamat Syarikat Baris 1 [ALAMAT BARIS 1]
+              </label>
+              <input
+                type="text"
+                value={alamatBaris1}
+                onChange={e => setAlamatBaris1(e.target.value)}
+                placeholder="Contoh: LOT 123, JALAN MERPATI"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Alamat Baris 2 */}
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">
+                Alamat Syarikat Baris 2 [ALAMAT BARIS 2]
+              </label>
+              <input
+                type="text"
+                value={alamatBaris2}
+                onChange={e => setAlamatBaris2(e.target.value)}
+                placeholder="Contoh: 89808 BEAUFORT, SABAH"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Tempoh & Tarikh LI */}
             <div>
               <label className="font-bold text-slate-700 block mb-1">
                 Tempoh & Tarikh Latihan Industri [TARIKH LI]
@@ -713,6 +857,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
               />
             </div>
 
+            {/* Tarikh Mula Lapor Diri */}
             <div>
               <label className="font-bold text-slate-700 block mb-1">
                 Tarikh Mula Lapor Diri [TARIKH MULA LI]
@@ -726,18 +871,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
               />
             </div>
 
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">
-                Pegawai Perhubungan Industri (PPIA)
-              </label>
-              <input
-                type="text"
-                value={`${config.namaPpia} (${config.noTelefonPpia})`}
-                readOnly
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium"
-              />
-            </div>
-
+            {/* Emel Industri */}
             <div>
               <label className="font-bold text-slate-700 block mb-1">
                 Emel Penerima Industri (To:)
@@ -755,12 +889,25 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
             </div>
+
+            {/* Sesi */}
+            <div>
+              <label className="font-bold text-slate-700 block mb-1">
+                Sesi Latihan Industri [SESI LI]
+              </label>
+              <input
+                type="text"
+                value={selectedSession}
+                readOnly
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-bold"
+              />
+            </div>
           </div>
 
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 flex items-start gap-2">
             <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <strong>Templat Google Drive:</strong> Surat penempatan dijana secara automatik menggunakan templat rasmi Google Slides:
+              <strong>Templat Google Slides Rasmi:</strong> Surat penempatan dijana secara automatik menggunakan templat rasmi Google Slides:
               <a 
                 href="https://docs.google.com/presentation/d/1Eo8sOvLi5BJMWUHOobJhLXcMhDBa7WvxqzSQTPyZC8Y/edit?usp=sharing"
                 target="_blank"
@@ -769,7 +916,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
               >
                 Buka Templat Drive <ExternalLink className="w-3 h-3" />
               </a>.
-              Jadual Lampiran A akan diisi dengan senarai {selectedCompany.students.length} pelajar di atas beserta program masing-masing.
+              Semua medan <strong>[NAMA SYARIKAT]</strong>, <strong>[ALAMAT BARIS 1]</strong>, <strong>[ALAMAT BARIS 2]</strong>, <strong>KKBS - [RUJUKAN]</strong>, dan jadual <strong>Lampiran A (BIL, NAMA, PROGRAM)</strong> disuntik secara automatik.
             </div>
           </div>
         </div>
@@ -786,6 +933,10 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
 
             {/* Status Rekod Cloud */}
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2 mb-4">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-500 font-medium">No. Rujukan Terkini:</span>
+                <span className="font-mono font-bold text-blue-700">KKBS - {rujukanSurat}</span>
+              </div>
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-slate-500 font-medium">Penjanaan Surat:</span>
                 <span className={`font-bold ${currentPlacementRecord?.letterGenerated ? 'text-emerald-700' : 'text-slate-500'}`}>
@@ -805,7 +956,16 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
               )}
             </div>
 
-            {/* Pautan Dokumen PDF jika ada */}
+            {/* Butang Pratonton & Cetak Terus */}
+            <button
+              onClick={() => setIsPreviewModalOpen(true)}
+              className="w-full mb-3 px-3 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+            >
+              <Eye className="w-4 h-4 text-indigo-600" />
+              Pratonton / Cetak Surat PDF
+            </button>
+
+            {/* Pautan Dokumen PDF Google Drive jika ada */}
             {currentPlacementRecord?.letterPdfUrl && (
               <a
                 href={currentPlacementRecord.letterPdfUrl}
@@ -814,7 +974,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
                 className="w-full mb-3 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
               >
                 <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
-                Buka / Lihat Surat Penempatan PDF
+                Buka Fail Google Drive
               </a>
             )}
           </div>
@@ -851,6 +1011,250 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ============================================================== */}
+      {/* MODAL PRATONTON & CETAK SURAT PENEMPATAN RASMI (SURAT + LAMPIRAN A) */}
+      {/* ============================================================== */}
+      {isPreviewModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between border-b border-slate-800 print:hidden">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider">
+                  Pratonton Surat Rasmi Penempatan Lapor Diri & Lampiran A
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePrintDocument}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Cetak / Simpan PDF
+                </button>
+                <button
+                  onClick={() => setIsPreviewModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Document Body (Printable Paper Style) */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100 flex justify-center">
+              <div className="bg-white shadow-md border border-slate-300 w-full max-w-[794px] p-8 sm:p-12 text-slate-900 font-sans text-xs sm:text-sm leading-relaxed space-y-12">
+                
+                {/* ----------------- MUKA SURAT 1: SURAT RASMI ----------------- */}
+                <div className="min-h-[1050px] flex flex-col justify-between">
+                  <div>
+                    {/* Kepala Surat Rasmi KKBS */}
+                    <div className="border-b-2 border-slate-900 pb-4 mb-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src="/logo.jpg" 
+                            alt="Logo Kolej Komuniti" 
+                            className="w-16 h-16 object-contain"
+                            onError={(e) => { (e.target as any).style.display = 'none'; }}
+                          />
+                          <div>
+                            <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 uppercase">
+                              KOLEJ KOMUNITI BEAUFORT
+                            </h2>
+                            <p className="text-[10px] sm:text-[11px] font-bold text-slate-700 leading-tight">
+                              JABATAN PENDIDIKAN POLITEKNIK DAN KOLEJ KOMUNITI<br />
+                              KEMENTERIAN PENDIDIKAN TINGGI
+                            </p>
+                            <p className="text-[9px] text-slate-500 mt-1 leading-snug">
+                              JALAN MELALUGUS, 89807 BEAUFORT, SABAH, MALAYSIA<br />
+                              Tel: 087-212528 | Faks: 087-212530 | E-mel: adminkkbs@kkbeaufort.edu.my
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Metadata Rujukan & Tarikh */}
+                    <div className="flex justify-end mb-6 text-xs">
+                      <table className="text-left font-medium">
+                        <tbody>
+                          <tr>
+                            <td className="pr-2 font-bold text-slate-700">Ruj. Kami</td>
+                            <td>: <span className="font-mono font-bold text-slate-900">KKBS - {rujukanSurat}</span></td>
+                          </tr>
+                          <tr>
+                            <td className="pr-2 font-bold text-slate-700">Tarikh</td>
+                            <td>: <span className="font-bold text-slate-900">{tarikhSurat}</span></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Alamat Penerima Industri */}
+                    <div className="mb-6 font-bold leading-snug">
+                      <p>PENGARAH / PENGURUS,</p>
+                      <p className="uppercase text-blue-950 text-sm font-black">{selectedCompany.companyName},</p>
+                      <p className="uppercase">{alamatBaris1 || 'LOT / BANGUNAN INDUSTRI'},</p>
+                      <p className="uppercase">{alamatBaris2 || '89808 BEAUFORT, SABAH'}.</p>
+                    </div>
+
+                    <p className="mb-4">Tuan,</p>
+
+                    {/* Tajuk Perkara */}
+                    <div className="font-black text-xs sm:text-sm uppercase text-slate-950 border-b border-slate-900 pb-1.5 mb-4">
+                      PENEMPATAN PELAJAR UNTUK LATIHAN INDUSTRI SIJIL KOLEJ KOMUNITI [{selectedSession}]
+                    </div>
+
+                    {/* Kandungan Perenggan */}
+                    <div className="space-y-3 text-justify">
+                      <p>
+                        Dengan segala hormatnya saya merujuk kepada perkara yang tersebut di atas.
+                      </p>
+
+                      <p>
+                        2. &nbsp;&nbsp;&nbsp;&nbsp; Sukacita dimaklumkan bahawa pelajar seperti yang tersenarai dalam lampiran akan ditempatkan di syarikat/firma tuan bagi menjalani Latihan Industri bermula <strong>{tarikhLi}</strong>. Pelajar dikehendaki melapor diri di jabatan/firma tuan pada <strong>{tarikhMulaLi}</strong>, jam 9.00 pagi.
+                      </p>
+
+                      <p>
+                        3. &nbsp;&nbsp;&nbsp;&nbsp; Untuk makluman pihak tuan, pelajar yang menjalani Latihan Industri di syarikat tuan adalah dilindungi oleh insurans kemalangan diri berkelompok.
+                      </p>
+
+                      <p>
+                        4. &nbsp;&nbsp;&nbsp;&nbsp; Pihak Kolej Komuniti Beaufort amat berbesar hati sekiranya pihak tuan dapat mempertimbangkan untuk menyerap pelajar tersebut sebagai pekerja setelah mereka tamat menjalani Program Latihan Industri ini. Sebarang pertanyaan berhubung perkara ini boleh diajukan kepada Pegawai Perhubungan Industri dan Alumni, <strong>{config.namaPpia}</strong> di talian <strong>{config.noTelefonPpia}</strong>.
+                      </p>
+
+                      <p>
+                        Kerjasama dari pihak tuan amat dihargai.
+                      </p>
+
+                      <p>
+                        Sekian terima kasih.
+                      </p>
+                    </div>
+
+                    {/* Slogan & Penutup */}
+                    <div className="mt-6 font-bold text-xs">
+                      <p>“MALAYSIA MADANI”</p>
+                      <p>“BERKHIDMAT UNTUK NEGARA”</p>
+                    </div>
+
+                    <div className="mt-6">
+                      <p className="font-medium">Saya yang menjalankan amanah,</p>
+                      <div className="h-12"></div>
+                      <p className="font-bold text-slate-900">PENGARAH</p>
+                      <p className="text-xs text-slate-600">Kolej Komuniti Beaufort</p>
+                      <p className="text-xs text-slate-600">Kementerian Pendidikan Tinggi</p>
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] text-slate-400 italic text-center pt-4 border-t border-slate-100">
+                    Surat ini adalah cetakan komputer dan tandatangan tidak diperlukan
+                  </div>
+                </div>
+
+                {/* ----------------- MUKA SURAT 2: LAMPIRAN A (SENARAI PELAJAR) ----------------- */}
+                <div className="min-h-[1050px] flex flex-col justify-between pt-8 border-t-2 border-dashed border-slate-300">
+                  <div>
+                    {/* Header Lampiran */}
+                    <div className="flex items-start justify-between border-b border-slate-900 pb-3 mb-6">
+                      <div>
+                        <h3 className="font-black text-sm uppercase text-slate-900">
+                          SENARAI PELAJAR MELAPOR DIRI
+                        </h3>
+                        <p className="text-xs text-slate-600 uppercase font-bold">
+                          {selectedCompany.companyName}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono font-bold text-slate-900 block text-xs">
+                          KKBS - {rujukanSurat}
+                        </span>
+                        <span className="text-xs font-black bg-slate-900 text-white px-2 py-0.5 rounded uppercase">
+                          LAMPIRAN A
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Jadual Rasmi Lampiran A: BIL | NAMA | PROGRAM */}
+                    <div className="overflow-hidden border border-slate-800 rounded-sm">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-100 border-b border-slate-800 text-slate-900 font-black">
+                            <th className="py-2.5 px-3 border-r border-slate-800 w-12 text-center">BIL</th>
+                            <th className="py-2.5 px-4 border-r border-slate-800">NAMA</th>
+                            <th className="py-2.5 px-4">PROGRAM</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800 text-slate-900">
+                          {selectedCompany.students.map((st, i) => (
+                            <tr key={st.noMatrik}>
+                              <td className="py-3 px-3 border-r border-slate-800 text-center font-bold">
+                                {i + 1}
+                              </td>
+                              <td className="py-3 px-4 border-r border-slate-800 font-bold uppercase">
+                                {st.namaPelajar}
+                                <span className="block font-mono text-[10px] text-slate-500 font-normal">
+                                  No. Matrik: {st.noMatrik} | No. KP: {st.noIc}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 font-bold uppercase">
+                                {formatProgramName(st.program) || st.program}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="mt-8 p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1">
+                      <p className="font-bold text-slate-800">Catatan Melapor Diri:</p>
+                      <p className="text-slate-600">
+                        1. Tarikh Mula Lapor Diri: <strong>{tarikhMulaLi} (Jam 9.00 Pagi)</strong>
+                      </p>
+                      <p className="text-slate-600">
+                        2. Tempoh Latihan: <strong>{tarikhLi}</strong>
+                      </p>
+                      <p className="text-slate-600">
+                        3. Sebarang pertanyaan hubungi Pegawai Perhubungan Industri: <strong>{config.namaPpia} ({config.noTelefonPpia})</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] text-slate-400 italic text-center pt-4 border-t border-slate-100">
+                    Surat ini adalah cetakan komputer dan tandatangan tidak diperlukan
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-between print:hidden">
+              <span className="text-xs text-slate-500 font-mono">
+                No. Rujukan: KKBS - {rujukanSurat}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsPreviewModalOpen(false)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Tutup
+                </button>
+                <button
+                  onClick={handlePrintDocument}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Cetak / Muat Turun PDF Sekarang
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
