@@ -140,6 +140,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
   const [activePdfUrl, setActivePdfUrl] = useState<string>('');
   const [activePdfBlob, setActivePdfBlob] = useState<Blob | null>(null);
   const [activePdfFileName, setActivePdfFileName] = useState<string>('');
+  const [isUsingDrivePdf, setIsUsingDrivePdf] = useState<boolean>(false);
 
   // Filter company groups by search term
   const filteredCompanyGroups = useMemo(() => {
@@ -230,8 +231,13 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
       c.namaSyarikat.trim().toUpperCase() === comp.companyName.trim().toUpperCase()
     );
 
-    let a1 = currentPlacementRecord?.alamatBaris1 || matchedComp?.alamat1 || '';
-    let a2 = currentPlacementRecord?.alamatBaris2 || matchedComp?.alamat2 || '';
+    const record = placements.find(p => 
+      p.companyName.trim().toUpperCase() === comp.companyName.trim().toUpperCase() && 
+      p.sesi.trim().toUpperCase() === selectedSession.trim().toUpperCase()
+    ) || comp.placementRecord;
+
+    let a1 = record?.alamatBaris1 || matchedComp?.alamat1 || '';
+    let a2 = record?.alamatBaris2 || matchedComp?.alamat2 || '';
 
     if (!a1 && !a2) {
       const withBjpli = comp.students.find(s => s.bjpliData?.alamatSyarikat);
@@ -255,13 +261,23 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     setAlamatBaris1(a1);
     setAlamatBaris2(a2);
 
-    // Jana dokumen PDF serta-merta bagi paparan langsung
-    renderClientPdf(comp, a1, a2, todayStr, initialLi, initialMula);
+    // Keutamaan: Jika surat rasmi telah dijana melalui Google Drive, paparkan fail tersebut
+    if (record?.letterFileId || (record?.letterPdfUrl && record.letterPdfUrl.includes('drive.google.com'))) {
+      const driveUrl = record.letterFileId 
+        ? `https://drive.google.com/file/d/${record.letterFileId}/preview` 
+        : record.letterPdfUrl;
+      setActivePdfUrl(driveUrl);
+      setActivePdfBlob(null);
+      setIsUsingDrivePdf(true);
+    } else {
+      setIsUsingDrivePdf(false);
+      renderClientPdf(comp, a1, a2, todayStr, initialLi, initialMula);
+    }
   };
 
-  // Kemas kini paparan PDF secara reaktif apabila parameter surat diubah
+  // Kemas kini paparan PDF deraf secara reaktif apabila parameter surat diubah (hanya jika belum mod Google Drive)
   useEffect(() => {
-    if (selectedCompany) {
+    if (selectedCompany && !isUsingDrivePdf) {
       renderClientPdf(
         selectedCompany,
         alamatBaris1,
@@ -278,7 +294,8 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     tarikhSurat,
     tarikhLi,
     tarikhMulaLi,
-    selectedSession
+    selectedSession,
+    isUsingDrivePdf
   ]);
 
   // Close detail view
@@ -288,11 +305,20 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     setActionErrorMsg(null);
     setActivePdfUrl('');
     setActivePdfBlob(null);
+    setIsUsingDrivePdf(false);
   };
 
   // Muat turun PDF terus dari browser
   const handleDownloadPdf = () => {
     if (!activePdfUrl) return;
+    if (activePdfUrl.includes('drive.google.com')) {
+      const fileIdMatch = activePdfUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      const fileId = fileIdMatch ? fileIdMatch[1] : (currentPlacementRecord?.letterFileId || '');
+      if (fileId) {
+        window.open(`https://drive.google.com/uc?export=download&id=${fileId}`, '_blank');
+        return;
+      }
+    }
     const a = document.createElement('a');
     a.href = activePdfUrl;
     a.download = activePdfFileName || `SURAT_PENEMPATAN_${selectedCompany?.companyName || 'INDUSTRI'}.pdf`;
@@ -323,7 +349,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     }));
   };
 
-  // 1. Simpan & Jana Surat Penempatan
+  // 1. Simpan & Jana Surat Penempatan terus dari Templat Google Drive
   const handleGenerateAndSaveLetter = async () => {
     if (!selectedCompany) return;
     setIsGenerating(true);
@@ -335,7 +361,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     const placementId = `placement_${selectedCompany.companyName.replace(/[^a-zA-Z0-9]/g, '_')}_${selectedSession.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
     try {
-      // 1. Jana PDF rasmi tempatan 100% tepat mengikut templat Google Drive
+      // 1. Jana PDF rasmi tempatan sebagai sandaran
       const pdfRes = renderClientPdf(
         selectedCompany,
         alamatBaris1,
@@ -349,7 +375,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
       let driveDownloadUrl = '';
       let driveFileId = '';
 
-      // 2. Hubungi Apps Script backend (jika tersedia) untuk arkib Google Drive
+      // 2. Hubungi Apps Script backend untuk memproses templat Google Slides di Google Drive
       if (effectiveAppsScriptUrl) {
         try {
           const res = await fetch('/api/placement/generate-letter', {
@@ -380,9 +406,18 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
             drivePreviewUrl = data.previewUrl || '';
             driveDownloadUrl = data.downloadUrl || '';
             driveFileId = data.fileId || '';
+
+            // Kemaskini paparan terus kepada fail PDF Google Drive yang dijana dari templat rasmi
+            if (drivePreviewUrl) {
+              setActivePdfUrl(drivePreviewUrl);
+              setActivePdfBlob(null);
+              setIsUsingDrivePdf(true);
+            }
+          } else {
+            console.warn('Apps Script note:', data.error);
           }
-        } catch (err) {
-          console.warn('Apps Script sync optional note:', err);
+        } catch (err: any) {
+          console.warn('Apps Script sync note:', err);
         }
       }
 
@@ -414,9 +449,15 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
 
       await savePlacementToFirebase(placementRecordData);
 
-      setActionSuccessMsg(
-        `Surat penempatan lapor diri No. Rujukan ${autoRuj} bagi ${selectedCompany.companyName} berjaya dijana dan disimpan ke database cloud!`
-      );
+      if (drivePreviewUrl) {
+        setActionSuccessMsg(
+          `Surat penempatan No. Rujukan ${autoRuj} bagi ${selectedCompany.companyName} berjaya dijana terus menggunakan templat Google Drive anda (Google Slides) dan disimpan ke database cloud! Paparan di bawah kini memaparkan fail PDF rasmi dari Google Drive.`
+        );
+      } else {
+        setActionSuccessMsg(
+          `Surat penempatan No. Rujukan ${autoRuj} bagi ${selectedCompany.companyName} berjaya disimpan.`
+        );
+      }
     } catch (err: any) {
       setActionErrorMsg(`Ralat semasa menjana & menyimpan surat: ${err.message || err}`);
     } finally {
@@ -1032,24 +1073,47 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
       {/* ============================================================== */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="bg-slate-900 text-white px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <FileText className="w-4 h-4 text-blue-400" />
             <h3 className="text-xs font-bold uppercase tracking-wider">
               Paparan Surat Penempatan PDF (No. Rujukan: {getAutoRujukanForCompany(selectedCompany)})
             </h3>
+            {isUsingDrivePdf ? (
+              <span className="px-2 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-300 font-bold rounded border border-emerald-500/30 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                Fail Rasmi Google Drive (100% Mengikut Google Slides)
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 text-[10px] bg-amber-500/20 text-amber-300 font-bold rounded border border-amber-500/30 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-amber-400" />
+                Deraf Awal (Tekan &apos;Simpan &amp; Jana&apos; untuk proses fail Google Drive)
+              </span>
+            )}
           </div>
 
-          {(activePdfUrl || pdfPreviewUrl) && (
-            <div className="flex items-center gap-2">
-              <a
-                href={activePdfUrl || pdfPreviewUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Buka Tab Penuh
-              </a>
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href="https://docs.google.com/presentation/d/1Eo8sOvLi5BJMWUHOobJhLXcMhDBa7WvxqzSQTPyZC8Y/edit?usp=sharing"
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer border border-slate-700"
+              title="Buka templat Google Slides rasmi di Google Drive"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Templat Google Drive
+            </a>
+
+            {(activePdfUrl || pdfPreviewUrl) && (
+              <>
+                <a
+                  href={activePdfUrl || pdfPreviewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Buka Tab Penuh
+                </a>
               <button
                 onClick={handleDownloadPdf}
                 className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
@@ -1064,9 +1128,10 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
                 <Printer className="w-3.5 h-3.5" />
                 Cetak Surat
               </button>
-            </div>
+            </>
           )}
         </div>
+      </div>
 
         <div className="p-4 sm:p-6 bg-slate-100 flex flex-col items-center justify-center min-h-[500px]">
           {(activePdfUrl || pdfPreviewUrl) ? (
