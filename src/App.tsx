@@ -216,6 +216,10 @@ export default function App() {
     const unsubscribeConfig = subscribeSystemConfig((firebaseConfig) => {
       if (firebaseConfig) {
         setConfig(firebaseConfig);
+        if (firebaseConfig.appsScriptUrl) {
+          setAppsScriptUrl(firebaseConfig.appsScriptUrl);
+          localStorage.setItem('APPS_SCRIPT_URL', firebaseConfig.appsScriptUrl);
+        }
       }
     });
 
@@ -842,7 +846,7 @@ export default function App() {
                 config={config}
                 placements={placements}
                 companies={companies}
-                appsScriptUrl={appsScriptUrl}
+                appsScriptUrl={config.appsScriptUrl || appsScriptUrl}
               />
             )}
           </div>
@@ -899,7 +903,13 @@ export default function App() {
               await handleSaveStudentAsync(studentData);
             }}
             onDeleteStudent={handleDeleteStudent}
-            onSaveConfig={updatedConfig => setConfig(updatedConfig)}
+            onSaveConfig={updatedConfig => {
+              setConfig(updatedConfig);
+              if (updatedConfig.appsScriptUrl) {
+                setAppsScriptUrl(updatedConfig.appsScriptUrl);
+                localStorage.setItem('APPS_SCRIPT_URL', updatedConfig.appsScriptUrl);
+              }
+            }}
             onViewStudentDetail={student => {
               setSelectedStudent(student);
               setIsDetailModalOpen(true);

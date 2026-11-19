@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Save, ShieldCheck, Settings } from 'lucide-react';
+import { Calendar, Clock, Save, ShieldCheck, Settings, Link2 } from 'lucide-react';
 import { SystemConfig } from '../types';
 import { saveSystemConfigToFirebase } from '../firebase';
 
@@ -26,6 +26,10 @@ const cleanDate = (val: any): string => {
 };
 
 export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, appsScriptUrl, onSaveSuccess }) => {
+  const getInitialApiUrl = () => {
+    return config.appsScriptUrl || appsScriptUrl || (typeof window !== 'undefined' ? localStorage.getItem('APPS_SCRIPT_URL') || '' : '');
+  };
+
   const [formData, setFormData] = useState<SystemConfig>({
     sesi: cleanDate(config.sesi) || 'SESI I 2026/2027',
     tarikh: cleanDate(config.tarikh) || '30 NOVEMBER 2026 HINGGA 19 MAC 2027',
@@ -35,7 +39,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, appsScriptUrl,
     noTelefonPpia: cleanDate(config.noTelefonPpia) || '012-2455616',
     tarikhPemantauan: cleanDate(config.tarikhPemantauan) || '15 JANUARI 2027 HINGGA 15 FEBRUARI 2027',
     tarikhPembentangan: cleanDate(config.tarikhPembentangan) || '22 MAC 2027 HINGGA 26 MAC 2027',
-    tarikhKeputusan: cleanDate(config.tarikhKeputusan) || '5 APRIL 2027'
+    tarikhKeputusan: cleanDate(config.tarikhKeputusan) || '5 APRIL 2027',
+    appsScriptUrl: getInitialApiUrl()
   });
 
   const [isDirty, setIsDirty] = useState(false);
@@ -51,10 +56,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, appsScriptUrl,
         noTelefonPpia: cleanDate(config.noTelefonPpia) || '012-2455616',
         tarikhPemantauan: cleanDate(config.tarikhPemantauan) || '15 JANUARI 2027 HINGGA 15 FEBRUARI 2027',
         tarikhPembentangan: cleanDate(config.tarikhPembentangan) || '22 MAC 2027 HINGGA 26 MAC 2027',
-        tarikhKeputusan: cleanDate(config.tarikhKeputusan) || '5 APRIL 2027'
+        tarikhKeputusan: cleanDate(config.tarikhKeputusan) || '5 APRIL 2027',
+        appsScriptUrl: getInitialApiUrl()
       });
     }
-  }, [config, isDirty]);
+  }, [config, appsScriptUrl, isDirty]);
 
   const handleChange = (field: keyof SystemConfig, value: string) => {
     setIsDirty(true);
@@ -72,8 +78,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, appsScriptUrl,
     setError('');
     try {
       await saveSystemConfigToFirebase(formData);
+      if (formData.appsScriptUrl) {
+        localStorage.setItem('APPS_SCRIPT_URL', formData.appsScriptUrl);
+      }
       setIsDirty(false);
-      setMessage('Tetapan maklumat latihan industri berjaya disimpan ke Firebase!');
+      setMessage('Tetapan maklumat latihan industri & pautan API berjaya disimpan ke Firebase!');
       onSaveSuccess(formData);
     } catch (err: any) {
       setError(err.message || 'Ralat berlaku semasa menyimpan tetapan ke Firebase.');
@@ -286,6 +295,53 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, appsScriptUrl,
                       className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-900 outline-none uppercase font-bold text-slate-900 bg-white"
                     />
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Integrasi Google Apps Script API */}
+            <div className="pt-4 border-t border-slate-200">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="p-1.5 bg-blue-100 text-blue-900 rounded-lg">
+                  <Link2 className="w-4 h-4" />
+                </div>
+                <h3 className="font-extrabold text-blue-900 uppercase text-xs">
+                  10. Pautan API Google Apps Script (Web App URL)
+                </h3>
+              </div>
+              <p className="text-[11px] text-slate-500 mb-3 leading-relaxed">
+                Pautan Web App Google Apps Script digunakan untuk menghantar emel surat penempatan rasmi secara automatik terus ke emel HR Syarikat Industri terlibat (beserta lampiran surat PDF rasmi).
+              </p>
+
+              <div>
+                <label className="block font-black text-slate-700 mb-1.5 uppercase tracking-wide">
+                  Pautan Web App / API Google Apps Script:
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Link2 className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="Contoh: https://script.google.com/macros/s/AKfycb.../exec"
+                    value={formData.appsScriptUrl || ''}
+                    onChange={e => handleChange('appsScriptUrl', e.target.value.trim())}
+                    className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-900 outline-none font-mono text-xs text-slate-900 bg-white"
+                  />
+                </div>
+                <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
+                  <span className="text-slate-400">
+                    Pastikan URL berakhiran dengan <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-slate-700">/exec</code>
+                  </span>
+                  {formData.appsScriptUrl ? (
+                    <span className="text-emerald-700 font-bold flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5" /> API Dikonfigurasi
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 font-semibold italic">
+                      Belum dikonfigurasi
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

@@ -109,6 +109,7 @@ export interface SystemConfig {
   tarikhPemantauan?: string;
   tarikhPembentangan?: string;
   tarikhKeputusan?: string;
+  appsScriptUrl?: string;
   lockedEvaluations?: Record<string, {
     fli02?: boolean;
     fli03?: boolean;

@@ -45,6 +45,9 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
   companies = [],
   appsScriptUrl = '',
 }) => {
+  // Pautan API Google Apps Script (mengutamakan config atau localStorage jika prop kosong)
+  const effectiveAppsScriptUrl = appsScriptUrl || config.appsScriptUrl || (typeof window !== 'undefined' ? localStorage.getItem('APPS_SCRIPT_URL') || '' : '');
+
   // Session selection (defaults to current system session)
   const [selectedSession, setSelectedSession] = useState<string>(config.sesi || 'SESI I 2026/2027');
   const [searchTerm, setSearchTerm] = useState('');
@@ -347,13 +350,13 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
       let driveFileId = '';
 
       // 2. Hubungi Apps Script backend (jika tersedia) untuk arkib Google Drive
-      if (appsScriptUrl) {
+      if (effectiveAppsScriptUrl) {
         try {
           const res = await fetch('/api/placement/generate-letter', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-apps-script-url': appsScriptUrl,
+              'x-apps-script-url': effectiveAppsScriptUrl,
             },
             body: JSON.stringify({
               namaSyarikat: selectedCompany.companyName,
@@ -368,7 +371,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
               rujukanSurat: autoRuj,
               tarikhSurat: tarikhSurat,
               students: studentsPayload,
-              appsScriptUrl: appsScriptUrl
+              appsScriptUrl: effectiveAppsScriptUrl
             })
           });
 
@@ -446,7 +449,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-apps-script-url': appsScriptUrl,
+            'x-apps-script-url': effectiveAppsScriptUrl,
           },
           body: JSON.stringify({
             namaSyarikat: selectedCompany.companyName,
@@ -462,7 +465,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
             tarikhSurat: tarikhSurat,
             students: studentsPayload,
             pdfFileId: currentPlacementRecord?.letterFileId || '',
-            appsScriptUrl: appsScriptUrl
+            appsScriptUrl: effectiveAppsScriptUrl
           })
         });
 
@@ -474,8 +477,8 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
           throw new Error(data.error || 'Gagal menghantar emel penempatan melalui pelayan.');
         }
       } catch (apiErr: any) {
-        if (!appsScriptUrl) {
-          throw new Error('Sila masukkan Pautan API Google Apps Script di Tetapan Admin untuk menghantar emel terus melalui akaun Google rasmi.');
+        if (!effectiveAppsScriptUrl) {
+          throw new Error('Sila masukkan Pautan API Google Apps Script di bahagian Tetapan (Maklumat Latihan) untuk menghantar emel terus melalui akaun Google rasmi.');
         } else {
           throw apiErr;
         }
