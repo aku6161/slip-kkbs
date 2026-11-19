@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Student, SystemConfig, PlacementRecord, PlacementStudentInfo, IndustryCompany, formatProgramName } from '../types';
 import { 
   Building2, 
@@ -15,9 +15,11 @@ import {
   ArrowLeft,
   Mail,
   Calendar,
-  Save
+  Save,
+  Printer
 } from 'lucide-react';
 import { savePlacementToFirebase } from '../firebase';
+import { generatePlacementPdfDocument } from '../utils/generatePlacementPdf';
 
 interface PenempatanSubTabProps {
   students: Student[];
@@ -125,14 +127,16 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     return Array.from(groupsMap.values());
   }, [students, selectedSession, placements]);
 
-  // Helper: Kira No Rujukan Berurutan auto mengikut format tahun/001, cth: 2026/001
+  // Helper: Kira No Rujukan Berurutan auto mengikut format TAHUN/001, cth: 2026/001
   const getAutoRujukanForCompany = (compGroup: CompanyGroup): string => {
-    if (compGroup.placementRecord?.rujukanSurat && compGroup.placementRecord.rujukanSurat.trim() !== '') {
-      return compGroup.placementRecord.rujukanSurat.trim();
-    }
     const seqStr = String(compGroup.index).padStart(3, '0');
     return `${currentYear}/${seqStr}`;
   };
+
+  // PDF Preview & download states
+  const [activePdfUrl, setActivePdfUrl] = useState<string>('');
+  const [activePdfBlob, setActivePdfBlob] = useState<Blob | null>(null);
+  const [activePdfFileName, setActivePdfFileName] = useState<string>('');
 
   // Filter company groups by search term
   const filteredCompanyGroups = useMemo(() => {
@@ -154,8 +158,9 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     ) || selectedCompany.placementRecord;
   }, [selectedCompany, placements, selectedSession]);
 
-  // Dapatkan URL pratonton PDF sebenar daripada Google Drive
+  // URL pratonton PDF Google Drive jika ada
   const pdfPreviewUrl = useMemo(() => {
+    if (activePdfUrl) return activePdfUrl;
     if (currentPlacementRecord?.letterFileId) {
       return `https://drive.google.com/file/d/${currentPlacementRecord.letterFileId}/preview`;
     }
@@ -167,16 +172,55 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
       return url;
     }
     return '';
-  }, [currentPlacementRecord]);
+  }, [activePdfUrl, currentPlacementRecord]);
+
+  // Helper untuk menjana dokumen PDF sebenar di client
+  const renderClientPdf = (
+    comp: CompanyGroup,
+    cAlamat1: string,
+    cAlamat2: string,
+    cTarikhSurat: string,
+    cTarikhLi: string,
+    cTarikhMula: string
+  ) => {
+    try {
+      const autoRuj = getAutoRujukanForCompany(comp);
+      const studentsPayload = getPlacementStudentsPayload(comp);
+      const res = generatePlacementPdfDocument({
+        rujukanSurat: autoRuj,
+        tarikhSurat: cTarikhSurat,
+        namaSyarikat: comp.companyName,
+        alamatBaris1: cAlamat1,
+        alamatBaris2: cAlamat2,
+        sesi: selectedSession,
+        tarikhLi: cTarikhLi,
+        tarikhMulaLi: cTarikhMula,
+        namaPpia: config.namaPpia || 'PEGAWAI PERHUBUNGAN INDUSTRI DAN ALUMNI',
+        noTelefonPpia: config.noTelefonPpia || '087-212528',
+        students: studentsPayload,
+      });
+      setActivePdfUrl(res.blobUrl);
+      setActivePdfBlob(res.blob);
+      setActivePdfFileName(res.fileName);
+      return res;
+    } catch (err) {
+      console.error('Ralat penjanaan dokumen PDF client-side:', err);
+      return null;
+    }
+  };
 
   // Open detail view for a company & auto-populate
   const handleOpenCompanyDetail = (comp: CompanyGroup) => {
     setSelectedCompany(comp);
     setActionSuccessMsg(null);
     setActionErrorMsg(null);
-    setTarikhLi(config.tarikh || '30 NOVEMBER 2026 HINGGA 19 MAC 2027');
-    setTarikhMulaLi(getInitialStartDate());
-    setTarikhSurat(new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase());
+    const initialLi = config.tarikh || '30 NOVEMBER 2026 HINGGA 19 MAC 2027';
+    const initialMula = getInitialStartDate();
+    const todayStr = new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+    
+    setTarikhLi(initialLi);
+    setTarikhMulaLi(initialMula);
+    setTarikhSurat(todayStr);
 
     // Cari Alamat Syarikat dari Database Syarikat / Rekod Pelajar
     const matchedComp = companies.find(c => 
@@ -207,13 +251,60 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
 
     setAlamatBaris1(a1);
     setAlamatBaris2(a2);
+
+    // Jana dokumen PDF serta-merta bagi paparan langsung
+    renderClientPdf(comp, a1, a2, todayStr, initialLi, initialMula);
   };
+
+  // Kemas kini paparan PDF secara reaktif apabila parameter surat diubah
+  useEffect(() => {
+    if (selectedCompany) {
+      renderClientPdf(
+        selectedCompany,
+        alamatBaris1,
+        alamatBaris2,
+        tarikhSurat,
+        tarikhLi,
+        tarikhMulaLi
+      );
+    }
+  }, [
+    selectedCompany?.companyName,
+    alamatBaris1,
+    alamatBaris2,
+    tarikhSurat,
+    tarikhLi,
+    tarikhMulaLi,
+    selectedSession
+  ]);
 
   // Close detail view
   const handleBackToList = () => {
     setSelectedCompany(null);
     setActionSuccessMsg(null);
     setActionErrorMsg(null);
+    setActivePdfUrl('');
+    setActivePdfBlob(null);
+  };
+
+  // Muat turun PDF terus dari browser
+  const handleDownloadPdf = () => {
+    if (!activePdfUrl) return;
+    const a = document.createElement('a');
+    a.href = activePdfUrl;
+    a.download = activePdfFileName || `SURAT_PENEMPATAN_${selectedCompany?.companyName || 'INDUSTRI'}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // Cetak dokumen PDF
+  const handlePrintPdf = () => {
+    if (!activePdfUrl) return;
+    const printWindow = window.open(activePdfUrl, '_blank');
+    if (printWindow) {
+      printWindow.focus();
+    }
   };
 
   // Prepare student payload info
@@ -241,50 +332,58 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
     const placementId = `placement_${selectedCompany.companyName.replace(/[^a-zA-Z0-9]/g, '_')}_${selectedSession.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
     try {
-      let pdfUrl = '';
-      let downloadUrl = '';
-      let fileId = '';
-      let previewUrl = '';
+      // 1. Jana PDF rasmi tempatan 100% tepat mengikut templat Google Drive
+      const pdfRes = renderClientPdf(
+        selectedCompany,
+        alamatBaris1,
+        alamatBaris2,
+        tarikhSurat,
+        tarikhLi,
+        tarikhMulaLi
+      );
 
-      // Panggil backend API penjanaan surat (yang menghubungi Google Apps Script SlidesApp)
-      try {
-        const res = await fetch('/api/placement/generate-letter', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-apps-script-url': appsScriptUrl,
-          },
-          body: JSON.stringify({
-            namaSyarikat: selectedCompany.companyName,
-            alamatBaris1: alamatBaris1,
-            alamatBaris2: alamatBaris2,
-            emelIndustri: selectedCompany.companyEmail,
-            sesi: selectedSession,
-            tarikhLi: tarikhLi,
-            tarikhMulaLi: tarikhMulaLi,
-            namaPpia: config.namaPpia,
-            noTelefonPpia: config.noTelefonPpia,
-            rujukanSurat: autoRuj,
-            tarikhSurat: tarikhSurat,
-            students: studentsPayload,
-            appsScriptUrl: appsScriptUrl
-          })
-        });
+      let drivePreviewUrl = '';
+      let driveDownloadUrl = '';
+      let driveFileId = '';
 
-        const data = await res.json();
-        if (res.ok && data.success) {
-          pdfUrl = data.pdfUrl || '';
-          downloadUrl = data.downloadUrl || '';
-          fileId = data.fileId || '';
-          previewUrl = data.previewUrl || (data.fileId ? `https://drive.google.com/file/d/${data.fileId}/preview` : '');
-        } else if (!res.ok) {
-          console.warn('API generation note:', data.error);
+      // 2. Hubungi Apps Script backend (jika tersedia) untuk arkib Google Drive
+      if (appsScriptUrl) {
+        try {
+          const res = await fetch('/api/placement/generate-letter', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-apps-script-url': appsScriptUrl,
+            },
+            body: JSON.stringify({
+              namaSyarikat: selectedCompany.companyName,
+              alamatBaris1: alamatBaris1,
+              alamatBaris2: alamatBaris2,
+              emelIndustri: selectedCompany.companyEmail,
+              sesi: selectedSession,
+              tarikhLi: tarikhLi,
+              tarikhMulaLi: tarikhMulaLi,
+              namaPpia: config.namaPpia,
+              noTelefonPpia: config.noTelefonPpia,
+              rujukanSurat: autoRuj,
+              tarikhSurat: tarikhSurat,
+              students: studentsPayload,
+              appsScriptUrl: appsScriptUrl
+            })
+          });
+
+          const data = await res.json();
+          if (res.ok && data.success) {
+            drivePreviewUrl = data.previewUrl || '';
+            driveDownloadUrl = data.downloadUrl || '';
+            driveFileId = data.fileId || '';
+          }
+        } catch (err) {
+          console.warn('Apps Script sync optional note:', err);
         }
-      } catch (err: any) {
-        console.warn('Google Apps Script call error, proceeding with cloud record saving:', err);
       }
 
-      // Simpan rekod lengkap ke dalam database cloud utama (Firebase Firestore)
+      // 3. Simpan rekod lengkap ke dalam Firebase Firestore
       const placementRecordData: PlacementRecord = {
         id: placementId,
         companyName: selectedCompany.companyName,
@@ -299,9 +398,9 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
         alamatBaris1: alamatBaris1,
         alamatBaris2: alamatBaris2,
         letterGenerated: true,
-        letterPdfUrl: previewUrl || pdfUrl || (fileId ? `https://drive.google.com/file/d/${fileId}/preview` : ''),
-        letterDownloadUrl: downloadUrl || '',
-        letterFileId: fileId || '',
+        letterPdfUrl: drivePreviewUrl || pdfRes?.blobUrl || '',
+        letterDownloadUrl: driveDownloadUrl || '',
+        letterFileId: driveFileId || '',
         letterGeneratedAt: new Date().toISOString(),
         emailSent: currentPlacementRecord?.emailSent || false,
         emailSentAt: currentPlacementRecord?.emailSentAt,
@@ -925,44 +1024,46 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-blue-400" />
             <h3 className="text-xs font-bold uppercase tracking-wider">
-              Surat Penempatan PDF Rasmi (Templat Google Drive)
+              Paparan Surat Penempatan PDF (No. Rujukan: {getAutoRujukanForCompany(selectedCompany)})
             </h3>
           </div>
 
-          {pdfPreviewUrl && (
+          {(activePdfUrl || pdfPreviewUrl) && (
             <div className="flex items-center gap-2">
               <a
-                href={pdfPreviewUrl}
+                href={activePdfUrl || pdfPreviewUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all"
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 Buka Tab Penuh
               </a>
-              {currentPlacementRecord?.letterDownloadUrl && (
-                <a
-                  href={currentPlacementRecord.letterDownloadUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Muat Turun PDF
-                </a>
-              )}
+              <button
+                onClick={handleDownloadPdf}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Muat Turun PDF
+              </button>
+              <button
+                onClick={handlePrintPdf}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Cetak Surat
+              </button>
             </div>
           )}
         </div>
 
-        <div className="p-4 sm:p-6 bg-slate-100 flex flex-col items-center justify-center min-h-[450px]">
-          {pdfPreviewUrl ? (
+        <div className="p-4 sm:p-6 bg-slate-100 flex flex-col items-center justify-center min-h-[500px]">
+          {(activePdfUrl || pdfPreviewUrl) ? (
             <div className="w-full max-w-4xl bg-white rounded-xl shadow-md border border-slate-300 overflow-hidden">
               <iframe
-                src={pdfPreviewUrl}
+                src={activePdfUrl || pdfPreviewUrl}
                 title={`Surat Penempatan - ${selectedCompany.companyName}`}
-                className="w-full h-[750px] border-none"
-                allow="autoplay"
+                className="w-full h-[780px] border-none"
               />
             </div>
           ) : (
@@ -972,7 +1073,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
                 Surat Penempatan Belum Dijana
               </h4>
               <p className="text-xs text-slate-500 mb-4">
-                Tekan butang <strong>Simpan & Jana Surat Penempatan</strong> di atas untuk menjana dan memaparkan dokumen PDF rasmi 100% daripada templat Google Drive.
+                Tekan butang <strong>Simpan & Jana Surat Penempatan</strong> di atas untuk memaparkan surat penempatan PDF rasmi 100% mengikut templat Google Drive.
               </p>
               <button
                 onClick={handleGenerateAndSaveLetter}
