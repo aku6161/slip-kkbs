@@ -864,7 +864,7 @@ function handleSendPlacementEmail(payload) {
       }
     }
 
-    var subject = "PENEMPATAN PELAJAR UNTUK LATIHAN INDUSTRI SIJIL KOLEJ KOMUNITI BEAUFORT [" + sesi + "]";
+    var subject = "PENEMPATAN PELAJAR UNTUK LATIHAN INDUSTRI SIJIL KOLEJ KOMUNITI BEAUFORT " + sesi;
 
     var bodyPlain = "Tuan,\n\n" +
       "Dengan segala hormatnya saya merujuk kepada perkara yang tersebut di atas.\n\n" +
@@ -872,13 +872,29 @@ function handleSendPlacementEmail(payload) {
       "3. Untuk makluman pihak tuan, pelajar yang menjalani Latihan Industri di syarikat tuan adalah dilindungi oleh insurans kemalangan diri berkelompok.\n\n" +
       "4. Pihak Kolej Komuniti Beaufort amat berbesar hati sekiranya pihak tuan dapat mempertimbangkan untuk menyerap pelajar tersebut sebagai pekerja setelah mereka tamat menjalani Program Latihan Industri ini. Sebarang pertanyaan berhubung perkara ini boleh diajukan kepada Pegawai Perhubungan Industri dan Alumni, " + namaPpia + " di talian " + noTelefonPpia + ".\n\n" +
       "Kerjasama dari pihak tuan amat dihargai.\n\n" +
-      "Sekian terima kasih.\n\n" +
+      "Sekian, terima kasih.\n\n" +
       "“MALAYSIA MADANI”\n" +
       "“BERKHIDMAT UNTUK NEGARA”\n\n\n" +
       "Saya yang menjalankan amanah,\n\n\n" +
-      "Pengarah,\n" +
-      "Kolej Komuniti Beaufort,  \n" +
-      "Kementerian Pendidikan tinggi.";
+      "Pegawai Perhubungan Industri & Alumni,\n" +
+      "Kolej Komuniti Beaufort,\n" +
+      "Kementerian Pendidikan Tinggi.";
+
+    var bodyHtml = "<div style='font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.8;'>" +
+      "<p>Tuan,</p>" +
+      "<p style='text-align: justify;'>Dengan segala hormatnya saya merujuk kepada perkara yang tersebut di atas.</p>" +
+      "<p style='text-align: justify;'>2.&nbsp;&nbsp;&nbsp;&nbsp;Sukacita dimaklumkan bahawa pelajar seperti yang tersenarai dalam lampiran akan ditempatkan di syarikat/firma tuan bagi menjalani Latihan Industri bermula " + tarikhLi + ". Pelajar dikehendaki melapor diri di jabatan/firma tuan pada <strong>" + tarikhMulaLi + "</strong>, jam <strong>9.00 pagi</strong>.</p>" +
+      "<p style='text-align: justify;'>3.&nbsp;&nbsp;&nbsp;Untuk makluman pihak tuan, pelajar yang menjalani Latihan Industri di syarikat tuan adalah dilindungi oleh insurans kemalangan diri berkelompok.</p>" +
+      "<p style='text-align: justify;'>4.&nbsp;&nbsp;&nbsp;Pihak Kolej Komuniti Beaufort amat berbesar hati sekiranya pihak tuan dapat mempertimbangkan untuk menyerap pelajar tersebut sebagai pekerja setelah mereka tamat menjalani Program Latihan Industri ini. Sebarang pertanyaan berhubung perkara ini boleh diajukan kepada Pegawai Perhubungan Industri dan Alumni, <strong>" + namaPpia + "</strong> di talian <strong>" + noTelefonPpia + "</strong>.</p>" +
+      "<p>Kerjasama dari pihak tuan amat dihargai.</p>" +
+      "<p>Sekian, terima kasih.</p>" +
+      "<p><strong>“MALAYSIA MADANI”</strong><br><strong>“BERKHIDMAT UNTUK NEGARA”</strong></p>" +
+      "<p>Saya yang menjalankan amanah,</p>" +
+      "<br><br>" +
+      "<p><strong>Pegawai Perhubungan Industri &amp; Alumni,</strong><br>" +
+      "Kolej Komuniti Beaufort,<br>" +
+      "Kementerian Pendidikan Tinggi.</p>" +
+      "</div>";
 
     // CC kepada emel pelajar & unitlatihanindustri@kkbeaufort.edu.my
     var ccList = ["unitlatihanindustri@kkbeaufort.edu.my"];
@@ -894,7 +910,8 @@ function handleSendPlacementEmail(payload) {
     var mailOptions = {
       name: "Unit Perhubungan Industri & Alumni KKBS",
       cc: ccList.join(","),
-      attachments: attachments
+      attachments: attachments,
+      htmlBody: bodyHtml
     };
 
     GmailApp.sendEmail(emelIndustri, subject, bodyPlain, mailOptions);
