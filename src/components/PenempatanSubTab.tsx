@@ -474,7 +474,15 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
           sentSuccess = true;
           sentInfo = data;
         } else {
-          throw new Error(data.error || 'Gagal menghantar emel penempatan melalui pelayan.');
+          // Check if GAS is outdated (doesn't recognise action)
+          const errMsg = data.error || 'Gagal menghantar emel penempatan melalui pelayan.';
+          if (errMsg.toLowerCase().includes('aksi tidak dikenali') || errMsg.toLowerCase().includes('tidak dikenali')) {
+            throw new Error(
+              'Google Apps Script yang dideploy adalah versi lama dan tidak menyokong tindakan "hantar emel penempatan". ' +
+              'Sila salin semula kod terkini dari fail google-apps-script.js dan deploy semula sebagai New Deployment di Google Apps Script.'
+            );
+          }
+          throw new Error(errMsg);
         }
       } catch (apiErr: any) {
         if (!effectiveAppsScriptUrl) {
