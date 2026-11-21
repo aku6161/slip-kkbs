@@ -1,10 +1,10 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { Users, FileText, Lock, LogOut, ShieldCheck, Settings, Award } from 'lucide-react';
+import { Users, FileText, Lock, LogOut, ShieldCheck, Settings, Award, BarChart3 } from 'lucide-react';
 
 interface NavbarProps {
-  currentView: 'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian' | 'pensyarah' | 'tetapan';
-  onNavigate: (view: 'dashboard' | 'form' | 'status' | 'industry' | 'config' | 'penilaian' | 'pensyarah' | 'tetapan') => void;
+  currentView: 'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian' | 'pensyarah' | 'tetapan' | 'laporan';
+  onNavigate: (view: 'dashboard' | 'form' | 'status' | 'industry' | 'config' | 'penilaian' | 'pensyarah' | 'tetapan' | 'laporan') => void;
   isSyncing?: boolean;
   isAdmin: boolean;
   onOpenAdminModal: () => void;
@@ -109,6 +109,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <button
+            onClick={() => onNavigate('laporan')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              currentView === 'laporan'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            4. Laporan
+          </button>
+
+          <button
             onClick={() => onNavigate('tetapan')}
             className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               currentView === 'tetapan' || currentView === 'pensyarah' || currentView === 'config'
@@ -117,7 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Settings className="w-4 h-4" />
-            4. Tetapan
+            5. Tetapan
           </button>
         </div>
       </div>

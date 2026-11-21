@@ -17,6 +17,7 @@ import { PenilaianPelajar } from './components/PenilaianPelajar';
 import { MaklumatPensyarah } from './components/MaklumatPensyarah';
 import { TetapanPanel } from './components/TetapanPanel';
 import { PenempatanSubTab } from './components/PenempatanSubTab';
+import { LaporanTab } from './components/LaporanTab';
 import { RefreshCw, Lock, ShieldCheck, X, AlertCircle, Building2, FileText, UserCheck } from 'lucide-react';
 
 import { 
@@ -46,7 +47,7 @@ interface AuthSession {
   userRole: 'landing' | 'student' | 'admin' | 'lecturer';
   studentIc: string;
   lecturerId: string;
-  currentView: 'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian' | 'pensyarah' | 'tetapan';
+  currentView: 'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian' | 'pensyarah' | 'tetapan' | 'laporan';
   lastActiveTimestamp: number;
 }
 
@@ -84,7 +85,7 @@ export default function App() {
   const [userRole, setUserRole] = useState<'landing' | 'student' | 'admin' | 'lecturer'>(initialSession.userRole);
   const [studentIc, setStudentIc] = useState<string>(initialSession.studentIc);
   const [lecturerId, setLecturerId] = useState<string>(initialSession.lecturerId);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian' | 'pensyarah' | 'tetapan'>(initialSession.currentView);
+  const [currentView, setCurrentView] = useState<'dashboard' | 'form' | 'status' | 'industry' | 'document' | 'config' | 'penilaian' | 'pensyarah' | 'tetapan' | 'laporan'>(initialSession.currentView);
 
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
   const [markah, setMarkah] = useState<any[]>([]);
@@ -893,7 +894,17 @@ export default function App() {
           />
         )}
 
-        {/* Admin Tab 4: Tetapan (Houses Maklumat Pensyarah, Maklumat Latihan, Maklumat Pelajar, Maklumat Syarikat) */}
+        {/* Admin Tab 4: Laporan & Statistik */}
+        {currentView === 'laporan' && (
+          <LaporanTab
+            students={students}
+            lecturers={lecturers}
+            markah={markah}
+            config={config}
+          />
+        )}
+
+        {/* Admin Tab 5: Tetapan (Houses Maklumat Pensyarah, Maklumat Latihan, Maklumat Pelajar, Maklumat Syarikat) */}
         {(currentView === 'tetapan' || currentView === 'pensyarah' || currentView === 'config') && (
           <TetapanPanel
             students={students}
