@@ -1453,7 +1453,7 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
   const slicerColor = useMemo(() => {
     switch (selectedSlicer) {
       case 'SOP': return '#1e3a8a';
-      case 'SKU': return '#ea580c';
+      case 'SKU': return '#ec4899';
       case 'SKE': return '#15803d';
       default: return '#0f766e';
     }
@@ -1588,26 +1588,26 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
             onClick={() => setSelectedSlicer('SKU')}
             className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden ${
               selectedSlicer === 'SKU'
-                ? 'bg-orange-600 text-white border-orange-700 shadow-md ring-2 ring-orange-300/60'
+                ? 'bg-pink-600 text-white border-pink-700 shadow-md ring-2 ring-pink-300/60'
                 : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs'
             }`}
           >
             <div className="flex items-center justify-end h-5">
               {selectedSlicer === 'SKU' && (
-                <Check className="w-4 h-4 text-amber-200" />
+                <Check className="w-4 h-4 text-pink-200" />
               )}
             </div>
             <div className="mt-1">
               <p className={`text-base font-black uppercase tracking-tight ${selectedSlicer === 'SKU' ? 'text-white' : 'text-slate-900'}`}>
                 Sijil Kulinari
               </p>
-              <p className={`text-[11px] font-semibold mt-0.5 ${selectedSlicer === 'SKU' ? 'text-orange-100' : 'text-slate-500'}`}>
+              <p className={`text-[11px] font-semibold mt-0.5 ${selectedSlicer === 'SKU' ? 'text-pink-100' : 'text-slate-500'}`}>
                 {slicerSummary.SKU.count} daripada {slicerSummary.SKU.totalStudents} dinilai
               </p>
             </div>
             <div className="mt-2 pt-2 border-t border-slate-200/30 flex items-center justify-between text-xs font-mono">
-              <span className={selectedSlicer === 'SKU' ? 'text-orange-100 text-[10px]' : 'text-slate-400 text-[10px]'}>Min Keseluruhan:</span>
-              <span className={`font-black ${selectedSlicer === 'SKU' ? 'text-white' : 'text-orange-700'}`}>
+              <span className={selectedSlicer === 'SKU' ? 'text-pink-100 text-[10px]' : 'text-slate-400 text-[10px]'}>Min Keseluruhan:</span>
+              <span className={`font-black ${selectedSlicer === 'SKU' ? 'text-white' : 'text-pink-600'}`}>
                 {slicerSummary.SKU.mean !== null ? `${slicerSummary.SKU.mean.toFixed(2)}` : '-'}
               </span>
             </div>
@@ -1918,9 +1918,12 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
         )}
 
         {/* =====================================================================
-         * KOTAK ANALISIS KESELURUHAN PENILAIAN (Border oren/coral seperti lampiran)
+         * KOTAK ANALISIS KESELURUHAN PENILAIAN
          * ===================================================================== */}
-        <div className="border-2 border-orange-500 rounded-2xl p-5 sm:p-6 bg-white shadow-xs space-y-2">
+        <div
+          className="border-2 rounded-2xl p-5 sm:p-6 bg-white shadow-xs space-y-2 transition-colors"
+          style={{ borderColor: slicerColor }}
+        >
           <h3 className="text-sm font-black text-slate-900 uppercase">
             Analisis:
           </h3>
@@ -1979,7 +1982,7 @@ const LaporanPenilaianSubTab: React.FC<LaporanPenilaianSubTabProps> = ({
 
   // Program definitions
   const programList = [
-    { code: 'SKU' as const, name: 'Sijil Kulinari', color: '#ea580c', bgLight: 'bg-orange-50/70', border: 'border-orange-200' },
+    { code: 'SKU' as const, name: 'Sijil Kulinari', color: '#ec4899', bgLight: 'bg-pink-50/70', border: 'border-pink-200' },
     { code: 'SOP' as const, name: 'Sijil Operasi Perhotelan', color: '#1e3a8a', bgLight: 'bg-blue-50/70', border: 'border-blue-200' },
     { code: 'SKE' as const, name: 'Sijil Teknologi Elektrik', color: '#15803d', bgLight: 'bg-emerald-50/70', border: 'border-emerald-200' }
   ];
@@ -2401,101 +2404,6 @@ const LaporanPenilaianSubTab: React.FC<LaporanPenilaianSubTabProps> = ({
                 )}
               </div>
             ))}
-          </div>
-
-          {/* Jadual Rumusan Terperinci Penilaian Mengikut Program */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-slate-700" />
-                <h3 className="text-xs font-black text-slate-900 uppercase">
-                  Jadual Ringkasan Pelajar Tertinggi, Sederhana &amp; Terendah (FLI 04)
-                </h3>
-              </div>
-              <span className="text-xs text-slate-500 font-mono">
-                Sesi: {selectedSession}
-              </span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-100 text-slate-700 font-black uppercase text-[11px] border-b border-slate-200">
-                  <tr>
-                    <th className="py-3 px-4">Program</th>
-                    <th className="py-3 px-4">Kategori</th>
-                    <th className="py-3 px-4">Nama Pelajar</th>
-                    <th className="py-3 px-4 font-mono">No. Matrik</th>
-                    <th className="py-3 px-4 text-center">FLI 01 (60%)</th>
-                    <th className="py-3 px-4 text-center">FLI 02 (20%)</th>
-                    <th className="py-3 px-4 text-center">FLI 03 (20%)</th>
-                    <th className="py-3 px-4 text-center">Jumlah (100%)</th>
-                    <th className="py-3 px-4 text-center">Gred</th>
-                    <th className="py-3 px-4 text-right print:hidden">Tindakan</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                  {evaluatedProgramResults.flatMap(prog => {
-                    if (!prog.hasData) return [];
-                    const rows = [
-                      { cat: 'Tertinggi', badge: 'bg-emerald-100 text-emerald-800 border-emerald-300', data: prog.highest },
-                      { cat: 'Sederhana', badge: 'bg-blue-100 text-blue-800 border-blue-300', data: prog.median },
-                      { cat: 'Terendah', badge: 'bg-amber-100 text-amber-800 border-amber-300', data: prog.lowest }
-                    ].filter(r => r.data !== null);
-
-                    return rows.map((r, rIdx) => (
-                      <tr key={`${prog.code}_${r.cat}`} className="hover:bg-slate-50/80 transition-colors">
-                        {rIdx === 0 && (
-                          <td rowSpan={rows.length} className="py-3.5 px-4 font-black align-top border-r border-slate-100">
-                            <span className="flex items-center gap-1.5">
-                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: prog.color }}></span>
-                              <span>{prog.code}</span>
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-normal block">{prog.name}</span>
-                          </td>
-                        )}
-                        <td className="py-3.5 px-4">
-                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${r.badge}`}>
-                            {r.cat}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-900 uppercase">
-                          {r.data?.nama}
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-slate-600">
-                          {r.data?.noMatrik}
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-mono font-semibold">
-                          {r.data?.fli01}%
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-mono font-semibold">
-                          {r.data?.fli02}%
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-mono font-semibold">
-                          {r.data?.fli03}%
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-mono font-black text-slate-900 text-sm">
-                          {r.data?.grandTotal}%
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black border ${r.data?.gradeInfo.badgeBg}`}>
-                            {r.data?.gradeInfo.gred}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right print:hidden">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedStudentForModal({ student: r.data!.student, markData: r.data!.markData })}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
-                          >
-                            Lihat FLI 04
-                          </button>
-                        </td>
-                      </tr>
-                    ));
-                  })}
-                </tbody>
-              </table>
-            </div>
           </div>
         </>
       ) : (
