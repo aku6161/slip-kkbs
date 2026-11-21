@@ -570,7 +570,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
       await savePlacementToFirebase(updatedRecord);
 
       setActionSuccessMsg(
-        `Emel penempatan bersama lampiran surat rasmi telah berjaya dihantar ke ${selectedCompany.companyEmail} (CC: Emel Pelajar & Unit Latihan Industri)! Rekod cloud telah dikemaskini.`
+        'Emel penempatan berjaya dihantar.'
       );
     } catch (err: any) {
       setActionErrorMsg(`Gagal menghantar emel: ${err.message || err}`);
