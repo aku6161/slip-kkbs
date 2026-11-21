@@ -728,14 +728,67 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
 }) => {
   // 1. Tentukan Pensyarah Pemantau
   const pemantauLecturers = useMemo(() => {
-    // Kumpul nama pensyarah pemantau daripada pelajar sesi ini
+    // Kumpul nama pensyarah pemantau daripada rekod pelajar dan markah penilaian
     const assignedMap = new Map<string, { id?: string; nama: string; count: number }>();
+
     students.forEach(s => {
-      const name = s.namaPemantau1?.trim();
+      const m = getStudentMark ? getStudentMark(s) : null;
+
+      // Cari nama pemantau dari rekod student atau rekod markah
+      let name = (
+        s.namaPemantau1 || 
+        (s as any)['NAMA PENSYARAH PEMANTAU'] || 
+        (s as any)['NAMA PEMANTAU'] || 
+        (s as any)['PENSYARAH PEMANTAU'] || 
+        m?.['NAMA PENSYARAH PEMANTAU'] || 
+        m?.['NAMA PEMANTAU'] || 
+        m?.['PENSYARAH PEMANTAU'] || 
+        m?.['NAMA PENSYARAH'] || 
+        ''
+      ).trim();
+
+      // Cari id pemantau dari rekod student atau rekod markah
+      let staffId = (
+        s.idPemantau1 || 
+        (s as any)['ID PEMANTAU 1'] || 
+        (s as any)['STAFF ID PEMANTAU 1'] || 
+        (s as any)['STAFF ID'] || 
+        (s as any)['ID STAF'] || 
+        m?.['STAFF ID'] || 
+        m?.['ID PEMANTAU 1'] || 
+        m?.['STAFF ID PEMANTAU 1'] || 
+        m?.['ID STAF'] || 
+        m?.['ID PEMANTAU'] || 
+        ''
+      ).trim();
+
+      // Jika ada staffId tetapi tiada nama, padankan dengan senarai pensyarah
+      if (!name && staffId && lecturers.length > 0) {
+        const cleanStaffId = staffId.toUpperCase().replace(/\s+/g, '');
+        const found = lecturers.find(l => (l.staffId || '').toUpperCase().replace(/\s+/g, '') === cleanStaffId);
+        if (found) {
+          name = found.nama.trim();
+        }
+      }
+
+      // Jika ada nama tetapi tiada staffId, cari staffId daripada senarai pensyarah
+      if (name && !staffId && lecturers.length > 0) {
+        const cleanName = name.toUpperCase().replace(/\s+/g, '');
+        const found = lecturers.find(l => (l.nama || '').toUpperCase().replace(/\s+/g, '') === cleanName);
+        if (found) {
+          staffId = found.staffId.trim();
+        }
+      }
+
       if (name) {
-        const existing = assignedMap.get(name) || { id: s.idPemantau1, nama: name, count: 0 };
+        const upperName = name.toUpperCase();
+        const matchedLec = lecturers.find(l => l.nama.toUpperCase().trim() === upperName || (staffId && l.staffId.toUpperCase() === staffId.toUpperCase()));
+        const displayName = matchedLec ? matchedLec.nama : name.toUpperCase();
+        const displayId = matchedLec ? matchedLec.staffId : staffId;
+
+        const existing = assignedMap.get(displayName) || { id: displayId, nama: displayName, count: 0 };
         existing.count += 1;
-        assignedMap.set(name, existing);
+        assignedMap.set(displayName, existing);
       }
     });
 
@@ -745,14 +798,15 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
         nama: item.nama,
         gender: getLecturerGender(item.nama),
         studentCount: item.count
-      }));
+      })).sort((a, b) => b.studentCount - a.studentCount);
     }
 
     // Jika tiada penugasan aktif bagi sesi ini, pulangkan senarai kosong
     return [];
-  }, [students]);
+  }, [students, lecturers, getStudentMark]);
 
   const totalPemantau = pemantauLecturers.length;
+  const totalAssignedStudents = pemantauLecturers.reduce((acc, curr) => acc + curr.studentCount, 0);
   const pemantauLelaki = pemantauLecturers.filter(p => p.gender === 'Lelaki').length;
   const pemantauPerempuan = pemantauLecturers.filter(p => p.gender === 'Perempuan').length;
 
@@ -990,7 +1044,7 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
               Senarai Pensyarah Pemantau Terlibat
             </h3>
             <span className="text-[11px] text-slate-500 font-semibold">
-              {students.filter(s => s.namaPemantau1).length} pelajar ditugaskan pemantauan
+              {totalAssignedStudents} pelajar ditugaskan pemantauan
             </span>
           </div>
 
