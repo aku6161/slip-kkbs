@@ -19,9 +19,15 @@ import {
   FileSpreadsheet,
   Check,
   Filter,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Trophy,
+  Target,
+  FileCheck,
+  AlertCircle,
+  Eye
 } from 'lucide-react';
 import { Student, Lecturer, SystemConfig } from '../types';
+import { BorangFLI04Modal } from './evaluations/BorangFLI04Modal';
 
 interface LaporanTabProps {
   students: Student[];
@@ -107,8 +113,8 @@ export const LaporanTab: React.FC<LaporanTabProps> = ({
   markah,
   config
 }) => {
-  // Sub-tabs: 'penempatan' | 'pemantauan' | 'industri'
-  const [activeSubTab, setActiveSubTab] = useState<'penempatan' | 'pemantauan' | 'industri'>('penempatan');
+  // Sub-tabs: 'penempatan' | 'pemantauan' | 'industri' | 'penilaian'
+  const [activeSubTab, setActiveSubTab] = useState<'penempatan' | 'pemantauan' | 'industri' | 'penilaian'>('penempatan');
 
   // Senarai sesi dinamik
   const availableSessions = useMemo(() => {
@@ -228,6 +234,18 @@ export const LaporanTab: React.FC<LaporanTabProps> = ({
             <TrendingUp className="w-4 h-4" />
             <span>3. Statistik Maklum Balas Industri</span>
           </button>
+
+          <button
+            onClick={() => setActiveSubTab('penilaian')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeSubTab === 'penilaian'
+                ? 'bg-blue-900 text-white shadow-md'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Award className="w-4 h-4" />
+            <span>4. Laporan Penilaian</span>
+          </button>
         </div>
 
         {/* Filter Sesi Controls (Tanpa perkataan sesi terkini / kad sesi tetapan) */}
@@ -284,6 +302,17 @@ export const LaporanTab: React.FC<LaporanTabProps> = ({
           markah={markah}
           selectedSession={selectedSession}
           getStudentMark={getStudentMark}
+        />
+      )}
+
+      {/* SUBTAB 4: LAPORAN PENILAIAN */}
+      {activeSubTab === 'penilaian' && (
+        <LaporanPenilaianSubTab
+          students={filteredStudents}
+          markah={markah}
+          selectedSession={selectedSession}
+          getStudentMark={getStudentMark}
+          config={config}
         />
       )}
     </div>
@@ -1106,11 +1135,6 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 Dapatan Pemantauan
               </h2>
-              {fli02Scores.hasData && (
-                <span className="text-xs px-3 py-1 bg-emerald-100 text-emerald-900 font-bold rounded-full border border-emerald-300">
-                  Data Sebenar: {fli02Scores.evaluatedCount} Pelajar Dinilai
-                </span>
-              )}
             </div>
             <p className="text-xs text-slate-500 mt-1">
               Penilaian 3 Elemen Utama berasaskan skala 1.00 hingga 5.00 bagi sesi {selectedSession}
@@ -1913,6 +1937,593 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
           </p>
         </div>
       </div>
+    </div>
+  );
+};
+
+/* =========================================================================
+ * 4. SUBTAB: LAPORAN PENILAIAN (FLI 04 - Tertinggi, Sederhana, Terendah)
+ * ========================================================================= */
+interface LaporanPenilaianSubTabProps extends SubTabProps {
+  config?: SystemConfig;
+}
+
+const parseScoreVal = (val: any): number => {
+  if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  const str = String(val).trim().replace(',', '.');
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+};
+
+const getGradeInfo = (score: number): { gred: string; status: string; color: string; badgeBg: string } => {
+  if (score >= 90) return { gred: 'A+', status: 'Cemerlang', color: '#15803d', badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
+  if (score >= 80) return { gred: 'A', status: 'Cemerlang', color: '#16a34a', badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+  if (score >= 75) return { gred: 'A-', status: 'Cemerlang', color: '#2563eb', badgeBg: 'bg-blue-50 text-blue-800 border-blue-200' };
+  if (score >= 70) return { gred: 'B+', status: 'Kepujian', color: '#3b82f6', badgeBg: 'bg-blue-50 text-blue-700 border-blue-200' };
+  if (score >= 65) return { gred: 'B', status: 'Kepujian', color: '#0284c7', badgeBg: 'bg-sky-50 text-sky-800 border-sky-200' };
+  if (score >= 60) return { gred: 'B-', status: 'Lulus', color: '#d97706', badgeBg: 'bg-amber-50 text-amber-800 border-amber-200' };
+  if (score >= 55) return { gred: 'C+', status: 'Lulus', color: '#ea580c', badgeBg: 'bg-orange-50 text-orange-800 border-orange-200' };
+  if (score >= 50) return { gred: 'C', status: 'Lulus', color: '#ca8a04', badgeBg: 'bg-yellow-50 text-yellow-800 border-yellow-200' };
+  return { gred: 'F', status: 'Gagal', color: '#dc2626', badgeBg: 'bg-rose-50 text-rose-800 border-rose-200' };
+};
+
+const LaporanPenilaianSubTab: React.FC<LaporanPenilaianSubTabProps> = ({
+  students,
+  selectedSession,
+  getStudentMark,
+  config
+}) => {
+  // Modal Papar Borang FLI 04
+  const [selectedStudentForModal, setSelectedStudentForModal] = useState<{ student: Student; markData: any } | null>(null);
+
+  // Program definitions
+  const programList = [
+    { code: 'SKU' as const, name: 'Sijil Kulinari', color: '#ea580c', bgLight: 'bg-orange-50/70', border: 'border-orange-200' },
+    { code: 'SOP' as const, name: 'Sijil Operasi Perhotelan', color: '#1e3a8a', bgLight: 'bg-blue-50/70', border: 'border-blue-200' },
+    { code: 'SKE' as const, name: 'Sijil Teknologi Elektrik', color: '#15803d', bgLight: 'bg-emerald-50/70', border: 'border-emerald-200' }
+  ];
+
+  // Kiraan markah FLI 04 bagi setiap program
+  const evaluatedProgramResults = useMemo(() => {
+    return programList.map(prog => {
+      const progStudents = students.filter(s => normalizeProgramCode(s.program) === prog.code);
+
+      // Kumpul markah bagi pelajar yang telah dinilai
+      const scoredStudents = progStudents.map(student => {
+        const markData = getStudentMark ? getStudentMark(student) : null;
+        if (!markData) return null;
+
+        // FLI 01 (Maksimum 60%)
+        const a1 = parseScoreVal(markData['TOTAL1']);
+        const a2 = parseScoreVal(markData['TOTAL2']);
+        const a3 = parseScoreVal(markData['TOTAL3']);
+        const a4 = parseScoreVal(markData['TOTAL4']);
+        const a5 = parseScoreVal(markData['TOTAL5']);
+        const b1 = parseScoreVal(markData['TOTAL6']);
+        const fli01 = parseScoreVal(markData['GRAND TOTAL1']) || (a1 + a2 + a3 + a4 + a5 + b1);
+
+        // FLI 02 (Maksimum 20%)
+        const c1 = parseScoreVal(markData['TOTAL7']);
+        const c2 = parseScoreVal(markData['TOTAL8']);
+        const c3 = parseScoreVal(markData['TOTAL9']);
+        const fli02 = parseScoreVal(markData['GRAN TOTAL2']) || (c1 + c2 + c3);
+
+        // FLI 03 (Maksimum 20%)
+        const d1 = parseScoreVal(markData['TOTAL10']);
+        const d2 = parseScoreVal(markData['TOTAL11']);
+        const fli03 = parseScoreVal(markData['GRAND TOTAL3']) || (d1 + d2);
+
+        // Jumlah Markah FLI 04 (Maksimum 100%)
+        const grandTotal = Number((fli01 + fli02 + fli03).toFixed(2));
+
+        // Semak sekiranya mempunyai markah
+        const hasScores = fli01 > 0 || fli02 > 0 || fli03 > 0 || markData['GRAND GRAND TOTAL'] !== undefined;
+        if (!hasScores && grandTotal === 0) return null;
+
+        return {
+          student,
+          markData,
+          nama: student.namaPelajar || (student as any)['NAMA PELAJAR'] || student.nama || '',
+          noMatrik: student.noMatrik || (student as any)['No. Pendaftaran'] || '',
+          program: prog.name,
+          programCode: prog.code,
+          fli01,
+          fli02,
+          fli03,
+          grandTotal,
+          gradeInfo: getGradeInfo(grandTotal)
+        };
+      }).filter(Boolean) as Array<{
+        student: Student;
+        markData: any;
+        nama: string;
+        noMatrik: string;
+        program: string;
+        programCode: string;
+        fli01: number;
+        fli02: number;
+        fli03: number;
+        grandTotal: number;
+        gradeInfo: ReturnType<typeof getGradeInfo>;
+      }>;
+
+      // Susun mengikut markah tertinggi
+      scoredStudents.sort((a, b) => b.grandTotal - a.grandTotal);
+
+      const totalEvaluated = scoredStudents.length;
+
+      if (totalEvaluated === 0) {
+        return {
+          ...prog,
+          hasData: false,
+          totalStudents: progStudents.length,
+          totalEvaluated: 0,
+          highest: null,
+          median: null,
+          lowest: null,
+          average: 0,
+          allScored: []
+        };
+      }
+
+      const highest = scoredStudents[0];
+      const lowest = scoredStudents[totalEvaluated - 1];
+      const midIndex = Math.floor(totalEvaluated / 2);
+      const median = scoredStudents[midIndex];
+
+      const average = Number((scoredStudents.reduce((acc, curr) => acc + curr.grandTotal, 0) / totalEvaluated).toFixed(2));
+
+      return {
+        ...prog,
+        hasData: true,
+        totalStudents: progStudents.length,
+        totalEvaluated,
+        highest,
+        median,
+        lowest,
+        average,
+        allScored: scoredStudents
+      };
+    });
+  }, [students, getStudentMark]);
+
+  // Statistik Keseluruhan Sesi
+  const sessionTotalEvaluated = evaluatedProgramResults.reduce((acc, curr) => acc + curr.totalEvaluated, 0);
+  const allEvaluatedStudents = evaluatedProgramResults.flatMap(p => p.allScored).sort((a, b) => b.grandTotal - a.grandTotal);
+  const overallHighest = allEvaluatedStudents.length > 0 ? allEvaluatedStudents[0] : null;
+  const overallAverage = allEvaluatedStudents.length > 0 
+    ? Number((allEvaluatedStudents.reduce((acc, curr) => acc + curr.grandTotal, 0) / allEvaluatedStudents.length).toFixed(2)) 
+    : 0;
+  const passCount = allEvaluatedStudents.filter(s => s.grandTotal >= 50).length;
+  const passRate = allEvaluatedStudents.length > 0 ? Number(((passCount / allEvaluatedStudents.length) * 100).toFixed(1)) : 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Top Banner */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold">
+            <Award className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-black text-slate-900 uppercase">
+              Laporan Penilaian Keseluruhan (FLI 04)
+            </h2>
+            <p className="text-xs text-slate-500">
+              Analisis pencapaian markah FLI 04: Pelajar dengan markah Tertinggi, Sederhana, dan Terendah mengikut program bagi sesi: <span className="font-bold text-blue-950 font-mono">{selectedSession}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {sessionTotalEvaluated > 0 ? (
+        <>
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-800 flex items-center justify-center font-black">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jumlah Dinilai FLI 04</p>
+                <p className="text-2xl font-black text-slate-900 font-mono">
+                  {sessionTotalEvaluated} <span className="text-xs text-slate-400 font-normal">pelajar</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-black">
+                <Trophy className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Markah Tertinggi Sesi</p>
+                <p className="text-2xl font-black text-emerald-800 font-mono">
+                  {overallHighest?.grandTotal}%
+                </p>
+                <p className="text-[10px] text-slate-500 truncate" title={overallHighest?.nama}>
+                  {overallHighest?.nama} ({overallHighest?.programCode})
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-800 flex items-center justify-center font-black">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Purata Markah Sesi</p>
+                <p className="text-2xl font-black text-indigo-900 font-mono">
+                  {overallAverage}%
+                </p>
+                <p className="text-[10px] text-slate-400">Merentasi semua program</p>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-800 flex items-center justify-center font-black">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kadar Lulus LI (&gt;=50%)</p>
+                <p className="text-2xl font-black text-purple-900 font-mono">
+                  {passRate}%
+                </p>
+                <p className="text-[10px] text-slate-400">{passCount} daripada {sessionTotalEvaluated} lulus</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Seksyen Mengikut Program: SKU, SOP, SKE */}
+          <div className="space-y-6">
+            {evaluatedProgramResults.map((prog) => (
+              <div
+                key={prog.code}
+                className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden"
+              >
+                {/* Header Program Card */}
+                <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: prog.color }}
+                    ></span>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+                        {prog.name} ({prog.code})
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        {prog.totalEvaluated} daripada {prog.totalStudents} pelajar telah dinilai FLI 04 (Purata Program: {prog.hasData ? `${prog.average}%` : '-'})
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="text-xs font-bold px-3 py-1 bg-white rounded-xl text-slate-700 border border-slate-200 shadow-2xs self-start sm:self-auto font-mono">
+                    Borang FLI 04 (100%)
+                  </span>
+                </div>
+
+                {prog.hasData ? (
+                  <div className="p-6">
+                    {/* 3 Kad Penilaian: Tertinggi, Sederhana, Terendah */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                      {/* 1. MARKAH TERTINGGI */}
+                      {prog.highest && (
+                        <div className="p-5 rounded-2xl border-2 border-emerald-300 bg-emerald-50/40 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow relative overflow-hidden">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
+                                <Trophy className="w-3.5 h-3.5" />
+                                <span>Markah Tertinggi</span>
+                              </span>
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${prog.highest.gradeInfo.badgeBg}`}>
+                                Gred {prog.highest.gradeInfo.gred}
+                              </span>
+                            </div>
+
+                            <div>
+                              <h4 className="text-sm font-black text-slate-900 uppercase leading-snug line-clamp-2" title={prog.highest.nama}>
+                                {prog.highest.nama}
+                              </h4>
+                              <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">
+                                {prog.highest.noMatrik}
+                              </p>
+                            </div>
+
+                            {/* Skor Besar */}
+                            <div className="py-2 px-3.5 bg-white rounded-xl border border-emerald-200 shadow-2xs flex items-baseline justify-between">
+                              <span className="text-xs font-bold text-slate-500">Jumlah FLI 04:</span>
+                              <div className="text-right">
+                                <span className="text-2xl font-black text-emerald-800 font-mono">
+                                  {prog.highest.grandTotal}%
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Pecahan Komponen FLI 01, 02, 03 */}
+                            <div className="space-y-1.5 pt-1 text-[11px] text-slate-600 border-t border-emerald-200/60 font-medium">
+                              <div className="flex justify-between">
+                                <span>Majikan (FLI 01 - 60%):</span>
+                                <span className="font-mono font-bold text-slate-900">{prog.highest.fli01}%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Pemantauan (FLI 02 - 20%):</span>
+                                <span className="font-mono font-bold text-slate-900">{prog.highest.fli02}%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Laporan (FLI 03 - 20%):</span>
+                                <span className="font-mono font-bold text-slate-900">{prog.highest.fli03}%</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudentForModal({ student: prog.highest!.student, markData: prog.highest!.markData })}
+                            className="w-full py-2 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-98"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Papar Borang FLI 04</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 2. MARKAH SEDERHANA */}
+                      {prog.median && (
+                        <div className="p-5 rounded-2xl border-2 border-blue-300 bg-blue-50/40 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow relative overflow-hidden">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-700 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
+                                <Target className="w-3.5 h-3.5" />
+                                <span>Markah Sederhana</span>
+                              </span>
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${prog.median.gradeInfo.badgeBg}`}>
+                                Gred {prog.median.gradeInfo.gred}
+                              </span>
+                            </div>
+
+                            <div>
+                              <h4 className="text-sm font-black text-slate-900 uppercase leading-snug line-clamp-2" title={prog.median.nama}>
+                                {prog.median.nama}
+                              </h4>
+                              <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">
+                                {prog.median.noMatrik}
+                              </p>
+                            </div>
+
+                            {/* Skor Besar */}
+                            <div className="py-2 px-3.5 bg-white rounded-xl border border-blue-200 shadow-2xs flex items-baseline justify-between">
+                              <span className="text-xs font-bold text-slate-500">Jumlah FLI 04:</span>
+                              <div className="text-right">
+                                <span className="text-2xl font-black text-blue-900 font-mono">
+                                  {prog.median.grandTotal}%
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Pecahan Komponen FLI 01, 02, 03 */}
+                            <div className="space-y-1.5 pt-1 text-[11px] text-slate-600 border-t border-blue-200/60 font-medium">
+                              <div className="flex justify-between">
+                                <span>Majikan (FLI 01 - 60%):</span>
+                                <span className="font-mono font-bold text-slate-900">{prog.median.fli01}%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Pemantauan (FLI 02 - 20%):</span>
+                                <span className="font-mono font-bold text-slate-900">{prog.median.fli02}%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Laporan (FLI 03 - 20%):</span>
+                                <span className="font-mono font-bold text-slate-900">{prog.median.fli03}%</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudentForModal({ student: prog.median!.student, markData: prog.median!.markData })}
+                            className="w-full py-2 px-3 rounded-xl bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-98"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Papar Borang FLI 04</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 3. MARKAH TERENDAH */}
+                      {prog.lowest && (
+                        <div className="p-5 rounded-2xl border-2 border-amber-300 bg-amber-50/40 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow relative overflow-hidden">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
+                                <AlertCircle className="w-3.5 h-3.5" />
+                                <span>Markah Terendah</span>
+                              </span>
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${prog.lowest.gradeInfo.badgeBg}`}>
+                                Gred {prog.lowest.gradeInfo.gred}
+                              </span>
+                            </div>
+
+                            <div>
+                              <h4 className="text-sm font-black text-slate-900 uppercase leading-snug line-clamp-2" title={prog.lowest.nama}>
+                                {prog.lowest.nama}
+                              </h4>
+                              <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">
+                                {prog.lowest.noMatrik}
+                              </p>
+                            </div>
+
+                            {/* Skor Besar */}
+                            <div className="py-2 px-3.5 bg-white rounded-xl border border-amber-200 shadow-2xs flex items-baseline justify-between">
+                              <span className="text-xs font-bold text-slate-500">Jumlah FLI 04:</span>
+                              <div className="text-right">
+                                <span className="text-2xl font-black text-amber-900 font-mono">
+                                  {prog.lowest.grandTotal}%
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Pecahan Komponen FLI 01, 02, 03 */}
+                            <div className="space-y-1.5 pt-1 text-[11px] text-slate-600 border-t border-amber-200/60 font-medium">
+                              <div className="flex justify-between">
+                                <span>Majikan (FLI 01 - 60%):</span>
+                                <span className="font-mono font-bold text-slate-900">{prog.lowest.fli01}%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Pemantauan (FLI 02 - 20%):</span>
+                                <span className="font-mono font-bold text-slate-900">{prog.lowest.fli02}%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Laporan (FLI 03 - 20%):</span>
+                                <span className="font-mono font-bold text-slate-900">{prog.lowest.fli03}%</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudentForModal({ student: prog.lowest!.student, markData: prog.lowest!.markData })}
+                            className="w-full py-2 px-3 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs active:scale-98"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Papar Borang FLI 04</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-slate-400 space-y-2">
+                    <Info className="w-7 h-7 mx-auto text-slate-300" />
+                    <p className="font-bold text-xs text-slate-600 uppercase">Tiada Rekod Penilaian FLI 04</p>
+                    <p className="text-[11px] text-slate-400">Belum ada rekod markah penilaian lengkap bagi pelajar program ini pada sesi {selectedSession}.</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Jadual Rumusan Terperinci Penilaian Mengikut Program */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-slate-700" />
+                <h3 className="text-xs font-black text-slate-900 uppercase">
+                  Jadual Ringkasan Pelajar Tertinggi, Sederhana &amp; Terendah (FLI 04)
+                </h3>
+              </div>
+              <span className="text-xs text-slate-500 font-mono">
+                Sesi: {selectedSession}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-100 text-slate-700 font-black uppercase text-[11px] border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Program</th>
+                    <th className="py-3 px-4">Kategori</th>
+                    <th className="py-3 px-4">Nama Pelajar</th>
+                    <th className="py-3 px-4 font-mono">No. Matrik</th>
+                    <th className="py-3 px-4 text-center">FLI 01 (60%)</th>
+                    <th className="py-3 px-4 text-center">FLI 02 (20%)</th>
+                    <th className="py-3 px-4 text-center">FLI 03 (20%)</th>
+                    <th className="py-3 px-4 text-center">Jumlah (100%)</th>
+                    <th className="py-3 px-4 text-center">Gred</th>
+                    <th className="py-3 px-4 text-right print:hidden">Tindakan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                  {evaluatedProgramResults.flatMap(prog => {
+                    if (!prog.hasData) return [];
+                    const rows = [
+                      { cat: 'Tertinggi', badge: 'bg-emerald-100 text-emerald-800 border-emerald-300', data: prog.highest },
+                      { cat: 'Sederhana', badge: 'bg-blue-100 text-blue-800 border-blue-300', data: prog.median },
+                      { cat: 'Terendah', badge: 'bg-amber-100 text-amber-800 border-amber-300', data: prog.lowest }
+                    ].filter(r => r.data !== null);
+
+                    return rows.map((r, rIdx) => (
+                      <tr key={`${prog.code}_${r.cat}`} className="hover:bg-slate-50/80 transition-colors">
+                        {rIdx === 0 && (
+                          <td rowSpan={rows.length} className="py-3.5 px-4 font-black align-top border-r border-slate-100">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: prog.color }}></span>
+                              <span>{prog.code}</span>
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-normal block">{prog.name}</span>
+                          </td>
+                        )}
+                        <td className="py-3.5 px-4">
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${r.badge}`}>
+                            {r.cat}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-slate-900 uppercase">
+                          {r.data?.nama}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-slate-600">
+                          {r.data?.noMatrik}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-mono font-semibold">
+                          {r.data?.fli01}%
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-mono font-semibold">
+                          {r.data?.fli02}%
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-mono font-semibold">
+                          {r.data?.fli03}%
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-mono font-black text-slate-900 text-sm">
+                          {r.data?.grandTotal}%
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black border ${r.data?.gradeInfo.badgeBg}`}>
+                            {r.data?.gradeInfo.gred}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right print:hidden">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudentForModal({ student: r.data!.student, markData: r.data!.markData })}
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                          >
+                            Lihat FLI 04
+                          </button>
+                        </td>
+                      </tr>
+                    ));
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      ) : (
+        /* Empty State bila tiada sebarang data penilaian bagi sesi ini */
+        <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-3 py-16">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center">
+            <Info className="w-7 h-7" />
+          </div>
+          <div>
+            <h4 className="text-sm font-black text-slate-800 uppercase">
+              Tiada Rekod Penilaian Lengkap FLI 04
+            </h4>
+            <p className="text-xs text-slate-500 mt-1 max-w-md">
+              Belum ada rekod markah penilaian (FLI 01, FLI 02, atau FLI 03) yang direkodkan bagi sesi <span className="font-semibold text-slate-700 font-mono">{selectedSession}</span>.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Borang FLI 04 apabila klik papar borang */}
+      {selectedStudentForModal && (
+        <BorangFLI04Modal
+          student={selectedStudentForModal.student}
+          markData={selectedStudentForModal.markData}
+          onClose={() => setSelectedStudentForModal(null)}
+          config={config}
+        />
+      )}
     </div>
   );
 };
