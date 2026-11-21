@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Student, SystemConfig, Lecturer, IndustryCompany, formatProgramName } from '../types';
+import { Student, SystemConfig, Lecturer, IndustryCompany, formatProgramName, formatMalaysianIc, sanitizeDataForDatabase } from '../types';
 import { INITIAL_COMPANIES, INITIAL_LECTURERS } from '../data/initialData';
 import { UserPlus, Send, User, Building, Award, BookOpen, Info, Lock, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 
@@ -53,15 +53,15 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
     const map = new Map<string, Lecturer>();
 
     INITIAL_LECTURERS.forEach(lec => {
-      const key = (lec.nama || '').trim().toUpperCase();
-      if (key) map.set(key, { ...lec });
+      const key = (lec.staffId || lec.nama).trim().toUpperCase();
+      map.set(key, { ...lec, nama: lec.nama.trim().toUpperCase() });
     });
 
     (lecturers || []).forEach(lec => {
-      const key = (lec.nama || '').trim().toUpperCase();
+      const key = (lec.staffId || lec.nama).trim().toUpperCase();
       if (key) {
         const existing = map.get(key) || {};
-        map.set(key, { ...existing, ...lec });
+        map.set(key, { ...existing, ...lec, nama: (lec.nama || '').trim().toUpperCase() });
       }
     });
 
@@ -132,11 +132,23 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
       const found = students.find(s => (s.noIc || '').replace(/\D/g, '') === initialIc.replace(/\D/g, ''));
       if (found) {
         hasInitialized.current = true;
-        setFormData({ ...found });
+        const matchedPa = found?.namaPa ? findLecturerByName(found.namaPa) : undefined;
+        setFormData({
+          ...found,
+          noIc: formatMalaysianIc(found.noIc),
+          namaPelajar: (found.namaPelajar || '').toUpperCase(),
+          noMatrik: (found.noMatrik || '').toUpperCase(),
+          kelas: (found.kelas || '').toUpperCase(),
+          emelPelajar: (found.emelPelajar || '').toLowerCase(),
+          emelHrSyarikat: (found.emelHrSyarikat || '').toLowerCase(),
+          namaPa: matchedPa?.nama || (found.namaPa || '').toUpperCase(),
+          emelPa: matchedPa?.emel ? matchedPa.emel.toLowerCase() : (found.emelPa || '').toLowerCase(),
+          noTelefonPa: matchedPa?.noTelefon || found.noTelefonPa || '',
+        });
       } else if (students.length > 0) {
         // students sudah diload tapi tiada rekod — tetapkan IC sahaja, jangan reset lagi
         hasInitialized.current = true;
-        setFormData(prev => ({ ...prev, noIc: formatIc(initialIc) }));
+        setFormData(prev => ({ ...prev, noIc: formatMalaysianIc(initialIc) }));
       }
     }
   }, [initialIc, students]);
@@ -145,19 +157,6 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
   React.useEffect(() => {
     hasInitialized.current = false;
   }, [initialIc]);
-
-  // Format Helpers
-  const formatIc = (val: string) => {
-    const cleaned = val.replace(/\D/g, '').substring(0, 12);
-    const match = cleaned.match(/^(\d{6})(\d{2})?(\d{4})?$/);
-    if (match) {
-      let formatted = match[1];
-      if (match[2]) formatted += '-' + match[2];
-      if (match[3]) formatted += '-' + match[3];
-      return formatted;
-    }
-    return cleaned;
-  };
 
   const formatPhone = (val: string) => {
     const cleaned = val.replace(/\D/g, '').substring(0, 11);
@@ -180,8 +179,21 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
     });
 
     if (foundStudent) {
+      const matchedPa = foundStudent.namaPa ? findLecturerByName(foundStudent.namaPa) : undefined;
       setFormData(prev => ({
         ...foundStudent,
+        noIc: formatMalaysianIc(foundStudent.noIc),
+        namaPelajar: (foundStudent.namaPelajar || '').toUpperCase(),
+        noMatrik: (foundStudent.noMatrik || '').toUpperCase(),
+        kelas: (foundStudent.kelas || '').toUpperCase(),
+        alamat: (foundStudent.alamat || '').toUpperCase(),
+        namaSekolahMenengah: (foundStudent.namaSekolahMenengah || '').toUpperCase(),
+        namaSyarikat: (foundStudent.namaSyarikat || '').toUpperCase(),
+        emelPelajar: (foundStudent.emelPelajar || '').toLowerCase(),
+        emelHrSyarikat: (foundStudent.emelHrSyarikat || '').toLowerCase(),
+        namaPa: matchedPa?.nama || (foundStudent.namaPa || '').toUpperCase(),
+        emelPa: matchedPa?.emel ? matchedPa.emel.toLowerCase() : (foundStudent.emelPa || '').toLowerCase(),
+        noTelefonPa: matchedPa?.noTelefon || foundStudent.noTelefonPa || '',
         // Jika pelajar sudah pilih program baharu, kekalkan pilihan baharu tersebut
         program: prev.program && prev.program !== '' ? prev.program : (foundStudent.program || '')
       }));
@@ -192,7 +204,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
     } else {
       setFormData(prev => ({
         ...prev,
-        noIc: formatIc(icSearchInput)
+        noIc: formatMalaysianIc(icSearchInput)
       }));
       setSearchStatus({
         found: false,
@@ -219,11 +231,12 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
     const cleanLower = (val?: string) => val ? val.trim().toLowerCase() : '';
 
     // Final clean up and enforcement of capitalization
-    const cleanedData = {
+    const cleanedData = sanitizeDataForDatabase({
       ...formData,
       status: 'Memohon', // Always force status to 'Memohon' on submission
       namaPelajar: cleanUpper(formData.namaPelajar),
       noMatrik: cleanUpper(formData.noMatrik),
+      noIc: formatMalaysianIc(formData.noIc),
       program: formatProgramName(formData.program), // Standardized uppercase program name without abbreviations
       kelas: cleanUpper(formData.kelas),
       sesi: config.sesi, // Force the student's Sesi to the active session configured in the system
@@ -242,7 +255,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
       emelPelajar: cleanLower(formData.emelPelajar),
       emelPa: cleanLower(formData.emelPa),
       emelHrSyarikat: cleanLower(formData.emelHrSyarikat),
-    };
+    });
 
     try {
       if (onSaveStudent) {
@@ -349,8 +362,9 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
             <input
               type="text"
               placeholder="Masukkan No. Kad Pengenalan (contoh: 060503-12-0288)..."
+              maxLength={14}
               value={icSearchInput}
-              onChange={(e) => setIcSearchInput(formatIc(e.target.value))}
+              onChange={(e) => setIcSearchInput(formatMalaysianIc(e.target.value))}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearchIc(); } }}
               className="flex-1 px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-900/20 focus:outline-none font-mono"
             />
@@ -407,9 +421,10 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
                 type="text"
                 required
                 readOnly={!!initialIc}
+                maxLength={14}
                 placeholder="Contoh: 060503-12-0288"
                 value={formData.noIc}
-                onChange={e => setFormData({ ...formData, noIc: formatIc(e.target.value) })}
+                onChange={e => setFormData({ ...formData, noIc: formatMalaysianIc(e.target.value) })}
                 className={`w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none font-mono text-slate-900 font-bold ${
                   initialIc ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-white'
                 }`}
@@ -650,10 +665,6 @@ JALAN MELALUGUS,
                   ))
                 ) : (
                   <option value="" disabled>Tiada data pensyarah</option>
-                )}
-                {/* Sertakan pilihan jika nama sedia ada tiada dalam senarai pensyarah */}
-                {formData.namaPa && !lecturerList.some(l => (l.nama || '').trim().toUpperCase() === (formData.namaPa || '').trim().toUpperCase()) && (
-                  <option value={formData.namaPa}>{formData.namaPa}</option>
                 )}
               </select>
             </div>

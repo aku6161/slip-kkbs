@@ -20,6 +20,106 @@ export const formatProgramName = (prog?: string): string => {
   return up.replace(/\s*\([^)]*\)/g, '').trim();
 };
 
+/**
+ * Format No Kad Pengenalan kepada format ID Malaysia standard: 000000-00-0000
+ */
+export const formatMalaysianIc = (val?: string): string => {
+  if (!val) return '';
+  let digits = String(val).replace(/\D/g, '');
+  // Khas untuk kes kesilapan input di mana bulan 1 digit tertinggal angka sifar di hadapan (11 digit: cth 05906120320 -> 050906120320)
+  if (digits.length === 11 && /^\d{2}[1-9]\d{8}$/.test(digits)) {
+    digits = `${digits.substring(0, 2)}0${digits.substring(2)}`;
+  }
+  digits = digits.substring(0, 12);
+  if (digits.length <= 6) return digits;
+  if (digits.length <= 8) return `${digits.substring(0, 6)}-${digits.substring(6)}`;
+  return `${digits.substring(0, 6)}-${digits.substring(6, 8)}-${digits.substring(8, 12)}`;
+};
+
+/**
+ * Memastikan semua data yang dimasukkan dan disimpan dalam pangkalan data adalah HURUF BESAR
+ * kecuali medan emel (huruf kecil) dan no kad pengenalan diformat standard ID Malaysia (000000-00-0000).
+ */
+export const sanitizeDataForDatabase = <T extends Record<string, any>>(data: T): T => {
+  if (!data || typeof data !== 'object') return data;
+  if (Array.isArray(data)) {
+    return data.map(item => (typeof item === 'object' && item !== null ? sanitizeDataForDatabase(item) : item)) as unknown as T;
+  }
+
+  const result: any = {};
+
+  for (const [key, value] of Object.entries(data)) {
+    if (value === null || value === undefined) {
+      result[key] = value;
+      continue;
+    }
+
+    const lowerKey = key.toLowerCase();
+
+    // 1. Medan Emel: Sentiasa huruf kecil
+    if (
+      lowerKey.includes('emel') || 
+      lowerKey.includes('email') || 
+      lowerKey === 'companyemail'
+    ) {
+      result[key] = typeof value === 'string' ? value.trim().toLowerCase() : value;
+      continue;
+    }
+
+    // 2. Medan No. Kad Pengenalan: Format ID Malaysia (000000-00-0000)
+    if (
+      lowerKey === 'noic' || 
+      lowerKey === 'ic' || 
+      lowerKey === 'nokp' || 
+      lowerKey === 'nokadpengenalan'
+    ) {
+      result[key] = typeof value === 'string' ? formatMalaysianIc(value) : value;
+      continue;
+    }
+
+    // 3. Medan URL atau ID teknikal / timestamp / status
+    if (
+      lowerKey.endsWith('url') || 
+      lowerKey === 'id' || 
+      lowerKey === 'staffid' ||
+      lowerKey === 'timestamp' || 
+      lowerKey === 'createdat' || 
+      lowerKey === 'updatedat' ||
+      lowerKey === 'migratedfromgooglesheetat' ||
+      lowerKey === 'status'
+    ) {
+      if (lowerKey === 'staffid' && typeof value === 'string') {
+        result[key] = value.trim().toUpperCase();
+      } else {
+        result[key] = value;
+      }
+      continue;
+    }
+
+    // 4. Objek bertingkat (seperti bjpliData)
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      result[key] = sanitizeDataForDatabase(value);
+      continue;
+    }
+
+    // 5. Rentetan biasa: Tukar ke HURUF BESAR
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      // Kekalkan format nombor telefon
+      if (lowerKey.includes('telefon') || lowerKey.includes('notel') || lowerKey.includes('phone')) {
+        result[key] = trimmed;
+      } else {
+        result[key] = trimmed.toUpperCase();
+      }
+      continue;
+    }
+
+    result[key] = value;
+  }
+
+  return result as T;
+};
+
 export interface BJPLIFormData {
   keputusan: 'DITERIMA' | 'DITOLAK' | 'MEMERLUKAN_TEMUDUGA' | 'PENDING';
   namaPegawaiIndustri: string;

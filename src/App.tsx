@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Student, DocumentType, BJPLIFormData, SystemConfig, Lecturer, IndustryCompany, PlacementRecord, formatProgramName } from './types';
+import { Student, DocumentType, BJPLIFormData, SystemConfig, Lecturer, IndustryCompany, PlacementRecord, formatProgramName, formatMalaysianIc, sanitizeDataForDatabase } from './types';
 import { INITIAL_STUDENTS, INITIAL_LECTURERS, INITIAL_COMPANIES } from './data/initialData';
 import { Navbar } from './components/Navbar';
 import { MainDashboard } from './components/MainDashboard';
@@ -289,16 +289,16 @@ export default function App() {
   const handleUpdateStudent = async (id: string, updatedData: Partial<Student>) => {
     const target = students.find(s => s.id === id);
     if (!target) return;
-    const cleanData = { ...updatedData };
+    const cleanData = sanitizeDataForDatabase({ ...updatedData });
     if (cleanData.program) cleanData.program = formatProgramName(cleanData.program);
-    const updated = { ...target, ...cleanData };
+    const updated = sanitizeDataForDatabase({ ...target, ...cleanData });
 
     setStudents(prev =>
       prev.map(s => (s.id === id ? updated : s))
     );
 
     if (selectedStudent && selectedStudent.id === id) {
-      setSelectedStudent(prev => (prev ? { ...prev, ...updatedData } : null));
+      setSelectedStudent(prev => (prev ? { ...prev, ...cleanData } : null));
     }
 
     try {
@@ -313,36 +313,37 @@ export default function App() {
     options?: { sendEmail?: boolean }
   ) => {
     try {
-      const docId = studentData.id || studentData.noMatrik?.replace(/\//g, '_') || `student_${Date.now()}`;
-      const fullStudent: Student = {
+      const sanitizedInput = sanitizeDataForDatabase(studentData);
+      const docId = sanitizedInput.id || sanitizedInput.noMatrik?.replace(/\//g, '_') || `student_${Date.now()}`;
+      const fullStudent: Student = sanitizeDataForDatabase({
         id: docId,
-        timestamp: studentData.timestamp || new Date().toLocaleString('ms-MY'),
-        email: studentData.email || studentData.emelPelajar || '',
-        noIc: studentData.noIc || '',
-        sesi: studentData.sesi || config.sesi || '',
-        noTelefon: studentData.noTelefon || '',
-        emelPelajar: studentData.emelPelajar || '',
-        alamat: studentData.alamat || '',
-        namaSekolahMenengah: studentData.namaSekolahMenengah || '',
-        jawatanKkbs: studentData.jawatanKkbs || '',
-        programKkbs1: studentData.programKkbs1 || '',
-        programKkbs2: studentData.programKkbs2 || '',
-        programKkbs3: studentData.programKkbs3 || '',
-        pencapaian1: studentData.pencapaian1 || '',
-        pencapaian2: studentData.pencapaian2 || '',
-        pencapaian3: studentData.pencapaian3 || '',
-        namaPa: studentData.namaPa?.toUpperCase() || '',
-        noTelefonPa: studentData.noTelefonPa || '',
-        emelPa: studentData.emelPa || '',
-        emelHrSyarikat: studentData.emelHrSyarikat || '',
-        namaSyarikat: studentData.namaSyarikat?.toUpperCase() || '',
-        status: (studentData.status || 'Belum Memohon') as any,
-        ...studentData,
-        namaPelajar: studentData.namaPelajar?.toUpperCase() || '',
-        noMatrik: studentData.noMatrik?.toUpperCase() || '',
-        kelas: studentData.kelas?.toUpperCase() || '',
-        program: formatProgramName(studentData.program),
-      };
+        timestamp: sanitizedInput.timestamp || new Date().toLocaleString('ms-MY'),
+        email: sanitizedInput.email || sanitizedInput.emelPelajar || '',
+        noIc: formatMalaysianIc(sanitizedInput.noIc),
+        sesi: sanitizedInput.sesi || config.sesi || '',
+        noTelefon: sanitizedInput.noTelefon || '',
+        emelPelajar: sanitizedInput.emelPelajar || '',
+        alamat: sanitizedInput.alamat || '',
+        namaSekolahMenengah: sanitizedInput.namaSekolahMenengah || '',
+        jawatanKkbs: sanitizedInput.jawatanKkbs || '',
+        programKkbs1: sanitizedInput.programKkbs1 || '',
+        programKkbs2: sanitizedInput.programKkbs2 || '',
+        programKkbs3: sanitizedInput.programKkbs3 || '',
+        pencapaian1: sanitizedInput.pencapaian1 || '',
+        pencapaian2: sanitizedInput.pencapaian2 || '',
+        pencapaian3: sanitizedInput.pencapaian3 || '',
+        namaPa: sanitizedInput.namaPa || '',
+        noTelefonPa: sanitizedInput.noTelefonPa || '',
+        emelPa: sanitizedInput.emelPa || '',
+        emelHrSyarikat: sanitizedInput.emelHrSyarikat || '',
+        namaSyarikat: sanitizedInput.namaSyarikat || '',
+        status: (sanitizedInput.status || 'Belum Memohon') as any,
+        ...sanitizedInput,
+        namaPelajar: sanitizedInput.namaPelajar || '',
+        noMatrik: sanitizedInput.noMatrik || '',
+        kelas: sanitizedInput.kelas || '',
+        program: formatProgramName(sanitizedInput.program),
+      });
 
       await saveStudentToFirebase(fullStudent);
       setStudents(prev => [fullStudent, ...prev.filter(s => s.id !== docId)]);
@@ -558,17 +559,18 @@ export default function App() {
   // Lecturer CRUD Handlers
   const handleSaveLecturer = async (lecturerData: Partial<Lecturer>) => {
     try {
-      const docId = lecturerData.id || lecturerData.staffId?.replace(/[\/\s]/g, '_') || `lec_${Date.now()}`;
-      const fullLecturer: Lecturer = {
+      const sanitized = sanitizeDataForDatabase(lecturerData);
+      const docId = sanitized.id || sanitized.staffId?.replace(/[\/\s]/g, '_') || `lec_${Date.now()}`;
+      const fullLecturer: Lecturer = sanitizeDataForDatabase({
         id: docId,
-        nama: lecturerData.nama || '',
-        staffId: lecturerData.staffId || '',
-        emel: lecturerData.emel || '',
-        program: lecturerData.program || 'SIJIL TEKNOLOGI ELEKTRIK',
-        noTelefon: lecturerData.noTelefon || '',
-        jawatan: lecturerData.jawatan || 'PENSYARAH',
+        nama: sanitized.nama || '',
+        staffId: sanitized.staffId || '',
+        emel: sanitized.emel || '',
+        program: sanitized.program || 'SIJIL TEKNOLOGI ELEKTRIK',
+        noTelefon: sanitized.noTelefon || '',
+        jawatan: sanitized.jawatan || 'PENSYARAH',
         updatedAt: new Date().toISOString()
-      };
+      });
 
       await saveLecturerToFirebase(fullLecturer);
       setLecturers(prev => [fullLecturer, ...prev.filter(l => l.id !== docId)]);
@@ -592,23 +594,24 @@ export default function App() {
   // Industry Company CRUD Handlers
   const handleSaveCompany = async (companyData: Partial<IndustryCompany>) => {
     try {
-      const docId = companyData.id || `comp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      const fullCompany: IndustryCompany = {
+      const sanitized = sanitizeDataForDatabase(companyData);
+      const docId = sanitized.id || `comp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const fullCompany: IndustryCompany = sanitizeDataForDatabase({
         id: docId,
-        bil: companyData.bil || (companies.length + 1),
-        namaSyarikat: (companyData.namaSyarikat || '').trim(),
-        alamat1: (companyData.alamat1 || '').trim(),
-        alamat2: (companyData.alamat2 || '').trim(),
-        emelHr: (companyData.emelHr || '').trim(),
-        nomborTel: (companyData.nomborTel || '').trim(),
-        elaun: (companyData.elaun || '-').trim(),
-        penginapan: companyData.penginapan || '-',
-        makan: companyData.makan || '-',
-        offday: companyData.offday || '1',
-        pengangkutan: companyData.pengangkutan || '-',
-        catatan: (companyData.catatan || '').trim(),
+        bil: sanitized.bil || (companies.length + 1),
+        namaSyarikat: (sanitized.namaSyarikat || '').trim(),
+        alamat1: (sanitized.alamat1 || '').trim(),
+        alamat2: (sanitized.alamat2 || '').trim(),
+        emelHr: (sanitized.emelHr || '').trim(),
+        nomborTel: (sanitized.nomborTel || '').trim(),
+        elaun: (sanitized.elaun || '-').trim(),
+        penginapan: sanitized.penginapan || '-',
+        makan: sanitized.makan || '-',
+        offday: sanitized.offday || '1',
+        pengangkutan: sanitized.pengangkutan || '-',
+        catatan: (sanitized.catatan || '').trim(),
         updatedAt: new Date().toISOString()
-      };
+      });
 
       await saveCompanyToFirebase(fullCompany);
       setCompanies(prev => {

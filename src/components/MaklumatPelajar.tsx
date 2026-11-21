@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Student, ApplicationStatus, Lecturer, IndustryCompany, formatProgramName } from '../types';
+import { Student, ApplicationStatus, Lecturer, IndustryCompany, formatProgramName, formatMalaysianIc, sanitizeDataForDatabase } from '../types';
 import { INITIAL_COMPANIES, INITIAL_LECTURERS } from '../data/initialData';
 import * as XLSX from 'xlsx';
 import { 
@@ -67,15 +67,15 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
     const map = new Map<string, Lecturer>();
 
     INITIAL_LECTURERS.forEach(lec => {
-      const key = (lec.nama || '').trim().toUpperCase();
-      if (key) map.set(key, { ...lec });
+      const key = (lec.staffId || lec.nama).trim().toUpperCase();
+      map.set(key, { ...lec, nama: lec.nama.trim().toUpperCase() });
     });
 
     (lecturers || []).forEach(lec => {
-      const key = (lec.nama || '').trim().toUpperCase();
+      const key = (lec.staffId || lec.nama).trim().toUpperCase();
       if (key) {
         const existing = map.get(key) || {};
-        map.set(key, { ...existing, ...lec });
+        map.set(key, { ...existing, ...lec, nama: (lec.nama || '').trim().toUpperCase() });
       }
     });
 
@@ -176,9 +176,18 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
     const matched = student.namaPa ? findLecturerByName(student.namaPa) : undefined;
     setFormData({
       ...student,
-      // Jika emelPa tiada, kemaskini secara automatik dari maklumat pensyarah berdaftar
-      emelPa: student.emelPa || (matched?.emel ? matched.emel.toLowerCase() : ''),
-      // Jika noTelefonPa tiada atau masih nombor dummy '012-3456789', kemaskini mengikut maklumat pensyarah jika ada
+      namaPelajar: (student.namaPelajar || '').toUpperCase(),
+      noMatrik: (student.noMatrik || '').toUpperCase(),
+      noIc: formatMalaysianIc(student.noIc),
+      kelas: (student.kelas || '').toUpperCase(),
+      sesi: (student.sesi || '').toUpperCase(),
+      alamat: (student.alamat || '').toUpperCase(),
+      namaSekolahMenengah: (student.namaSekolahMenengah || '').toUpperCase(),
+      namaSyarikat: (student.namaSyarikat || '').toUpperCase(),
+      emelPelajar: (student.emelPelajar || '').toLowerCase(),
+      emelHrSyarikat: (student.emelHrSyarikat || '').toLowerCase(),
+      namaPa: matched?.nama || (student.namaPa || '').toUpperCase(),
+      emelPa: (matched?.emel ? matched.emel.toLowerCase() : (student.emelPa || '').toLowerCase()),
       noTelefonPa: (!student.noTelefonPa || student.noTelefonPa === '012-3456789')
         ? (matched?.noTelefon || student.noTelefonPa || '')
         : student.noTelefonPa
@@ -200,15 +209,13 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
 
     setIsSaving(true);
     try {
-      const studentData: Partial<Student> = {
+      const studentData: Partial<Student> = sanitizeDataForDatabase({
         ...formData,
         program: formatProgramName(formData.program),
-        namaPelajar: formData.namaPelajar?.toUpperCase(),
-        noMatrik: formData.noMatrik?.toUpperCase(),
-        kelas: formData.kelas?.toUpperCase(),
+        noIc: formatMalaysianIc(formData.noIc),
         id: editingStudent ? editingStudent.id : formData.noMatrik?.replace(/\//g, '_'),
         timestamp: editingStudent ? editingStudent.timestamp : new Date().toISOString(),
-      };
+      });
 
       await onSaveStudent(studentData);
       setNotification({
@@ -314,28 +321,30 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
 
           const docId = noMatrik ? noMatrik.replace(/[\/\s]/g, '_') : (noIc ? noIc : `student_${Date.now()}_${index}`);
 
-          parsedList.push({
+          const studentObj: Partial<Student> = sanitizeDataForDatabase({
             id: docId,
             timestamp: existing?.timestamp || new Date().toISOString(),
             sesi: sesi || existing?.sesi || 'SESI I 2026/2027',
             namaPelajar: namaPelajar.toUpperCase(),
             noMatrik: noMatrik.toUpperCase(),
-            noIc: noIc ? noIc.replace(/[^0-9]/g, '') : '',
-            program: program || existing?.program || 'SIJIL KULINARI',
+            noIc: formatMalaysianIc(noIc),
+            program: formatProgramName(program || existing?.program || 'SIJIL KULINARI'),
             kelas: kelas ? kelas.toUpperCase() : (existing?.kelas || ''),
             // Retain or initialize other fields that will be updated automatically upon student application
             status: existing?.status || 'Belum Memohon',
             namaSyarikat: existing?.namaSyarikat || '',
-            emelHrSyarikat: existing?.emelHrSyarikat || '',
+            emelHrSyarikat: existing?.emelHrSyarikat ? existing.emelHrSyarikat.toLowerCase() : '',
             noTelefon: existing?.noTelefon || '',
-            emelPelajar: existing?.emelPelajar || '',
+            emelPelajar: existing?.emelPelajar ? existing.emelPelajar.toLowerCase() : '',
             alamat: existing?.alamat || '',
             namaSekolahMenengah: existing?.namaSekolahMenengah || '',
             namaPa: existing?.namaPa || 'NUR AZHARI BIN AZHARUDDIN',
-            noTelefonPa: existing?.noTelefonPa || '012-3456789',
-            emelPa: existing?.emelPa || '',
+            noTelefonPa: existing?.noTelefonPa || '018-9744013',
+            emelPa: existing?.emelPa ? existing.emelPa.toLowerCase() : 'azhari@kkbeaufort.edu.my',
             bjpliData: existing?.bjpliData,
           });
+
+          parsedList.push(studentObj);
         });
 
         if (parsedList.length === 0) {
@@ -876,8 +885,10 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                     <input
                       type="text"
                       required
+                      placeholder="000000-00-0000"
+                      maxLength={14}
                       value={formData.noIc || ''}
-                      onChange={e => setFormData({ ...formData, noIc: e.target.value.replace(/[^0-9]/g, '') })}
+                      onChange={e => setFormData({ ...formData, noIc: formatMalaysianIc(e.target.value) })}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
@@ -919,7 +930,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                     <input
                       type="text"
                       value={formData.sesi || ''}
-                      onChange={e => setFormData({ ...formData, sesi: e.target.value })}
+                      onChange={e => setFormData({ ...formData, sesi: e.target.value.toUpperCase() })}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
@@ -949,7 +960,7 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                     <input
                       type="email"
                       value={formData.emelPelajar || ''}
-                      onChange={e => setFormData({ ...formData, emelPelajar: e.target.value })}
+                      onChange={e => setFormData({ ...formData, emelPelajar: e.target.value.toLowerCase() })}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 bg-white"
                     />
                   </div>
@@ -959,8 +970,8 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                     <textarea
                       rows={2}
                       value={formData.alamat || ''}
-                      onChange={e => setFormData({ ...formData, alamat: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 bg-white"
+                      onChange={e => setFormData({ ...formData, alamat: e.target.value.toUpperCase() })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 bg-white uppercase"
                     />
                   </div>
                 </div>
@@ -1074,9 +1085,6 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                         ))
                       ) : (
                         <option value="" disabled>Tiada data pensyarah</option>
-                      )}
-                      {formData.namaPa && !lecturerList.some(l => (l.nama || '').trim().toUpperCase() === (formData.namaPa || '').trim().toUpperCase()) && (
-                        <option value={formData.namaPa}>{formData.namaPa}</option>
                       )}
                     </select>
                   </div>

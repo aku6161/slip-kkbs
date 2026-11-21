@@ -1089,9 +1089,19 @@ export const INITIAL_LECTURERS: Lecturer[] = [
   },
   {
     id: 'lec_kkbs_049',
-    nama: 'Ts. HAIDIE BIN INUN',
+    nama: 'TS. HAIDIE BIN INUN',
     staffId: 'KKBS/049',
     emel: 'haidie@kkbeaufort.edu.my',
+    noTelefon: '014-6794982',
+    program: 'SIJIL TEKNOLOGI ELEKTRIK',
+    jawatan: 'PENSYARAH'
+  },
+  {
+    id: 'lec_kkbs_031',
+    nama: 'MOHD FAROUL RAFIQ BIN ROMLI',
+    staffId: 'KKBS/031',
+    emel: 'rafiq@kkbeaufort.edu.my',
+    noTelefon: '013-2410434',
     program: 'SIJIL TEKNOLOGI ELEKTRIK',
     jawatan: 'PENSYARAH'
   }

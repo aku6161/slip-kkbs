@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { IndustryCompany } from '../types';
+import { IndustryCompany, sanitizeDataForDatabase } from '../types';
 import { 
   Building2, 
   Search, 
@@ -156,7 +156,7 @@ export const MaklumatSyarikat: React.FC<MaklumatSyarikatProps> = ({
 
     setIsSaving(true);
     try {
-      const res = await onSaveCompany({
+      const companyPayload = sanitizeDataForDatabase({
         ...formData,
         id: editingCompany ? editingCompany.id : formData.id,
         namaSyarikat: formData.namaSyarikat.trim(),
@@ -171,6 +171,8 @@ export const MaklumatSyarikat: React.FC<MaklumatSyarikatProps> = ({
         pengangkutan: formData.pengangkutan || '-',
         catatan: formData.catatan?.trim() || ''
       });
+
+      const res = await onSaveCompany(companyPayload);
 
       if (res.success) {
         setNotification({ 

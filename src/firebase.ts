@@ -12,7 +12,7 @@ import {
   orderBy,
   writeBatch
 } from 'firebase/firestore';
-import { Student, SystemConfig, Lecturer, IndustryCompany, PlacementRecord } from './types';
+import { Student, SystemConfig, Lecturer, IndustryCompany, PlacementRecord, sanitizeDataForDatabase } from './types';
 
 // Firebase configuration
 export const firebaseConfig = {
@@ -61,8 +61,9 @@ export function subscribePlacements(callback: (placements: PlacementRecord[]) =>
  * Save or update a placement record in Firestore
  */
 export async function savePlacementToFirebase(placement: Partial<PlacementRecord> & { id: string }): Promise<void> {
-  const docId = placement.id;
-  const data = removeUndefined({ ...placement, updatedAt: new Date().toISOString() });
+  const sanitized = sanitizeDataForDatabase(placement);
+  const docId = sanitized.id;
+  const data = removeUndefined({ ...sanitized, updatedAt: new Date().toISOString() });
   await setDoc(doc(db, PLACEMENTS_COLLECTION, docId), data, { merge: true });
 }
 
@@ -95,8 +96,9 @@ export function subscribeCompanies(callback: (companies: IndustryCompany[]) => v
  * Save or update a company in Firestore
  */
 export async function saveCompanyToFirebase(company: Partial<IndustryCompany>): Promise<void> {
-  const docId = company.id || `comp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-  const data = removeUndefined({ ...company, id: docId, updatedAt: new Date().toISOString() });
+  const sanitized = sanitizeDataForDatabase(company);
+  const docId = sanitized.id || `comp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const data = removeUndefined({ ...sanitized, id: docId, updatedAt: new Date().toISOString() });
   await setDoc(doc(db, COMPANIES_COLLECTION, docId), data, { merge: true });
 }
 
@@ -128,8 +130,9 @@ export function subscribeLecturers(callback: (lecturers: any[]) => void, onError
  * Save or update a lecturer in Firestore
  */
 export async function saveLecturerToFirebase(lecturer: any): Promise<void> {
-  const docId = lecturer.id || lecturer.staffId?.replace(/[\/\s]/g, '_') || `lecturer_${Date.now()}`;
-  const data = removeUndefined({ ...lecturer, id: docId, updatedAt: new Date().toISOString() });
+  const sanitized = sanitizeDataForDatabase(lecturer);
+  const docId = sanitized.id || sanitized.staffId?.replace(/[\/\s]/g, '_') || `lecturer_${Date.now()}`;
+  const data = removeUndefined({ ...sanitized, id: docId, updatedAt: new Date().toISOString() });
   await setDoc(doc(db, LECTURERS_COLLECTION, docId), data, { merge: true });
 }
 
@@ -161,9 +164,9 @@ export function subscribeStudents(callback: (students: Student[]) => void, onErr
  * Save or update a student in Firestore
  */
 export async function saveStudentToFirebase(student: Student): Promise<void> {
-  // Use student.id or clean noMatrik as the document ID
-  const docId = student.id || student.noMatrik?.replace(/\//g, '_') || `student_${Date.now()}`;
-  const studentWithId = removeUndefined({ ...student, id: docId, updatedAt: new Date().toISOString() });
+  const sanitized = sanitizeDataForDatabase(student);
+  const docId = sanitized.id || sanitized.noMatrik?.replace(/\//g, '_') || `student_${Date.now()}`;
+  const studentWithId = removeUndefined({ ...sanitized, id: docId, updatedAt: new Date().toISOString() });
   await setDoc(doc(db, STUDENTS_COLLECTION, docId), studentWithId, { merge: true });
 }
 
