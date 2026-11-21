@@ -1416,7 +1416,7 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
           </div>
           <div>
             <h2 className="text-base font-black text-slate-900 uppercase">
-              Statistik Maklum Balas Industri (FLI 01)
+              STATISTIK MAKLUM BALAS INDUSTRI
             </h2>
             <p className="text-xs text-slate-500">
               Analisis dapatan skor min penilaian prestasi pelajar oleh pihak majikan industri bagi sesi: <span className="font-bold text-blue-950 font-mono">{selectedSession}</span>
@@ -1433,7 +1433,7 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="w-4 h-4 text-slate-600" />
             <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-              Tapisan Program (Slicer):
+              TAPISAN PROGRAM
             </h3>
           </div>
           <span className="text-[11px] text-slate-500 font-semibold">
@@ -1589,7 +1589,7 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
       </div>
 
       {/* =====================================================================
-       * PAPARAN HASIL MIN PENILAIAN FLI 01
+       * PAPARAN HASIL MIN PENILAIAN MAKLUM BALAS INDUSTRI
        * ===================================================================== */}
       <div className="bg-[#f8fafc] p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
         {/* Header & KPI Summary */}
@@ -1597,7 +1597,7 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
           <div>
             <div className="flex items-center gap-3">
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                Dapatan Penilaian Maklum Balas Industri (FLI 01)
+                Dapatan Penilaian Maklum Balas Industri
               </h2>
               {slicerStats.hasData && (
                 <span className="text-xs px-3 py-1 bg-emerald-100 text-emerald-900 font-bold rounded-full border border-emerald-300">
@@ -1675,7 +1675,7 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 uppercase">
-                    Carta Skor Min Penilaian FLI 01 (Q1 - Q14)
+                    SKOR MIN MAKLUM BALAS INDUSTRI
                   </h3>
                   <p className="text-xs text-slate-500">
                     Skor min penilaian majikan bagi setiap kriteria pada skala {chartMinScale.toFixed(1)} hingga 5.00
@@ -1788,7 +1788,7 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
               <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 uppercase">
-                    Perincian 14 Kriteria Maklum Balas Industri (FLI 01)
+                    PERINCIAN MAKLUM BALAS INDUSTRI
                   </h3>
                   <p className="text-xs text-slate-500">
                     Senarai lengkap kriteria bersama skor min dan tahap pencapaian
