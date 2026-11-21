@@ -1364,9 +1364,9 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
   // Nama label Slicer terpilih
   const slicerLabel = useMemo(() => {
     switch (selectedSlicer) {
-      case 'SOP': return 'Sijil Operasi Perhotelan (SOP)';
-      case 'SKU': return 'Sijil Kulinari (SKU)';
-      case 'SKE': return 'Sijil Teknologi Elektrik (SKE)';
+      case 'SOP': return 'Sijil Operasi Perhotelan';
+      case 'SKU': return 'Sijil Kulinari';
+      case 'SKE': return 'Sijil Teknologi Elektrik';
       default: return 'Semua Program';
     }
   }, [selectedSlicer]);
@@ -1452,17 +1452,12 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
                 : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                selectedSlicer === 'SEMUA' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-700'
-              }`}>
-                Semua
-              </span>
+            <div className="flex items-center justify-end h-5">
               {selectedSlicer === 'SEMUA' && (
                 <Check className="w-4 h-4 text-emerald-400" />
               )}
             </div>
-            <div className="mt-2.5">
+            <div className="mt-1">
               <p className={`text-base font-black uppercase tracking-tight ${selectedSlicer === 'SEMUA' ? 'text-white' : 'text-slate-900'}`}>
                 SEMUA PROGRAM
               </p>
@@ -1488,17 +1483,12 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
                 : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                selectedSlicer === 'SOP' ? 'bg-blue-700 text-white' : 'bg-blue-50 text-blue-800'
-              }`}>
-                SOP
-              </span>
+            <div className="flex items-center justify-end h-5">
               {selectedSlicer === 'SOP' && (
                 <Check className="w-4 h-4 text-emerald-300" />
               )}
             </div>
-            <div className="mt-2.5">
+            <div className="mt-1">
               <p className={`text-base font-black uppercase tracking-tight ${selectedSlicer === 'SOP' ? 'text-white' : 'text-slate-900'}`}>
                 Sijil Perhotelan
               </p>
@@ -1524,17 +1514,12 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
                 : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                selectedSlicer === 'SKU' ? 'bg-orange-700 text-white' : 'bg-orange-50 text-orange-800'
-              }`}>
-                SKU
-              </span>
+            <div className="flex items-center justify-end h-5">
               {selectedSlicer === 'SKU' && (
                 <Check className="w-4 h-4 text-amber-200" />
               )}
             </div>
-            <div className="mt-2.5">
+            <div className="mt-1">
               <p className={`text-base font-black uppercase tracking-tight ${selectedSlicer === 'SKU' ? 'text-white' : 'text-slate-900'}`}>
                 Sijil Kulinari
               </p>
@@ -1560,17 +1545,12 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
                 : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                selectedSlicer === 'SKE' ? 'bg-emerald-900 text-white' : 'bg-emerald-50 text-emerald-800'
-              }`}>
-                SKE
-              </span>
+            <div className="flex items-center justify-end h-5">
               {selectedSlicer === 'SKE' && (
                 <Check className="w-4 h-4 text-emerald-200" />
               )}
             </div>
-            <div className="mt-2.5">
+            <div className="mt-1">
               <p className={`text-base font-black uppercase tracking-tight ${selectedSlicer === 'SKE' ? 'text-white' : 'text-slate-900'}`}>
                 Sijil Elektrik
               </p>
@@ -1595,16 +1575,9 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
         {/* Header & KPI Summary */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-200">
           <div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                Dapatan Penilaian Maklum Balas Industri
-              </h2>
-              {slicerStats.hasData && (
-                <span className="text-xs px-3 py-1 bg-emerald-100 text-emerald-900 font-bold rounded-full border border-emerald-300">
-                  {slicerStats.evaluatedCount} Pelajar Dinilai
-                </span>
-              )}
-            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Dapatan Penilaian Maklum Balas Industri
+            </h2>
             <p className="text-xs text-slate-500 mt-1">
               Paparan hasil skor min penilaian majikan bagi <span className="font-bold text-slate-800">{slicerLabel}</span> (Skala 1.00 hingga 5.00)
             </p>
@@ -1636,9 +1609,6 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
                   <p className="text-lg font-black text-blue-900 font-mono truncate">
                     {slicerStats.highest?.code}: {slicerStats.highest?.mean.toFixed(2)}
                   </p>
-                  <p className="text-[10px] text-slate-500 truncate" title={slicerStats.highest?.label}>
-                    {slicerStats.highest?.label}
-                  </p>
                 </div>
               </div>
 
@@ -1650,9 +1620,6 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Min Terendah</p>
                   <p className="text-lg font-black text-amber-900 font-mono truncate">
                     {slicerStats.lowest?.code}: {slicerStats.lowest?.mean.toFixed(2)}
-                  </p>
-                  <p className="text-[10px] text-slate-500 truncate" title={slicerStats.lowest?.label}>
-                    {slicerStats.lowest?.label}
                   </p>
                 </div>
               </div>
