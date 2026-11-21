@@ -16,7 +16,10 @@ import {
   UserCheck,
   Building2,
   ChevronDown,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Check,
+  Filter,
+  SlidersHorizontal
 } from 'lucide-react';
 import { Student, Lecturer, SystemConfig } from '../types';
 
@@ -745,21 +748,16 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
       }));
     }
 
-    // Jika tiada penugasan aktif bagi sesi ini, gunakan senarai pensyarah yang berdaftar
-    return lecturers.map(lec => ({
-      id: lec.id || lec.staffId,
-      nama: lec.nama,
-      gender: getLecturerGender(lec.nama),
-      studentCount: 0
-    }));
-  }, [students, lecturers]);
+    // Jika tiada penugasan aktif bagi sesi ini, pulangkan senarai kosong
+    return [];
+  }, [students]);
 
   const totalPemantau = pemantauLecturers.length;
   const pemantauLelaki = pemantauLecturers.filter(p => p.gender === 'Lelaki').length;
   const pemantauPerempuan = pemantauLecturers.filter(p => p.gender === 'Perempuan').length;
 
-  const lelakiPercent = totalPemantau > 0 ? Math.round((pemantauLelaki / totalPemantau) * 100) : 50;
-  const perempuanPercent = totalPemantau > 0 ? 100 - lelakiPercent : 50;
+  const lelakiPercent = totalPemantau > 0 ? Math.round((pemantauLelaki / totalPemantau) * 100) : 0;
+  const perempuanPercent = totalPemantau > 0 ? 100 - lelakiPercent : 0;
 
   // 2. Kira Purata FLI 02 (3 Elemen Utama Sahaja Berdasarkan Data Sebenar)
   // Q1 - Komunikasi Lisan (CLO 2, 10%)
@@ -892,81 +890,97 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
             </span>
           </div>
 
-          {/* SVG Donut Chart */}
-          <div className="flex items-center justify-center py-2">
-            <div className="relative w-52 h-52 flex items-center justify-center">
-              <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-90">
-                {/* Background Ring */}
-                <circle
-                  cx="100"
-                  cy="100"
-                  r="75"
-                  stroke="#f1f5f9"
-                  strokeWidth="28"
-                  fill="transparent"
-                />
-                {/* Perempuan Arc (Pink/Rose) */}
-                <circle
-                  cx="100"
-                  cy="100"
-                  r="75"
-                  stroke="#ec4899"
-                  strokeWidth="28"
-                  fill="transparent"
-                  strokeDasharray={`${(perempuanPercent / 100) * 471.2} 471.2`}
-                  strokeDashoffset="0"
-                  className="transition-all duration-700"
-                />
-                {/* Lelaki Arc (Royal Blue) */}
-                <circle
-                  cx="100"
-                  cy="100"
-                  r="75"
-                  stroke="#2563eb"
-                  strokeWidth="28"
-                  fill="transparent"
-                  strokeDasharray={`${(lelakiPercent / 100) * 471.2} 471.2`}
-                  strokeDashoffset={`${-((perempuanPercent / 100) * 471.2)}`}
-                  className="transition-all duration-700"
-                />
-              </svg>
+          {/* SVG Donut Chart atau Empty State jika tiada pensyarah pemantau */}
+          {totalPemantau > 0 ? (
+            <>
+              <div className="flex items-center justify-center py-2">
+                <div className="relative w-52 h-52 flex items-center justify-center">
+                  <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-90">
+                    {/* Background Ring */}
+                    <circle
+                      cx="100"
+                      cy="100"
+                      r="75"
+                      stroke="#f1f5f9"
+                      strokeWidth="28"
+                      fill="transparent"
+                    />
+                    {/* Perempuan Arc (Pink/Rose) */}
+                    <circle
+                      cx="100"
+                      cy="100"
+                      r="75"
+                      stroke="#ec4899"
+                      strokeWidth="28"
+                      fill="transparent"
+                      strokeDasharray={`${(perempuanPercent / 100) * 471.2} 471.2`}
+                      strokeDashoffset="0"
+                      className="transition-all duration-700"
+                    />
+                    {/* Lelaki Arc (Royal Blue) */}
+                    <circle
+                      cx="100"
+                      cy="100"
+                      r="75"
+                      stroke="#2563eb"
+                      strokeWidth="28"
+                      fill="transparent"
+                      strokeDasharray={`${(lelakiPercent / 100) * 471.2} 471.2`}
+                      strokeDashoffset={`${-((perempuanPercent / 100) * 471.2)}`}
+                      className="transition-all duration-700"
+                    />
+                  </svg>
 
-              {/* Center Donut Label */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                <span className="text-2xl font-black text-slate-900 font-mono leading-none">
-                  {totalPemantau}
-                </span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-                  Pensyarah
-                </span>
+                  {/* Center Donut Label */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                    <span className="text-2xl font-black text-slate-900 font-mono leading-none">
+                      {totalPemantau}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+                      Pensyarah
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Donut Legend */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-blue-600"></span>
+                    <span className="text-xs font-bold text-slate-800">Lelaki</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-black text-blue-900 font-mono block">{pemantauLelaki}</span>
+                    <span className="text-[10px] font-semibold text-blue-600">{lelakiPercent}%</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-rose-50/70 border border-rose-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-pink-500"></span>
+                    <span className="text-xs font-bold text-slate-800">Perempuan</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-black text-rose-900 font-mono block">{pemantauPerempuan}</span>
+                    <span className="text-[10px] font-semibold text-rose-600">{perempuanPercent}%</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="py-12 flex flex-col items-center justify-center text-center space-y-2">
+              <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                <Users className="w-7 h-7" />
+              </div>
+              <div>
+                <h4 className="text-xs font-black text-slate-700 uppercase">Tiada Pensyarah Pemantau Ditetapkan</h4>
+                <p className="text-[11px] text-slate-400 max-w-xs mt-1">
+                  Belum ada pensyarah pemantau ditetapkan bagi sesi ini.
+                </p>
               </div>
             </div>
-          </div>
-
-          {/* Donut Legend */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-blue-600"></span>
-                <span className="text-xs font-bold text-slate-800">Lelaki</span>
-              </div>
-              <div className="text-right">
-                <span className="text-sm font-black text-blue-900 font-mono block">{pemantauLelaki}</span>
-                <span className="text-[10px] font-semibold text-blue-600">{lelakiPercent}%</span>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-xl bg-rose-50/70 border border-rose-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-pink-500"></span>
-                <span className="text-xs font-bold text-slate-800">Perempuan</span>
-              </div>
-              <div className="text-right">
-                <span className="text-sm font-black text-rose-900 font-mono block">{pemantauPerempuan}</span>
-                <span className="text-[10px] font-semibold text-rose-600">{perempuanPercent}%</span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Senarai Pensyarah Pemantau */}
@@ -980,36 +994,50 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-72 space-y-2 pr-1">
-            {pemantauLecturers.map((lec, idx) => (
-              <div
-                key={lec.id || idx}
-                className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:bg-slate-100/70 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${
-                    lec.gender === 'Lelaki' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
-                  }`}>
-                    {idx + 1}
+          {pemantauLecturers.length > 0 ? (
+            <div className="flex-1 overflow-y-auto max-h-72 space-y-2 pr-1">
+              {pemantauLecturers.map((lec, idx) => (
+                <div
+                  key={lec.id || idx}
+                  className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:bg-slate-100/70 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${
+                      lec.gender === 'Lelaki' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
+                    }`}>
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-slate-900 uppercase">{lec.nama}</p>
+                      <p className="text-[10px] text-slate-500">
+                        {lec.studentCount > 0 ? `${lec.studentCount} pelajar diselia pemantauan` : 'Pensyarah berdaftar'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-black text-slate-900 uppercase">{lec.nama}</p>
-                    <p className="text-[10px] text-slate-500">
-                      {lec.studentCount > 0 ? `${lec.studentCount} pelajar diselia pemantauan` : 'Pensyarah berdaftar'}
-                    </p>
-                  </div>
-                </div>
 
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  lec.gender === 'Lelaki'
-                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                    : 'bg-rose-100 text-rose-800 border border-rose-200'
-                }`}>
-                  {lec.gender}
-                </span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    lec.gender === 'Lelaki'
+                      ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                      : 'bg-rose-100 text-rose-800 border border-rose-200'
+                  }`}>
+                    {lec.gender}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex-1 py-12 flex flex-col items-center justify-center text-center space-y-2">
+              <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                <UserCheck className="w-7 h-7" />
               </div>
-            ))}
-          </div>
+              <div>
+                <h4 className="text-xs font-black text-slate-700 uppercase">Tiada Senarai Pensyarah Pemantau</h4>
+                <p className="text-[11px] text-slate-400 max-w-xs mt-1">
+                  Tiada pensyarah pemantau ditetapkan bagi sesi ini.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1203,283 +1231,179 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
 /* =========================================================================
  * 3. SUBTAB: STATISTIK MAKLUM BALAS INDUSTRI (FLI 01)
  * ========================================================================= */
+const FLI01_CRITERIA_LIST = [
+  { code: 'Q1', field: 'FLI01-A1', label: 'Menunjukkan kemahiran secara hands-on di tempat kerja', domain: 'Kemahiran di Tempat Kerja' },
+  { code: 'Q2', field: 'FLI01-A2', label: 'Pengetahuan sedia ada dengan kerja', domain: 'Kemahiran di Tempat Kerja' },
+  { code: 'Q3', field: 'FLI01-A3', label: 'Kemahiran penggunaan alatan dan kelengkapan', domain: 'Kemahiran di Tempat Kerja' },
+  { code: 'Q4', field: 'FLI01-A4', label: 'Pelaksanaan kerja mengikut Prosedur Operasi Standard (SOP)', domain: 'Kemahiran di Tempat Kerja' },
+  { code: 'Q5', field: 'FLI01-A5', label: 'Tindak balas terhadap masalah semasa melaksanakan kerja', domain: 'Kemahiran di Tempat Kerja' },
+  { code: 'Q6', field: 'FLI01-A6', label: 'Kemahiran pengurusan masa ketika melaksanakan kerja', domain: 'Kemahiran di Tempat Kerja' },
+  { code: 'Q7', field: 'FLI01-A7', label: 'Komunikasi yang berkesan', domain: 'Komunikasi Berkesan' },
+  { code: 'Q8', field: 'FLI01-A8', label: 'Hubungan baik dalam organisasi', domain: 'Komunikasi Berkesan' },
+  { code: 'Q9', field: 'FLI01-A9', label: 'Menghormati dan menerima pendapat', domain: 'Kerja Berpasukan & Bertanggungjawab' },
+  { code: 'Q10', field: 'FLI01-A10', label: 'Tanggungjawab kerja', domain: 'Kerja Berpasukan & Bertanggungjawab' },
+  { code: 'Q11', field: 'FLI01-A11', label: 'Penambahbaikan semasa melaksanakan kerja', domain: 'Kemahiran Personal' },
+  { code: 'Q12', field: 'FLI01-A12', label: 'Bermotivasi dalam menyiapkan kerja', domain: 'Kemahiran Personal' },
+  { code: 'Q13', field: 'FLI01-A13', label: 'Budaya kerja yang baik', domain: 'Nilai, Etika & Profesionalisme' },
+  { code: 'Q14', field: 'FLI01-A14', label: 'Penampilan diri dan pemakaian yang bersesuaian di tempat kerja', domain: 'Nilai, Etika & Profesionalisme' },
+];
+
 const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
   students,
   markah = [],
   selectedSession,
   getStudentMark
 }) => {
-  // Kira data sebenar daripada markah FLI 01 mengikut program bagi sesi terpilih (Tiada data tiruan/benchmark)
-  const evaluatedStats = useMemo(() => {
-    const calcProgramAverages = (progCode: 'SKU' | 'SKE' | 'SOP') => {
-      const progStudents = students.filter(s => normalizeProgramCode(s.program) === progCode);
-      let count = 0;
-      const sums = new Array(14).fill(0);
+  // Slicer State: 'SEMUA' | 'SOP' | 'SKU' | 'SKE'
+  const [selectedSlicer, setSelectedSlicer] = useState<'SEMUA' | 'SOP' | 'SKU' | 'SKE'>('SEMUA');
 
-      progStudents.forEach(s => {
+  // Ringkasan setiap Slicer (untuk paparan kad penapis)
+  const slicerSummary = useMemo(() => {
+    const calcSummary = (progCode?: 'SOP' | 'SKU' | 'SKE') => {
+      const target = !progCode ? students : students.filter(s => normalizeProgramCode(s.program) === progCode);
+      let count = 0;
+      let totalSum = 0;
+      let totalItems = 0;
+
+      target.forEach(s => {
         const m = getStudentMark ? getStudentMark(s) : null;
         if (m && (m['FLI01-A1'] !== undefined || m['TOTAL1'] !== undefined)) {
           let hasVal = false;
           for (let i = 1; i <= 14; i++) {
             const val = parseFloat(m[`FLI01-A${i}`]);
             if (!isNaN(val)) {
-              sums[i - 1] += val;
+              totalSum += val;
+              totalItems += 1;
               hasVal = true;
             }
           }
-          if (hasVal) count++;
+          if (hasVal) count += 1;
         }
       });
 
-      if (count > 0) {
-        return {
-          hasData: true,
-          count,
-          scores: sums.map(sum => Number((sum / count).toFixed(2)))
-        };
-      }
-
-      return {
-        hasData: false,
-        count: 0,
-        scores: []
-      };
+      const mean = totalItems > 0 ? Number((totalSum / totalItems).toFixed(2)) : null;
+      return { count, totalStudents: target.length, mean };
     };
 
     return {
-      SKU: calcProgramAverages('SKU'),
-      SKE: calcProgramAverages('SKE'),
-      SOP: calcProgramAverages('SOP')
+      SEMUA: calcSummary(),
+      SOP: calcSummary('SOP'),
+      SKU: calcSummary('SKU'),
+      SKE: calcSummary('SKE')
     };
   }, [students, getStudentMark]);
 
-  const totalEvaluatedFli01 = evaluatedStats.SKU.count + evaluatedStats.SKE.count + evaluatedStats.SOP.count;
+  // Pelajar ditapis mengikut Slicer
+  const filteredStudents = useMemo(() => {
+    if (selectedSlicer === 'SEMUA') return students;
+    return students.filter(s => normalizeProgramCode(s.program) === selectedSlicer);
+  }, [students, selectedSlicer]);
 
-  // Analisa Dinamik Berasaskan Data Sebenar Sesi
-  const dynamicAnalysis = useMemo(() => {
-    if (totalEvaluatedFli01 === 0) {
-      return "Tiada data penilaian majikan (FLI 01) bagi sesi ini untuk dianalisa. Analisis akan dijana secara automatik sebaik sahaja markah penilaian industri dimasukkan.";
-    }
+  // Kira Skor Min (Mean) bagi Q1 hingga Q14 berdasarkan data sebenar sesi & slicer terpilih
+  const slicerStats = useMemo(() => {
+    let evaluatedCount = 0;
+    const sums = new Array(14).fill(0);
+    const counts = new Array(14).fill(0);
 
-    const progs = [
-      { code: 'SKE', name: 'Pelajar SKE', ...evaluatedStats.SKE },
-      { code: 'SKU', name: 'Pelajar SKU', ...evaluatedStats.SKU },
-      { code: 'SOP', name: 'Pelajar SOP', ...evaluatedStats.SOP },
-    ].filter(p => p.hasData);
-
-    if (progs.length === 0) {
-      return "Tiada data penilaian majikan (FLI 01) bagi sesi ini untuk dianalisa.";
-    }
-
-    const progAvgs = progs.map(p => {
-      const avg = p.scores.reduce((a, b) => a + b, 0) / p.scores.length;
-      return { ...p, avg: Number(avg.toFixed(2)) };
-    }).sort((a, b) => b.avg - a.avg);
-
-    const topProg = progAvgs[0];
-    const overallAvg = Number((progAvgs.reduce((a, b) => a + b.avg, 0) / progAvgs.length).toFixed(2));
-
-    // Domain purata:
-    // D1: Kemahiran di tempat kerja (Q1 - Q6, index 0..5)
-    // D2: Komunikasi berkesan (Q7, Q8, index 6..7)
-    // D3: Kerja berpasukan dan bertanggungjawab (Q9, Q10, index 8..9)
-    // D4: Kemahiran Personal (Q11, Q12, index 10..11)
-    // D5: Nilai, etika dan profesionalisme (Q13, Q14, index 12..13)
-    const calcDomainAvg = (startIdx: number, endIdx: number) => {
-      let sum = 0;
-      let count = 0;
-      progs.forEach(p => {
-        for (let i = startIdx; i <= endIdx; i++) {
-          if (!isNaN(p.scores[i])) {
-            sum += p.scores[i];
-            count++;
+    filteredStudents.forEach(s => {
+      const m = getStudentMark ? getStudentMark(s) : null;
+      if (m && (m['FLI01-A1'] !== undefined || m['TOTAL1'] !== undefined)) {
+        let hasScore = false;
+        for (let i = 0; i < 14; i++) {
+          const val = parseFloat(m[`FLI01-A${i + 1}`]);
+          if (!isNaN(val)) {
+            sums[i] += val;
+            counts[i] += 1;
+            hasScore = true;
           }
         }
-      });
-      return count > 0 ? Number((sum / count).toFixed(2)) : 0;
+        if (hasScore) evaluatedCount += 1;
+      }
+    });
+
+    if (evaluatedCount === 0) {
+      return {
+        hasData: false,
+        evaluatedCount: 0,
+        overallMean: 0,
+        highest: null,
+        lowest: null,
+        items: FLI01_CRITERIA_LIST.map(q => ({ ...q, count: 0, mean: 0 }))
+      };
+    }
+
+    const items = FLI01_CRITERIA_LIST.map((q, idx) => {
+      const c = counts[idx];
+      const mean = c > 0 ? Number((sums[idx] / c).toFixed(2)) : 0;
+      return {
+        ...q,
+        count: c,
+        mean
+      };
+    });
+
+    const validItems = items.filter(it => it.count > 0);
+    const overallMean = validItems.length > 0
+      ? Number((validItems.reduce((acc, curr) => acc + curr.mean, 0) / validItems.length).toFixed(2))
+      : 0;
+
+    const sorted = [...validItems].sort((a, b) => b.mean - a.mean);
+    const highest = sorted.length > 0 ? sorted[0] : null;
+    const lowest = sorted.length > 0 ? sorted[sorted.length - 1] : null;
+
+    return {
+      hasData: true,
+      evaluatedCount,
+      overallMean,
+      highest,
+      lowest,
+      items
     };
+  }, [filteredStudents, getStudentMark]);
 
-    const domainScores = [
-      { name: 'kemahiran di tempat kerja', score: calcDomainAvg(0, 5) },
-      { name: 'komunikasi berkesan', score: calcDomainAvg(6, 7) },
-      { name: 'kerja berpasukan dan bertanggungjawab', score: calcDomainAvg(8, 9) },
-      { name: 'kemahiran personal', score: calcDomainAvg(10, 11) },
-      { name: 'nilai, etika dan profesionalisme', score: calcDomainAvg(12, 13) },
-    ].sort((a, b) => b.score - a.score);
+  // Nama label Slicer terpilih
+  const slicerLabel = useMemo(() => {
+    switch (selectedSlicer) {
+      case 'SOP': return 'Sijil Operasi Perhotelan (SOP)';
+      case 'SKU': return 'Sijil Kulinari (SKU)';
+      case 'SKE': return 'Sijil Teknologi Elektrik (SKE)';
+      default: return 'Semua Program';
+    }
+  }, [selectedSlicer]);
 
-    const highestDomain = domainScores[0];
-    const lowestDomain = domainScores[domainScores.length - 1];
+  // Warna tema Slicer terpilih
+  const slicerColor = useMemo(() => {
+    switch (selectedSlicer) {
+      case 'SOP': return '#1e3a8a';
+      case 'SKU': return '#ea580c';
+      case 'SKE': return '#15803d';
+      default: return '#0f766e';
+    }
+  }, [selectedSlicer]);
 
-    const othersText = progAvgs.length > 1
-      ? `manakala ${progAvgs.slice(1).map(p => `${p.name} mencatat purata ${p.avg.toFixed(2)}`).join(' dan ')}`
-      : 'bagi program berdaftar';
+  // Tentukan skala minimum (baseline) untuk carta: jika ada skor bawah 3.0, guna 1.0, jika tidak guna 3.0 seperti lampiran
+  const chartMinScale = useMemo(() => {
+    if (!slicerStats.hasData || !slicerStats.lowest) return 3.0;
+    return slicerStats.lowest.mean < 3.0 ? 1.0 : 3.0;
+  }, [slicerStats]);
 
-    return `Secara keseluruhannya, penilaian majikan terhadap pelajar bagi sesi ${selectedSession} menunjukkan pencapaian yang positif dengan purata skor keseluruhan ${overallAvg.toFixed(2)} daripada skala 5.00 (berdasarkan ${totalEvaluatedFli01} orang pelajar dinilai). ${topProg.name} mencatatkan purata pencapaian tertinggi pada ${topProg.avg.toFixed(2)}, ${othersText}. Dari segi domain kompetensi, aspek ${highestDomain.name} mencatatkan skor purata tertinggi (${highestDomain.score.toFixed(2)}), manakala aspek ${lowestDomain.name} (${lowestDomain.score.toFixed(2)}) merupakan domain yang boleh terus diperkukuhkan bagi memantapkan kesiapsiagaan pelajar menempuh alam pekerjaan.`;
-  }, [totalEvaluatedFli01, evaluatedStats, selectedSession]);
+  // Ticks dinamik carta
+  const chartTicks = chartMinScale === 1.0
+    ? [5.0, 4.0, 3.0, 2.0, 1.0]
+    : [5.0, 4.5, 4.0, 3.5, 3.0];
 
-  // Reusable Component for SVG Line Chart (Hanya lukis garisan bagi program yang mempunyai data sebenar)
-  const RenderLineChart = ({
-    title,
-    questions,
-    isHighlighted = false
-  }: {
-    title: string;
-    questions: { index: number; label: string }[];
-    isHighlighted?: boolean;
-  }) => {
-    const n = questions.length;
-    const svgWidth = isHighlighted ? 580 : 380;
-    const svgHeight = 175;
-    const padLeft = 40;
-    const padRight = 30;
-    const padTop = 20;
-    const padBottom = 30;
-    const innerW = svgWidth - padLeft - padRight;
-    const innerH = svgHeight - padTop - padBottom;
-
-    const getY = (val: number) => {
-      const clamped = Math.max(3.0, Math.min(5.0, val));
-      return padTop + innerH * (1 - (clamped - 3.0) / 2.0);
-    };
-
-    const getX = (i: number) => {
-      if (n === 1) return padLeft + innerW / 2;
-      return padLeft + (i / (n - 1)) * innerW;
-    };
-
-    const getPathData = (scores: number[]) => {
-      if (!scores || scores.length === 0) return '';
-      return questions
-        .map((q, i) => {
-          const val = scores[q.index];
-          if (val === undefined || isNaN(val)) return '';
-          const x = getX(i);
-          const y = getY(val);
-          return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-        })
-        .filter(Boolean)
-        .join(' ');
-    };
-
-    const pathSKE = evaluatedStats.SKE.hasData ? getPathData(evaluatedStats.SKE.scores) : '';
-    const pathSKU = evaluatedStats.SKU.hasData ? getPathData(evaluatedStats.SKU.scores) : '';
-    const pathSOP = evaluatedStats.SOP.hasData ? getPathData(evaluatedStats.SOP.scores) : '';
-
-    return (
-      <div
-        className={`bg-white p-4 rounded-2xl shadow-xs transition-all ${
-          isHighlighted
-            ? 'border-2 border-purple-300 ring-2 ring-purple-100/50'
-            : 'border border-slate-200'
-        }`}
-      >
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">
-            {title}
-          </h4>
-        </div>
-
-        <div className="pt-2">
-          <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-auto select-none overflow-visible">
-            {/* Gridlines 3.0, 3.5, 4.0, 4.5, 5.0 */}
-            {[5.0, 4.5, 4.0, 3.5, 3.0].map((val) => {
-              const y = getY(val);
-              return (
-                <g key={val}>
-                  <line
-                    x1={padLeft - 5}
-                    y1={y}
-                    x2={svgWidth - padRight + 10}
-                    y2={y}
-                    stroke="#f1f5f9"
-                    strokeWidth="1.2"
-                  />
-                  <text
-                    x={padLeft - 10}
-                    y={y + 3.5}
-                    textAnchor="end"
-                    fontSize="10"
-                    fill="#94a3b8"
-                    fontFamily="monospace"
-                  >
-                    {val.toFixed(1)}
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* SKE Line (Green #15803d) */}
-            {pathSKE && (
-              <path
-                d={pathSKE}
-                fill="none"
-                stroke="#15803d"
-                strokeWidth="2.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
-
-            {/* SKU Line (Orange #f97316) */}
-            {pathSKU && (
-              <path
-                d={pathSKU}
-                fill="none"
-                stroke="#f97316"
-                strokeWidth="2.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
-
-            {/* SOP Line (Navy Blue #1e3a8a) */}
-            {pathSOP && (
-              <path
-                d={pathSOP}
-                fill="none"
-                stroke="#1e3a8a"
-                strokeWidth="2.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
-
-            {/* Markers for Each Question */}
-            {questions.map((q, i) => {
-              const x = getX(i);
-              return (
-                <g key={q.label}>
-                  {/* SKE Dot */}
-                  {evaluatedStats.SKE.hasData && !isNaN(evaluatedStats.SKE.scores[q.index]) && (
-                    <circle cx={x} cy={getY(evaluatedStats.SKE.scores[q.index])} r="4.5" fill="#15803d" stroke="#ffffff" strokeWidth="1.5" />
-                  )}
-                  {/* SKU Dot */}
-                  {evaluatedStats.SKU.hasData && !isNaN(evaluatedStats.SKU.scores[q.index]) && (
-                    <circle cx={x} cy={getY(evaluatedStats.SKU.scores[q.index])} r="4.5" fill="#f97316" stroke="#ffffff" strokeWidth="1.5" />
-                  )}
-                  {/* SOP Dot */}
-                  {evaluatedStats.SOP.hasData && !isNaN(evaluatedStats.SOP.scores[q.index]) && (
-                    <circle cx={x} cy={getY(evaluatedStats.SOP.scores[q.index])} r="4.5" fill="#1e3a8a" stroke="#ffffff" strokeWidth="1.5" />
-                  )}
-
-                  {/* X-axis Label below */}
-                  <text
-                    x={x}
-                    y={svgHeight - 8}
-                    textAnchor="middle"
-                    fontSize="11"
-                    fontWeight="bold"
-                    fill="#64748b"
-                  >
-                    {q.label}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-      </div>
-    );
+  // Helper fungsi tahap pencapaian
+  const getRatingBadge = (score: number) => {
+    if (score >= 4.50) {
+      return { text: 'Cemerlang', bg: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
+    }
+    if (score >= 4.00) {
+      return { text: 'Sangat Baik', bg: 'bg-blue-50 text-blue-800 border-blue-200' };
+    }
+    if (score >= 3.50) {
+      return { text: 'Baik', bg: 'bg-amber-50 text-amber-800 border-amber-200' };
+    }
+    return { text: 'Sederhana', bg: 'bg-rose-50 text-rose-800 border-rose-200' };
   };
 
   return (
@@ -1495,121 +1419,476 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
               Statistik Maklum Balas Industri (FLI 01)
             </h2>
             <p className="text-xs text-slate-500">
-              Analisis dapatan penilaian prestasi pelajar oleh pihak majikan industri bagi sesi: <span className="font-bold text-blue-950 font-mono">{selectedSession}</span>
+              Analisis dapatan skor min penilaian prestasi pelajar oleh pihak majikan industri bagi sesi: <span className="font-bold text-blue-950 font-mono">{selectedSession}</span>
             </p>
           </div>
         </div>
       </div>
 
-      {/* Main Container: Dapatan Penilaian */}
-      <div className="bg-[#f8fafc] p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-        {/* Title and Program Legend at Top-Right */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Dapatan Penilaian
-            </h2>
-            <p className="text-xs text-slate-500">
-              Skor purata berasaskan skala 3.0 hingga 5.0 merentasi 5 domain kompetensi industri
-            </p>
+      {/* =====================================================================
+       * KAD FILTER / SLICER: SEMUA, SOP, SKU, SKE
+       * ===================================================================== */}
+      <div>
+        <div className="flex items-center justify-between mb-3 px-1">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4 text-slate-600" />
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+              Tapisan Program (Slicer):
+            </h3>
           </div>
+          <span className="text-[11px] text-slate-500 font-semibold">
+            Klik kad untuk melihat hasil min mengikut program
+          </span>
+        </div>
 
-          {/* Program Legend dengan jumlah pelajar dinilai */}
-          <div className="flex items-center gap-5 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-2xs">
-            <span className={`flex items-center gap-2 text-xs font-black ${evaluatedStats.SKU.hasData ? 'text-slate-800' : 'text-slate-400'}`}>
-              <span className="w-3.5 h-3.5 rounded-full bg-[#f97316]"></span>
-              <span>SKU {evaluatedStats.SKU.hasData ? `(${evaluatedStats.SKU.count})` : '(0)'}</span>
-            </span>
-            <span className={`flex items-center gap-2 text-xs font-black ${evaluatedStats.SKE.hasData ? 'text-slate-800' : 'text-slate-400'}`}>
-              <span className="w-3.5 h-3.5 rounded-full bg-[#15803d]"></span>
-              <span>SKE {evaluatedStats.SKE.hasData ? `(${evaluatedStats.SKE.count})` : '(0)'}</span>
-            </span>
-            <span className={`flex items-center gap-2 text-xs font-black ${evaluatedStats.SOP.hasData ? 'text-slate-800' : 'text-slate-400'}`}>
-              <span className="w-3.5 h-3.5 rounded-full bg-[#1e3a8a]"></span>
-              <span>SOP {evaluatedStats.SOP.hasData ? `(${evaluatedStats.SOP.count})` : '(0)'}</span>
-            </span>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          {/* Slicer: SEMUA */}
+          <button
+            type="button"
+            onClick={() => setSelectedSlicer('SEMUA')}
+            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+              selectedSlicer === 'SEMUA'
+                ? 'bg-gradient-to-br from-blue-950 to-slate-900 text-white border-blue-900 shadow-md ring-2 ring-blue-500/40'
+                : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
+                selectedSlicer === 'SEMUA' ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-700'
+              }`}>
+                Semua
+              </span>
+              {selectedSlicer === 'SEMUA' && (
+                <Check className="w-4 h-4 text-emerald-400" />
+              )}
+            </div>
+            <div className="mt-2.5">
+              <p className={`text-base font-black uppercase tracking-tight ${selectedSlicer === 'SEMUA' ? 'text-white' : 'text-slate-900'}`}>
+                SEMUA PROGRAM
+              </p>
+              <p className={`text-[11px] font-semibold mt-0.5 ${selectedSlicer === 'SEMUA' ? 'text-slate-300' : 'text-slate-500'}`}>
+                {slicerSummary.SEMUA.count} daripada {slicerSummary.SEMUA.totalStudents} dinilai
+              </p>
+            </div>
+            <div className="mt-2 pt-2 border-t border-slate-200/30 flex items-center justify-between text-xs font-mono">
+              <span className={selectedSlicer === 'SEMUA' ? 'text-slate-400 text-[10px]' : 'text-slate-400 text-[10px]'}>Min Keseluruhan:</span>
+              <span className={`font-black ${selectedSlicer === 'SEMUA' ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                {slicerSummary.SEMUA.mean !== null ? `${slicerSummary.SEMUA.mean.toFixed(2)}` : '-'}
+              </span>
+            </div>
+          </button>
+
+          {/* Slicer: SOP */}
+          <button
+            type="button"
+            onClick={() => setSelectedSlicer('SOP')}
+            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+              selectedSlicer === 'SOP'
+                ? 'bg-blue-900 text-white border-blue-950 shadow-md ring-2 ring-blue-400/50'
+                : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
+                selectedSlicer === 'SOP' ? 'bg-blue-700 text-white' : 'bg-blue-50 text-blue-800'
+              }`}>
+                SOP
+              </span>
+              {selectedSlicer === 'SOP' && (
+                <Check className="w-4 h-4 text-emerald-300" />
+              )}
+            </div>
+            <div className="mt-2.5">
+              <p className={`text-base font-black uppercase tracking-tight ${selectedSlicer === 'SOP' ? 'text-white' : 'text-slate-900'}`}>
+                Sijil Perhotelan
+              </p>
+              <p className={`text-[11px] font-semibold mt-0.5 ${selectedSlicer === 'SOP' ? 'text-blue-100' : 'text-slate-500'}`}>
+                {slicerSummary.SOP.count} daripada {slicerSummary.SOP.totalStudents} dinilai
+              </p>
+            </div>
+            <div className="mt-2 pt-2 border-t border-slate-200/30 flex items-center justify-between text-xs font-mono">
+              <span className={selectedSlicer === 'SOP' ? 'text-blue-200 text-[10px]' : 'text-slate-400 text-[10px]'}>Min Keseluruhan:</span>
+              <span className={`font-black ${selectedSlicer === 'SOP' ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                {slicerSummary.SOP.mean !== null ? `${slicerSummary.SOP.mean.toFixed(2)}` : '-'}
+              </span>
+            </div>
+          </button>
+
+          {/* Slicer: SKU */}
+          <button
+            type="button"
+            onClick={() => setSelectedSlicer('SKU')}
+            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+              selectedSlicer === 'SKU'
+                ? 'bg-orange-600 text-white border-orange-700 shadow-md ring-2 ring-orange-300/60'
+                : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
+                selectedSlicer === 'SKU' ? 'bg-orange-700 text-white' : 'bg-orange-50 text-orange-800'
+              }`}>
+                SKU
+              </span>
+              {selectedSlicer === 'SKU' && (
+                <Check className="w-4 h-4 text-amber-200" />
+              )}
+            </div>
+            <div className="mt-2.5">
+              <p className={`text-base font-black uppercase tracking-tight ${selectedSlicer === 'SKU' ? 'text-white' : 'text-slate-900'}`}>
+                Sijil Kulinari
+              </p>
+              <p className={`text-[11px] font-semibold mt-0.5 ${selectedSlicer === 'SKU' ? 'text-orange-100' : 'text-slate-500'}`}>
+                {slicerSummary.SKU.count} daripada {slicerSummary.SKU.totalStudents} dinilai
+              </p>
+            </div>
+            <div className="mt-2 pt-2 border-t border-slate-200/30 flex items-center justify-between text-xs font-mono">
+              <span className={selectedSlicer === 'SKU' ? 'text-orange-100 text-[10px]' : 'text-slate-400 text-[10px]'}>Min Keseluruhan:</span>
+              <span className={`font-black ${selectedSlicer === 'SKU' ? 'text-white' : 'text-orange-700'}`}>
+                {slicerSummary.SKU.mean !== null ? `${slicerSummary.SKU.mean.toFixed(2)}` : '-'}
+              </span>
+            </div>
+          </button>
+
+          {/* Slicer: SKE */}
+          <button
+            type="button"
+            onClick={() => setSelectedSlicer('SKE')}
+            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+              selectedSlicer === 'SKE'
+                ? 'bg-emerald-800 text-white border-emerald-900 shadow-md ring-2 ring-emerald-400/50'
+                : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
+                selectedSlicer === 'SKE' ? 'bg-emerald-900 text-white' : 'bg-emerald-50 text-emerald-800'
+              }`}>
+                SKE
+              </span>
+              {selectedSlicer === 'SKE' && (
+                <Check className="w-4 h-4 text-emerald-200" />
+              )}
+            </div>
+            <div className="mt-2.5">
+              <p className={`text-base font-black uppercase tracking-tight ${selectedSlicer === 'SKE' ? 'text-white' : 'text-slate-900'}`}>
+                Sijil Elektrik
+              </p>
+              <p className={`text-[11px] font-semibold mt-0.5 ${selectedSlicer === 'SKE' ? 'text-emerald-100' : 'text-slate-500'}`}>
+                {slicerSummary.SKE.count} daripada {slicerSummary.SKE.totalStudents} dinilai
+              </p>
+            </div>
+            <div className="mt-2 pt-2 border-t border-slate-200/30 flex items-center justify-between text-xs font-mono">
+              <span className={selectedSlicer === 'SKE' ? 'text-emerald-200 text-[10px]' : 'text-slate-400 text-[10px]'}>Min Keseluruhan:</span>
+              <span className={`font-black ${selectedSlicer === 'SKE' ? 'text-white' : 'text-emerald-800'}`}>
+                {slicerSummary.SKE.mean !== null ? `${slicerSummary.SKE.mean.toFixed(2)}` : '-'}
+              </span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* =====================================================================
+       * PAPARAN HASIL MIN PENILAIAN FLI 01
+       * ===================================================================== */}
+      <div className="bg-[#f8fafc] p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+        {/* Header & KPI Summary */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-200">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Dapatan Penilaian Maklum Balas Industri (FLI 01)
+              </h2>
+              {slicerStats.hasData && (
+                <span className="text-xs px-3 py-1 bg-emerald-100 text-emerald-900 font-bold rounded-full border border-emerald-300">
+                  {slicerStats.evaluatedCount} Pelajar Dinilai
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Paparan hasil skor min penilaian majikan bagi <span className="font-bold text-slate-800">{slicerLabel}</span> (Skala 1.00 hingga 5.00)
+            </p>
           </div>
         </div>
 
-        {totalEvaluatedFli01 > 0 ? (
+        {slicerStats.hasData ? (
           <>
-            {/* 1. Kemahiran di tempat kerja (Q1 to Q6) - Featured Highlighted Chart */}
-            <div>
-              <RenderLineChart
-                title="Kemahiran di tempat kerja"
-                isHighlighted={true}
-                questions={[
-                  { index: 0, label: 'Q1' },
-                  { index: 1, label: 'Q2' },
-                  { index: 2, label: 'Q3' },
-                  { index: 3, label: 'Q4' },
-                  { index: 4, label: 'Q5' },
-                  { index: 5, label: 'Q6' },
-                ]}
-              />
+            {/* KPI Cards Ringkasan Min */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-black">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Min Keseluruhan</p>
+                  <p className="text-2xl font-black text-emerald-800 font-mono">
+                    {slicerStats.overallMean.toFixed(2)} <span className="text-xs text-slate-400 font-normal">/ 5.00</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-800 flex items-center justify-center font-black">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Min Tertinggi</p>
+                  <p className="text-lg font-black text-blue-900 font-mono truncate">
+                    {slicerStats.highest?.code}: {slicerStats.highest?.mean.toFixed(2)}
+                  </p>
+                  <p className="text-[10px] text-slate-500 truncate" title={slicerStats.highest?.label}>
+                    {slicerStats.highest?.label}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center font-black">
+                  <Info className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Min Terendah</p>
+                  <p className="text-lg font-black text-amber-900 font-mono truncate">
+                    {slicerStats.lowest?.code}: {slicerStats.lowest?.mean.toFixed(2)}
+                  </p>
+                  <p className="text-[10px] text-slate-500 truncate" title={slicerStats.lowest?.label}>
+                    {slicerStats.lowest?.label}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center font-black">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pelajar Dinilai</p>
+                  <p className="text-2xl font-black text-slate-900 font-mono">
+                    {slicerStats.evaluatedCount} <span className="text-xs text-slate-400 font-normal">orang</span>
+                  </p>
+                </div>
+              </div>
             </div>
 
-            {/* 2x2 Grid for Remaining 4 Aspect Charts */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Chart 2: Komunikasi berkesan (Q7, Q8) */}
-              <RenderLineChart
-                title="Komunikasi berkesan"
-                questions={[
-                  { index: 6, label: 'Q7' },
-                  { index: 7, label: 'Q8' },
-                ]}
-              />
+            {/* Carta Bar Menegak Q1 hingga Q14 */}
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase">
+                    Carta Skor Min Penilaian FLI 01 (Q1 - Q14)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Skor min penilaian majikan bagi setiap kriteria pada skala {chartMinScale.toFixed(1)} hingga 5.00
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: slicerColor }}></span>
+                  <span className="text-xs font-black text-slate-700">{slicerLabel}</span>
+                </div>
+              </div>
 
-              {/* Chart 3: Kerja berpasukan dan bertanggungjawab (Q9, Q10) */}
-              <RenderLineChart
-                title="Kerja berpasukan dan bertanggungjawab"
-                questions={[
-                  { index: 8, label: 'Q9' },
-                  { index: 9, label: 'Q10' },
-                ]}
-              />
+              {/* SVG Column Chart Q1-Q14 */}
+              <div className="pt-2 overflow-x-auto">
+                <div className="min-w-[680px]">
+                  <svg viewBox="0 0 780 270" className="w-full h-auto select-none overflow-visible">
+                    {/* Ticks & Horizontal Guidelines */}
+                    {chartTicks.map((val) => {
+                      const range = 5.0 - chartMinScale;
+                      const ratio = (val - chartMinScale) / range;
+                      const y = 30 + (170 * (1 - ratio));
+                      return (
+                        <g key={val}>
+                          <line
+                            x1="45"
+                            y1={y}
+                            x2="760"
+                            y2={y}
+                            stroke="#f1f5f9"
+                            strokeWidth="1.2"
+                          />
+                          <text
+                            x="35"
+                            y={y + 4}
+                            textAnchor="end"
+                            fontSize="10"
+                            fontWeight="500"
+                            fill="#94a3b8"
+                            fontFamily="monospace"
+                          >
+                            {val.toFixed(1)}
+                          </text>
+                        </g>
+                      );
+                    })}
 
-              {/* Chart 4: Kemahiran Personal (Q11, Q12) */}
-              <RenderLineChart
-                title="Kemahiran Personal"
-                questions={[
-                  { index: 10, label: 'Q11' },
-                  { index: 11, label: 'Q12' },
-                ]}
-              />
+                    {/* 14 Bars bagi Q1 hingga Q14 */}
+                    {slicerStats.items.map((item, idx) => {
+                      const totalBars = 14;
+                      const availableWidth = 715; // 760 - 45
+                      const barWidth = 36;
+                      const gap = (availableWidth - (totalBars * barWidth)) / (totalBars + 1);
+                      const x = 45 + gap + (idx * (barWidth + gap));
 
-              {/* Chart 5: Nilai, etika dan profesionalisme (Q13, Q14) */}
-              <RenderLineChart
-                title="Nilai, etika dan profesionalisme"
-                questions={[
-                  { index: 12, label: 'Q13' },
-                  { index: 13, label: 'Q14' },
-                ]}
-              />
+                      const clamped = Math.max(chartMinScale, Math.min(5.0, item.mean));
+                      const range = 5.0 - chartMinScale;
+                      const barHeight = range > 0 ? ((clamped - chartMinScale) / range) * 170 : 0;
+                      const y = 200 - barHeight;
+
+                      return (
+                        <g key={item.code} className="cursor-pointer group">
+                          {/* Bar */}
+                          <rect
+                            x={x}
+                            y={y}
+                            width={barWidth}
+                            height={Math.max(barHeight, 2)}
+                            rx="5"
+                            ry="5"
+                            fill={slicerColor}
+                            className="transition-all duration-300 group-hover:opacity-85"
+                          />
+
+                          {/* Nilai Min di atas bar */}
+                          <text
+                            x={x + barWidth / 2}
+                            y={y > 45 ? y - 6 : y + 15}
+                            textAnchor="middle"
+                            fontSize="10"
+                            fontWeight="bold"
+                            fill={y > 45 ? "#1e293b" : "#ffffff"}
+                            fontFamily="monospace"
+                          >
+                            {item.mean > 0 ? item.mean.toFixed(2) : '-'}
+                          </text>
+
+                          {/* Kod Q di bawah bar */}
+                          <text
+                            x={x + barWidth / 2}
+                            y="225"
+                            textAnchor="middle"
+                            fontSize="11"
+                            fontWeight="bold"
+                            fill="#475569"
+                          >
+                            {item.code}
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    {/* Baseline */}
+                    <line x1="45" y1="200" x2="760" y2="200" stroke="#cbd5e1" strokeWidth="1.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Senarai 14 Kriteria Terperinci Lengkap */}
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+              <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase">
+                    Perincian 14 Kriteria Maklum Balas Industri (FLI 01)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Senarai lengkap kriteria bersama skor min dan tahap pencapaian
+                  </p>
+                </div>
+                <span className="text-xs font-bold px-3 py-1 bg-slate-100 rounded-lg text-slate-700">
+                  14 Kriteria Penilaian
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {slicerStats.items.map((q) => {
+                  const rating = getRatingBadge(q.mean);
+                  const percentOf5 = Math.min(100, Math.max(0, (q.mean / 5.0) * 100));
+
+                  return (
+                    <div
+                      key={q.code}
+                      className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-slate-50 transition-colors flex flex-col justify-between space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <span
+                            className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs text-white shrink-0 mt-0.5 shadow-2xs"
+                            style={{ backgroundColor: slicerColor }}
+                          >
+                            {q.code}
+                          </span>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 leading-snug">
+                              {q.label}
+                            </p>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              Domain: {q.domain}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className="text-base font-black text-slate-900 font-mono block">
+                            {q.mean.toFixed(2)}
+                          </span>
+                          <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full border ${rating.bg}`}>
+                            {rating.text}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Mini Progress Bar */}
+                      <div className="space-y-1 pt-1 border-t border-slate-200/50">
+                        <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${percentOf5}%`,
+                              backgroundColor: slicerColor
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </>
         ) : (
-          /* Empty State bila tiada data penilaian FLI 01 bagi sesi ini */
+          /* Empty State bila tiada data penilaian FLI 01 bagi sesi / slicer terpilih */
           <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-3 py-16">
             <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center">
               <Info className="w-7 h-7" />
             </div>
             <div>
-              <h4 className="text-sm font-black text-slate-800 uppercase">Tiada Data Penilaian Industri (FLI 01)</h4>
+              <h4 className="text-sm font-black text-slate-800 uppercase">
+                Tiada Data Penilaian Industri (FLI 01)
+              </h4>
               <p className="text-xs text-slate-500 mt-1 max-w-md">
-                Tiada rekod penilaian majikan industri (FLI 01) yang direkodkan bagi sesi <span className="font-semibold text-slate-700 font-mono">{selectedSession}</span>. Sila pastikan markah penilaian telah dimasukkan pada menu Penilaian Pelajar.
+                Tiada rekod penilaian majikan industri (FLI 01) bagi <strong>{slicerLabel}</strong> pada sesi <span className="font-semibold text-slate-700 font-mono">{selectedSession}</span>.
               </p>
             </div>
           </div>
         )}
 
-        {/* Analisis Box matching Image 2 with orange/coral border (Dinamik mengikut data sesi) */}
+        {/* =====================================================================
+         * KOTAK ANALISIS KESELURUHAN PENILAIAN (Border oren/coral seperti lampiran)
+         * ===================================================================== */}
         <div className="border-2 border-orange-500 rounded-2xl p-5 sm:p-6 bg-white shadow-xs space-y-2">
           <h3 className="text-sm font-black text-slate-900 uppercase">
             Analisis:
           </h3>
           <p className="text-xs sm:text-sm text-slate-800 leading-relaxed text-justify">
-            {dynamicAnalysis}
+            {slicerStats.hasData ? (
+              <>
+                Secara keseluruhannya, dapatan maklum balas industri (FLI 01) bagi <strong>{selectedSession}</strong> ({slicerLabel}) adalah positif dengan skor min keseluruhan <strong>{slicerStats.overallMean.toFixed(2)} daripada skala 5.00</strong> (berdasarkan penilaian terhadap {slicerStats.evaluatedCount} orang pelajar). Aspek <strong>{slicerStats.highest?.code} - {slicerStats.highest?.label}</strong> mencatatkan pencapaian tertinggi dengan skor min <strong>{slicerStats.highest?.mean.toFixed(2)}</strong>. Manakala aspek <strong>{slicerStats.lowest?.code} - {slicerStats.lowest?.label}</strong> mencatatkan skor min <strong>{slicerStats.lowest?.mean.toFixed(2)}</strong>, yang boleh dijadikan fokus bimbingan dan pemantapan berterusan sebelum pelajar melangkah ke alam kerjaya sepenuhnya.
+              </>
+            ) : (
+              <>
+                Tiada data penilaian majikan industri (FLI 01) bagi program <strong>{slicerLabel}</strong> pada sesi <strong>{selectedSession}</strong> untuk dianalisa. Analisis akan dijana secara automatik sebaik sahaja pihak industri mengisi atau markah FLI 01 dimasukkan ke dalam sistem.
+              </>
+            )}
           </p>
         </div>
       </div>
