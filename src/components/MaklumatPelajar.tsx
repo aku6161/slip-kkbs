@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Student, ApplicationStatus, Lecturer, formatProgramName } from '../types';
+import { Student, ApplicationStatus, Lecturer, IndustryCompany, formatProgramName } from '../types';
 import { INITIAL_COMPANIES } from '../data/initialData';
 import * as XLSX from 'xlsx';
 import { 
@@ -28,6 +28,7 @@ import {
 interface MaklumatPelajarProps {
   students: Student[];
   lecturers?: Lecturer[];
+  companies?: IndustryCompany[];
   onSaveStudent: (student: Partial<Student>) => Promise<void>;
   onDeleteStudent: (studentId: string) => Promise<void>;
   onViewStudentDetail: (student: Student) => void;
@@ -36,6 +37,7 @@ interface MaklumatPelajarProps {
 export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
   students,
   lecturers = [],
+  companies = [],
   onSaveStudent,
   onDeleteStudent,
   onViewStudentDetail,
@@ -44,6 +46,21 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
   const [sessionFilter, setSessionFilter] = useState('SEMUA');
   const [programFilter, setProgramFilter] = useState('SEMUA');
   const [kelasFilter, setKelasFilter] = useState('SEMUA');
+
+  // Senarai syarikat industri (gabungkan dan utamakan syarikat berdaftar dari Firestore/Tetapan Maklumat Industri)
+  const companyList = useMemo(() => {
+    const rawList = companies && companies.length > 0 ? companies : INITIAL_COMPANIES;
+    const seen = new Set<string>();
+    const unique: IndustryCompany[] = [];
+    for (const c of rawList) {
+      const nameKey = (c.namaSyarikat || '').trim().toUpperCase();
+      if (nameKey && !seen.has(nameKey)) {
+        seen.add(nameKey);
+        unique.push(c);
+      }
+    }
+    return unique.sort((a, b) => (a.namaSyarikat || '').localeCompare(b.namaSyarikat || ''));
+  }, [companies]);
 
   // Modal State for Edit Single Student
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -907,8 +924,8 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       value={formData.namaSyarikat || ''}
                       onChange={e => {
                         const selectedName = e.target.value;
-                        const matched = INITIAL_COMPANIES.find(
-                          c => c.namaSyarikat.trim().toUpperCase() === selectedName.trim().toUpperCase()
+                        const matched = companyList.find(
+                          c => (c.namaSyarikat || '').trim().toUpperCase() === selectedName.trim().toUpperCase()
                         );
                         setFormData(prev => ({
                           ...prev,
@@ -919,12 +936,12 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg uppercase font-bold focus:ring-2 focus:ring-blue-900 bg-white cursor-pointer"
                     >
                       <option value="">[SILA PILIH SYARIKAT]</option>
-                      {INITIAL_COMPANIES.map(comp => (
+                      {companyList.map(comp => (
                         <option key={comp.id || comp.namaSyarikat} value={comp.namaSyarikat}>
                           {comp.namaSyarikat}
                         </option>
                       ))}
-                      {formData.namaSyarikat && !INITIAL_COMPANIES.some(c => c.namaSyarikat.trim().toUpperCase() === formData.namaSyarikat?.trim().toUpperCase()) && (
+                      {formData.namaSyarikat && !companyList.some(c => (c.namaSyarikat || '').trim().toUpperCase() === (formData.namaSyarikat || '').trim().toUpperCase()) && (
                         <option value={formData.namaSyarikat}>{formData.namaSyarikat}</option>
                       )}
                     </select>

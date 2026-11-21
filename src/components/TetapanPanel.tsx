@@ -123,6 +123,7 @@ export const TetapanPanel: React.FC<TetapanPanelProps> = ({
           <MaklumatPelajar
             students={students}
             lecturers={lecturers}
+            companies={companies}
             onSaveStudent={onSaveStudent}
             onDeleteStudent={onDeleteStudent}
             onViewStudentDetail={onViewStudentDetail}

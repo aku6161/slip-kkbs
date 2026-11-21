@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Student, SystemConfig, Lecturer, IndustryCompany, formatProgramName } from '../types';
 import { INITIAL_COMPANIES } from '../data/initialData';
 import { UserPlus, Send, User, Building, Award, BookOpen, Info, Lock, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
@@ -32,6 +32,21 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
 }) => {
   const [icSearchInput, setIcSearchInput] = useState('');
   const [searchStatus, setSearchStatus] = useState<{ found: boolean; message: string } | null>(null);
+
+  // Senarai syarikat industri (utamakan senarai dari Firestore/Tetapan Maklumat Industri)
+  const companyList = useMemo(() => {
+    const rawList = companies && companies.length > 0 ? companies : INITIAL_COMPANIES;
+    const seen = new Set<string>();
+    const unique: IndustryCompany[] = [];
+    for (const c of rawList) {
+      const nameKey = (c.namaSyarikat || '').trim().toUpperCase();
+      if (nameKey && !seen.has(nameKey)) {
+        seen.add(nameKey);
+        unique.push(c);
+      }
+    }
+    return unique.sort((a, b) => (a.namaSyarikat || '').localeCompare(b.namaSyarikat || ''));
+  }, [companies]);
 
   const [formData, setFormData] = useState<Partial<Student>>({
     namaPelajar: '',
@@ -632,8 +647,8 @@ JALAN MELALUGUS,
                   value={formData.namaSyarikat || ''}
                   onChange={e => {
                     const selectedName = e.target.value;
-                    const matched = companies.find(
-                      c => c.namaSyarikat.trim().toUpperCase() === selectedName.trim().toUpperCase()
+                    const matched = companyList.find(
+                      c => (c.namaSyarikat || '').trim().toUpperCase() === selectedName.trim().toUpperCase()
                     );
                     setFormData(prev => ({
                       ...prev,
@@ -644,19 +659,17 @@ JALAN MELALUGUS,
                   className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none uppercase font-bold text-slate-900 bg-white cursor-pointer"
                 >
                   <option value="">[SILA PILIH SYARIKAT INDUSTRI]</option>
-                  {companies && companies.length > 0 ? (
-                    [...companies]
-                      .sort((a, b) => a.namaSyarikat.localeCompare(b.namaSyarikat))
-                      .map(comp => (
-                        <option key={comp.id || comp.namaSyarikat} value={comp.namaSyarikat}>
-                          {comp.namaSyarikat}
-                        </option>
-                      ))
+                  {companyList && companyList.length > 0 ? (
+                    companyList.map(comp => (
+                      <option key={comp.id || comp.namaSyarikat} value={comp.namaSyarikat}>
+                        {comp.namaSyarikat}
+                      </option>
+                    ))
                   ) : (
                     <option value="" disabled>Tiada data syarikat</option>
                   )}
                   {/* Sertakan pilihan jika nama sedia ada tiada dalam senarai syarikat berdaftar */}
-                  {formData.namaSyarikat && !companies?.some(c => c.namaSyarikat.trim().toUpperCase() === formData.namaSyarikat?.trim().toUpperCase()) && (
+                  {formData.namaSyarikat && !companyList.some(c => (c.namaSyarikat || '').trim().toUpperCase() === (formData.namaSyarikat || '').trim().toUpperCase()) && (
                     <option value={formData.namaSyarikat}>{formData.namaSyarikat}</option>
                   )}
                 </select>
