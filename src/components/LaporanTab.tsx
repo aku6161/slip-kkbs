@@ -227,7 +227,7 @@ export const LaporanTab: React.FC<LaporanTabProps> = ({
           </button>
         </div>
 
-        {/* Filter Sesi Controls */}
+        {/* Filter Sesi Controls (Tanpa perkataan sesi terkini / kad sesi tetapan) */}
         <div className="flex items-center gap-3 shrink-0 flex-wrap">
           <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
             <Calendar className="w-4 h-4 text-blue-900" />
@@ -239,7 +239,7 @@ export const LaporanTab: React.FC<LaporanTabProps> = ({
             >
               {config?.sesi && (
                 <option value={config.sesi.trim()}>
-                  {config.sesi.trim()} (Sesi Terkini)
+                  {config.sesi.trim()}
                 </option>
               )}
               {availableSessions
@@ -252,14 +252,6 @@ export const LaporanTab: React.FC<LaporanTabProps> = ({
               <option value="SEMUA">SEMUA SESI</option>
             </select>
           </div>
-
-          {/* Sesi Terkini Badge */}
-          {config?.sesi && (
-            <div className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-              <span>Sesi Terkini Tetapan: <strong className="font-black text-amber-950">{config.sesi}</strong></span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -268,7 +260,6 @@ export const LaporanTab: React.FC<LaporanTabProps> = ({
         <StatistikPenempatanSubTab
           students={filteredStudents}
           selectedSession={selectedSession}
-          activeConfigSession={config?.sesi}
         />
       )}
 
@@ -279,7 +270,6 @@ export const LaporanTab: React.FC<LaporanTabProps> = ({
           lecturers={lecturers}
           markah={markah}
           selectedSession={selectedSession}
-          activeConfigSession={config?.sesi}
           getStudentMark={getStudentMark}
         />
       )}
@@ -290,7 +280,6 @@ export const LaporanTab: React.FC<LaporanTabProps> = ({
           students={filteredStudents}
           markah={markah}
           selectedSession={selectedSession}
-          activeConfigSession={config?.sesi}
           getStudentMark={getStudentMark}
         />
       )}
@@ -304,7 +293,6 @@ export const LaporanTab: React.FC<LaporanTabProps> = ({
 interface SubTabProps {
   students: Student[];
   selectedSession: string;
-  activeConfigSession?: string;
   lecturers?: Lecturer[];
   markah?: any[];
   getStudentMark?: (student: Student) => any;
@@ -313,7 +301,6 @@ interface SubTabProps {
 const StatistikPenempatanSubTab: React.FC<SubTabProps> = ({
   students,
   selectedSession,
-  activeConfigSession
 }) => {
   // Pengiraan mengikut program dan jantina
   const programData = useMemo(() => {
@@ -391,12 +378,6 @@ const StatistikPenempatanSubTab: React.FC<SubTabProps> = ({
             </p>
           </div>
         </div>
-
-        {activeConfigSession && (
-          <span className="text-[11px] px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-semibold border border-slate-200">
-            Sesi Semasa Tetapan: <strong className="text-blue-900">{activeConfigSession}</strong>
-          </span>
-        )}
       </div>
 
       {/* KPI Cards */}
@@ -733,14 +714,13 @@ const StatistikPenempatanSubTab: React.FC<SubTabProps> = ({
 };
 
 /* =========================================================================
- * 2. SUBTAB: STATISTIK PEMANTAUAN LI (Carta Pie Pensyarah & FLI 02 Bar)
+ * 2. SUBTAB: STATISTIK PEMANTAUAN LI (Carta Pie Pensyarah & 3 Elemen FLI 02)
  * ========================================================================= */
 const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
   students,
   lecturers = [],
   markah = [],
   selectedSession,
-  activeConfigSession,
   getStudentMark
 }) => {
   // 1. Tentukan Pensyarah Pemantau
@@ -781,31 +761,13 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
   const lelakiPercent = totalPemantau > 0 ? Math.round((pemantauLelaki / totalPemantau) * 100) : 50;
   const perempuanPercent = totalPemantau > 0 ? 100 - lelakiPercent : 50;
 
-  // 2. Kira Purata FLI 02 (Mengikut Elemen Sesi)
-  // Sesi I 2026/2027 menggunakan 3 elemen utama:
+  // 2. Kira Purata FLI 02 (3 Elemen Utama Sahaja Berdasarkan Data Sebenar)
   // Q1 - Komunikasi Lisan (CLO 2, 10%)
   // Q2 - Kerja Berpasukan & Tanggungjawab (CLO 3, 5%)
   // Q3 - Kemahiran Personal (CLO 4, 5%)
-  const isSesi2026 = useMemo(() => {
-    const s = (selectedSession || '').toUpperCase().trim();
-    return s.includes('2026/2027') || s.includes('2026') || s === 'SEMUA';
-  }, [selectedSession]);
-
-  const [displayMode, setDisplayMode] = useState<'3_elements' | '6_questions'>('3_elements');
-
-  // Selaraskan mod paparan apabila sesi bertukar: Jika 2026/2027, gunakan 3 elemen secara lalai
-  React.useEffect(() => {
-    if (isSesi2026) {
-      setDisplayMode('3_elements');
-    }
-  }, [isSesi2026, selectedSession]);
-
   const fli02Scores = useMemo(() => {
     let count = 0;
-    // 3 Elemen Utama bagi Sesi I 2026/2027
     const sums3 = [0, 0, 0];
-    // 6 Sub-kriteria terperinci
-    const sums6 = [0, 0, 0, 0, 0, 0];
 
     students.forEach(s => {
       const m = getStudentMark ? getStudentMark(s) : null;
@@ -842,15 +804,6 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
           sums3[0] += q1_val;
           sums3[1] += q2_val;
           sums3[2] += q3_val;
-
-          // Rekod 6 sub-kriteria
-          if (!isNaN(c1_1)) sums6[0] += c1_1;
-          if (!isNaN(c1_2)) sums6[1] += c1_2;
-          if (!isNaN(c2_1)) sums6[2] += c2_1;
-          if (!isNaN(c2_2)) sums6[3] += c2_2;
-          if (!isNaN(c3_1)) sums6[4] += c3_1;
-          if (!isNaN(c3_2)) sums6[5] += c3_2;
-
           count += 1;
         }
       }
@@ -858,83 +811,49 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
 
     if (count > 0) {
       return {
-        isLive: true,
+        hasData: true,
         evaluatedCount: count,
-        averages3: sums3.map(sum => Number((sum / count).toFixed(2))),
-        averages6: sums6.map(sum => Number((sum / count).toFixed(2)))
+        averages: sums3.map(sum => Number((sum / count).toFixed(2)))
       };
     }
 
+    // Jika tiada penilaian sebenar, biarkan kosong tanpa data penanda aras
     return {
-      isLive: false,
+      hasData: false,
       evaluatedCount: 0,
-      // Benchmark: Q1 (4.46), Q2 (4.65), Q3 (4.29)
-      averages3: [4.46, 4.65, 4.29],
-      averages6: [4.49, 4.43, 4.26, 4.32, 4.64, 4.65]
+      averages: [0, 0, 0]
     };
   }, [students, getStudentMark]);
 
-  // Senarai kriteria aktif mengikut mod (3 Elemen Utama atau 6 Sub-kriteria)
-  const isThreeElements = displayMode === '3_elements';
-
+  // 3 Elemen Utama FLI 02
   const questionsList = useMemo(() => {
-    if (isThreeElements) {
-      return [
-        { 
-          code: 'Q1', 
-          text: 'Komunikasi Lisan', 
-          desc: '1.1 & 1.2 Kemahiran menjawab soalan & penyampaian idea', 
-          clo: 'CLO 2', 
-          weight: '10%',
-          score: fli02Scores.averages3[0] 
-        },
-        { 
-          code: 'Q2', 
-          text: 'Kerja Berpasukan & Tanggungjawab', 
-          desc: '2.1 & 2.2 Hubungan rakan sekerja & tanggungjawab tugasan', 
-          clo: 'CLO 3', 
-          weight: '5%',
-          score: fli02Scores.averages3[1] 
-        },
-        { 
-          code: 'Q3', 
-          text: 'Kemahiran Personal', 
-          desc: '3.1 & 3.2 Organisasi maklumat & inisiatif bermotivasi', 
-          clo: 'CLO 4', 
-          weight: '5%',
-          score: fli02Scores.averages3[2] 
-        },
-      ];
-    }
-
     return [
-      { code: 'Q1', text: 'Kemahiran menjawab soalan', desc: 'Kefahaman dan ketepatan menjawab', clo: 'CLO 2', weight: '5%', score: fli02Scores.averages6[0] },
-      { code: 'Q2', text: 'Penyampaian idea', desc: 'Penyampaian yang teratur dan berkesan', clo: 'CLO 2', weight: '5%', score: fli02Scores.averages6[1] },
-      { code: 'Q3', text: 'Organisasi idea', desc: 'Kebolehan menyusun maklumat kerja', clo: 'CLO 4', weight: '2.5%', score: fli02Scores.averages6[2] },
-      { code: 'Q4', text: 'Visi', desc: 'Bermotivasi dan berpandangan jauh', clo: 'CLO 4', weight: '2.5%', score: fli02Scores.averages6[3] },
-      { code: 'Q5', text: 'Kerja berpasukan', desc: 'Membina hubungan baik dalam organisasi', clo: 'CLO 3', weight: '2.5%', score: fli02Scores.averages6[4] },
-      { code: 'Q6', text: 'Tanggungjawab kerja', desc: 'Melaksanakan tugasan dengan proaktif', clo: 'CLO 3', weight: '2.5%', score: fli02Scores.averages6[5] },
+      { 
+        code: 'Q1', 
+        text: 'Komunikasi Lisan', 
+        desc: '1.1 & 1.2 Kemahiran menjawab soalan & penyampaian idea', 
+        clo: 'CLO 2', 
+        weight: '10%',
+        score: fli02Scores.averages[0] 
+      },
+      { 
+        code: 'Q2', 
+        text: 'Kerja Berpasukan & Tanggungjawab', 
+        desc: '2.1 & 2.2 Hubungan rakan sekerja & tanggungjawab tugasan', 
+        clo: 'CLO 3', 
+        weight: '5%',
+        score: fli02Scores.averages[1] 
+      },
+      { 
+        code: 'Q3', 
+        text: 'Kemahiran Personal', 
+        desc: '3.1 & 3.2 Organisasi maklumat & inisiatif bermotivasi', 
+        clo: 'CLO 4', 
+        weight: '5%',
+        score: fli02Scores.averages[2] 
+      },
     ];
-  }, [isThreeElements, fli02Scores]);
-
-  // SVG Donut calculation
-  // Angle for Lelaki
-  const angleLelaki = (lelakiPercent / 100) * 360;
-  // Arc calculation for SVG Pie/Donut (center at 100, 100, radius 80)
-  const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
-    const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
-    return {
-      x: centerX + radius * Math.cos(angleInRadians),
-      y: centerY + radius * Math.sin(angleInRadians)
-    };
-  };
-
-  const describeArc = (x: number, y: number, radius: number, startAngle: number, endAngle: number) => {
-    const start = polarToCartesian(x, y, radius, endAngle);
-    const end = polarToCartesian(x, y, radius, startAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
-    return ['M', start.x, start.y, 'A', radius, radius, 0, largeArcFlag, 0, end.x, end.y].join(' ');
-  };
+  }, [fli02Scores]);
 
   return (
     <div className="space-y-6">
@@ -953,12 +872,6 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
             </p>
           </div>
         </div>
-
-        {activeConfigSession && (
-          <span className="text-[11px] px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-semibold border border-slate-200">
-            Sesi Semasa Tetapan: <strong className="text-blue-900">{activeConfigSession}</strong>
-          </span>
-        )}
       </div>
 
       {/* Grid: Carta Pie Pensyarah & Ringkasan */}
@@ -1101,189 +1014,168 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
       </div>
 
       {/* =====================================================================
-       * DAPATAN PEMANTAUAN (FLI 02) - MENGIKUT ELEMEN SESI
-       * Sesi I 2026/2027: Q1, Q2, Q3
+       * DAPATAN PEMANTAUAN (FLI 02) - 3 ELEMEN UTAMA
        * ===================================================================== */}
       <div className="bg-[#f8fafc] p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-        {/* Title and Element Mode Switcher */}
+        {/* Header Title */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
           <div>
             <div className="flex items-center gap-3">
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 Dapatan Pemantauan
               </h2>
-              {fli02Scores.isLive ? (
+              {fli02Scores.hasData && (
                 <span className="text-xs px-3 py-1 bg-emerald-100 text-emerald-900 font-bold rounded-full border border-emerald-300">
                   Data Sebenar: {fli02Scores.evaluatedCount} Pelajar Dinilai
-                </span>
-              ) : (
-                <span className="text-xs px-3 py-1 bg-amber-100 text-amber-900 font-bold rounded-full border border-amber-300">
-                  Data Penanda Aras (Benchmark)
                 </span>
               )}
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              {isThreeElements 
-                ? 'Penilaian 3 Elemen Utama bagi Sesi I 2026/2027 berasaskan skala 1.00 hingga 5.00'
-                : 'Pecahan 6 Sub-Kriteria Terperinci Borang FLI 02'}
+              Penilaian 3 Elemen Utama berasaskan skala 1.00 hingga 5.00 bagi sesi {selectedSession}
             </p>
-          </div>
-
-          {/* Elemen Selector Toggle */}
-          <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-slate-200 shadow-2xs self-start sm:self-auto">
-            <button
-              onClick={() => setDisplayMode('3_elements')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                displayMode === '3_elements'
-                  ? 'bg-[#14532d] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              3 Elemen Utama (Sesi I 2026/2027)
-            </button>
-            <button
-              onClick={() => setDisplayMode('6_questions')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                displayMode === '6_questions'
-                  ? 'bg-[#14532d] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              6 Sub-Kriteria
-            </button>
           </div>
         </div>
 
         {/* Layout: Chart on Left, Legend on Right */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-          {/* Bar Chart Section */}
-          <div className="md:col-span-7 bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
-            <svg viewBox="0 0 500 280" className="w-full h-auto select-none overflow-visible">
-              {/* Ticks & Horizontal Lines (3.0, 3.5, 4.0, 4.5, 5.0) */}
-              {[
-                { val: 5.0, y: 30 },
-                { val: 4.5, y: 75 },
-                { val: 4.0, y: 120 },
-                { val: 3.5, y: 165 },
-                { val: 3.0, y: 210 },
-              ].map((tick) => (
-                <g key={tick.val}>
-                  <line
-                    x1="45"
-                    y1={tick.y}
-                    x2="480"
-                    y2={tick.y}
-                    stroke="#e2e8f0"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x="35"
-                    y={tick.y + 4}
-                    textAnchor="end"
-                    fontSize="11"
-                    fontWeight="500"
-                    fill="#64748b"
-                    fontFamily="monospace"
-                  >
-                    {tick.val.toFixed(1)}
-                  </text>
-                </g>
-              ))}
-
-              {/* Bars: 3 Elemen Utama atau 6 Sub-kriteria */}
-              {questionsList.map((q, idx) => {
-                // Konfigurasi saiz dan kedudukan bar
-                const barWidth = isThreeElements ? 74 : 46;
-                const totalBars = questionsList.length;
-                const availableWidth = 435; // 480 - 45
-                const totalBarWidth = totalBars * barWidth;
-                const gap = (availableWidth - totalBarWidth) / (totalBars + 1);
-                const x = 45 + gap + (idx * (barWidth + gap));
-
-                // Skala: 3.0 -> y=210, 5.0 -> y=30 (tinggi penuh = 180px bagi julat 2.0)
-                const clampedScore = Math.max(3.0, Math.min(5.0, q.score));
-                const barHeight = ((clampedScore - 3.0) / 2.0) * 180;
-                const y = 210 - barHeight;
-
-                return (
-                  <g key={q.code} className="cursor-pointer group">
-                    {/* Bar */}
-                    <rect
-                      x={x}
-                      y={y}
-                      width={barWidth}
-                      height={Math.max(barHeight, 2)}
-                      rx="7"
-                      ry="7"
-                      fill="#14532d"
-                      className="transition-all duration-300 group-hover:fill-[#15803d]"
+        {fli02Scores.hasData ? (
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+            {/* Bar Chart Section */}
+            <div className="md:col-span-7 bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
+              <svg viewBox="0 0 500 280" className="w-full h-auto select-none overflow-visible">
+                {/* Ticks & Horizontal Lines (3.0, 3.5, 4.0, 4.5, 5.0) */}
+                {[
+                  { val: 5.0, y: 30 },
+                  { val: 4.5, y: 75 },
+                  { val: 4.0, y: 120 },
+                  { val: 3.5, y: 165 },
+                  { val: 3.0, y: 210 },
+                ].map((tick) => (
+                  <g key={tick.val}>
+                    <line
+                      x1="45"
+                      y1={tick.y}
+                      x2="480"
+                      y2={tick.y}
+                      stroke="#e2e8f0"
+                      strokeWidth="1"
                     />
-                    {/* Value inside bar */}
                     <text
-                      x={x + barWidth / 2}
-                      y={y + 24}
-                      textAnchor="middle"
-                      fontSize={isThreeElements ? "13" : "11"}
-                      fontWeight="bold"
-                      fill="#ffffff"
+                      x="35"
+                      y={tick.y + 4}
+                      textAnchor="end"
+                      fontSize="11"
+                      fontWeight="500"
+                      fill="#64748b"
                       fontFamily="monospace"
                     >
-                      {q.score.toFixed(2)}
-                    </text>
-                    {/* X-axis Label below bar */}
-                    <text
-                      x={x + barWidth / 2}
-                      y="235"
-                      textAnchor="middle"
-                      fontSize="12"
-                      fontWeight="bold"
-                      fill="#64748b"
-                    >
-                      {q.code}
+                      {tick.val.toFixed(1)}
                     </text>
                   </g>
-                );
-              })}
-            </svg>
-          </div>
+                ))}
 
-          {/* Right Legend Section */}
-          <div className="md:col-span-5 space-y-4 pl-0 md:pl-4">
-            {questionsList.map((q) => (
-              <div key={q.code} className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-[#14532d] text-base tracking-wide">
-                      {q.code}
-                    </span>
-                    <span className="text-slate-400 font-bold">-</span>
-                    <span className="font-bold text-slate-900 text-sm">
-                      {q.text}
+                {/* 3 Bars bagi Q1, Q2, Q3 */}
+                {questionsList.map((q, idx) => {
+                  const barWidth = 74;
+                  const totalBars = 3;
+                  const availableWidth = 435;
+                  const totalBarWidth = totalBars * barWidth;
+                  const gap = (availableWidth - totalBarWidth) / (totalBars + 1);
+                  const x = 45 + gap + (idx * (barWidth + gap));
+
+                  const clampedScore = Math.max(3.0, Math.min(5.0, q.score));
+                  const barHeight = ((clampedScore - 3.0) / 2.0) * 180;
+                  const y = 210 - barHeight;
+
+                  return (
+                    <g key={q.code} className="cursor-pointer group">
+                      <rect
+                        x={x}
+                        y={y}
+                        width={barWidth}
+                        height={Math.max(barHeight, 2)}
+                        rx="7"
+                        ry="7"
+                        fill="#14532d"
+                        className="transition-all duration-300 group-hover:fill-[#15803d]"
+                      />
+                      <text
+                        x={x + barWidth / 2}
+                        y={y + 24}
+                        textAnchor="middle"
+                        fontSize="13"
+                        fontWeight="bold"
+                        fill="#ffffff"
+                        fontFamily="monospace"
+                      >
+                        {q.score.toFixed(2)}
+                      </text>
+                      <text
+                        x={x + barWidth / 2}
+                        y="235"
+                        textAnchor="middle"
+                        fontSize="12"
+                        fontWeight="bold"
+                        fill="#64748b"
+                      >
+                        {q.code}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+
+            {/* Right Legend Section */}
+            <div className="md:col-span-5 space-y-4 pl-0 md:pl-4">
+              {questionsList.map((q) => (
+                <div key={q.code} className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-[#14532d] text-base tracking-wide">
+                        {q.code}
+                      </span>
+                      <span className="text-slate-400 font-bold">-</span>
+                      <span className="font-bold text-slate-900 text-sm">
+                        {q.text}
+                      </span>
+                    </div>
+                    <span className="text-xs font-black px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-mono border border-emerald-200">
+                      {q.score.toFixed(2)}
                     </span>
                   </div>
-                  <span className="text-xs font-black px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-mono border border-emerald-200">
-                    {q.score.toFixed(2)}
-                  </span>
+                  {q.clo && (
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                      <span>{q.desc}</span>
+                      <span className="font-semibold text-slate-700">{q.clo} ({q.weight})</span>
+                    </div>
+                  )}
                 </div>
-                {q.clo && (
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
-                    <span>{q.desc || q.text}</span>
-                    <span className="font-semibold text-slate-700">{q.clo} ({q.weight})</span>
-                  </div>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Empty State bila tiada data penilaian */
+          <div className="bg-white p-10 rounded-2xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-3 py-14">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+              <Info className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-slate-800 uppercase">Tiada Data Penilaian FLI 02</h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-md">
+                Tiada rekod penilaian pemantauan pensyarah (FLI 02) yang dimasukkan bagi sesi <span className="font-semibold text-slate-700 font-mono">{selectedSession}</span>.
+              </p>
+            </div>
+          </div>
+        )}
 
-        {/* Footnote matching Image 1 */}
+        {/* Footnote */}
         <p className="text-xs italic text-slate-500 font-medium pt-2 border-t border-slate-200">
           Penilaian dijalankan menggunakan Borang Penilaian Pensyarah Pemantau, <strong>FLI 02</strong>.
         </p>
       </div>
 
       {/* =====================================================================
-       * ANALISA DAPATAN PEMANTAUAN
+       * ANALISA DAPATAN PEMANTAUAN (Dinamik berasaskan data sebenar)
        * ===================================================================== */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
@@ -1293,7 +1185,15 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
           </h3>
         </div>
         <p className="text-xs sm:text-sm text-slate-700 leading-relaxed text-justify">
-          Secara keseluruhannya, dapatan penilaian pemantauan pensyarah (FLI 02) bagi <strong>{selectedSession}</strong> menunjukkan tahap pencapaian kompetensi pelajar yang sangat memuaskan dengan purata skor keseluruhan melebihi <strong>4.20 daripada 5.00</strong>. Aspek <strong>{questionsList[1]?.text || 'Kerja Berpasukan & Tanggungjawab'} (Skor: {questionsList[1]?.score.toFixed(2)})</strong> mencatatkan pencapaian tertinggi, disusuli oleh <strong>{questionsList[0]?.text || 'Komunikasi Lisan'} (Skor: {questionsList[0]?.score.toFixed(2)})</strong> yang membuktikan kemahiran berkomunikasi dan interaksi pelajar bersama pensyarah serta rakan sekerja di tempat latihan berada pada standard terpuji. Manakala aspek <strong>{questionsList[2]?.text || 'Kemahiran Personal'} (Skor: {questionsList[2]?.score.toFixed(2)})</strong> turut menunjukkan kesiapsiagaan kendiri yang baik dengan ruang penambahbaikan dari sudut inisiatif berterusan dan pengurusan organisasi idea.
+          {fli02Scores.hasData ? (
+            <>
+              Secara keseluruhannya, dapatan penilaian pemantauan pensyarah (FLI 02) bagi <strong>{selectedSession}</strong> menunjukkan tahap pencapaian kompetensi pelajar dengan purata skor keseluruhan <strong>{((questionsList[0].score + questionsList[1].score + questionsList[2].score) / 3).toFixed(2)} daripada 5.00</strong> (berdasarkan {fli02Scores.evaluatedCount} orang pelajar dinilai). Aspek <strong>{questionsList.slice().sort((a,b)=>b.score - a.score)[0].text} (Skor: {questionsList.slice().sort((a,b)=>b.score - a.score)[0].score.toFixed(2)})</strong> mencatatkan pencapaian tertinggi, manakala aspek <strong>{questionsList.slice().sort((a,b)=>a.score - b.score)[0].text} (Skor: {questionsList.slice().sort((a,b)=>a.score - b.score)[0].score.toFixed(2)})</strong> mencatatkan skor {questionsList.slice().sort((a,b)=>a.score - b.score)[0].score.toFixed(2)} dengan ruang peningkatan berterusan melalui bimbingan pemantau dan pihak industri.
+            </>
+          ) : (
+            <>
+              Tiada data penilaian pemantauan pensyarah (FLI 02) bagi sesi <strong>{selectedSession}</strong> untuk dianalisa. Analisis akan dijana secara automatik sebaik sahaja markah penilaian pensyarah pemantau dimasukkan pada sistem.
+            </>
+          )}
         </p>
       </div>
     </div>
@@ -1301,23 +1201,17 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
 };
 
 /* =========================================================================
- * 3. SUBTAB: STATISTIK MAKLUM BALAS INDUSTRI (FLI 01 - IMAGE 2)
+ * 3. SUBTAB: STATISTIK MAKLUM BALAS INDUSTRI (FLI 01)
  * ========================================================================= */
 const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
   students,
   markah = [],
   selectedSession,
-  activeConfigSession,
   getStudentMark
 }) => {
-  // Baseline data daripada lampiran Image 2
-  const baselineSKE = [4.56, 4.18, 4.28, 4.35, 4.40, 4.24, 4.55, 4.59, 4.51, 4.20, 4.63, 4.52, 4.41, 4.20];
-  const baselineSKU = [3.82, 3.65, 3.69, 3.82, 3.62, 3.76, 3.61, 3.75, 3.61, 3.58, 4.08, 4.14, 4.04, 4.11];
-  const baselineSOP = [3.72, 3.50, 3.72, 3.50, 3.54, 3.64, 3.58, 3.68, 3.34, 3.30, 3.72, 3.55, 3.54, 3.68];
-
-  // Kira data sebenar daripada markah FLI 01 mengikut program jika wujud
+  // Kira data sebenar daripada markah FLI 01 mengikut program bagi sesi terpilih (Tiada data tiruan/benchmark)
   const evaluatedStats = useMemo(() => {
-    const calcProgramAverages = (progCode: 'SKU' | 'SKE' | 'SOP', baseline: number[]) => {
+    const calcProgramAverages = (progCode: 'SKU' | 'SKE' | 'SOP') => {
       const progStudents = students.filter(s => normalizeProgramCode(s.program) === progCode);
       let count = 0;
       const sums = new Array(14).fill(0);
@@ -1339,27 +1233,91 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
 
       if (count > 0) {
         return {
-          isLive: true,
+          hasData: true,
           count,
           scores: sums.map(sum => Number((sum / count).toFixed(2)))
         };
       }
 
       return {
-        isLive: false,
+        hasData: false,
         count: 0,
-        scores: baseline
+        scores: []
       };
     };
 
     return {
-      SKU: calcProgramAverages('SKU', baselineSKU),
-      SKE: calcProgramAverages('SKE', baselineSKE),
-      SOP: calcProgramAverages('SOP', baselineSOP)
+      SKU: calcProgramAverages('SKU'),
+      SKE: calcProgramAverages('SKE'),
+      SOP: calcProgramAverages('SOP')
     };
   }, [students, getStudentMark]);
 
-  // Reusable Component for SVG Line Chart
+  const totalEvaluatedFli01 = evaluatedStats.SKU.count + evaluatedStats.SKE.count + evaluatedStats.SOP.count;
+
+  // Analisa Dinamik Berasaskan Data Sebenar Sesi
+  const dynamicAnalysis = useMemo(() => {
+    if (totalEvaluatedFli01 === 0) {
+      return "Tiada data penilaian majikan (FLI 01) bagi sesi ini untuk dianalisa. Analisis akan dijana secara automatik sebaik sahaja markah penilaian industri dimasukkan.";
+    }
+
+    const progs = [
+      { code: 'SKE', name: 'Pelajar SKE', ...evaluatedStats.SKE },
+      { code: 'SKU', name: 'Pelajar SKU', ...evaluatedStats.SKU },
+      { code: 'SOP', name: 'Pelajar SOP', ...evaluatedStats.SOP },
+    ].filter(p => p.hasData);
+
+    if (progs.length === 0) {
+      return "Tiada data penilaian majikan (FLI 01) bagi sesi ini untuk dianalisa.";
+    }
+
+    const progAvgs = progs.map(p => {
+      const avg = p.scores.reduce((a, b) => a + b, 0) / p.scores.length;
+      return { ...p, avg: Number(avg.toFixed(2)) };
+    }).sort((a, b) => b.avg - a.avg);
+
+    const topProg = progAvgs[0];
+    const overallAvg = Number((progAvgs.reduce((a, b) => a + b.avg, 0) / progAvgs.length).toFixed(2));
+
+    // Domain purata:
+    // D1: Kemahiran di tempat kerja (Q1 - Q6, index 0..5)
+    // D2: Komunikasi berkesan (Q7, Q8, index 6..7)
+    // D3: Kerja berpasukan dan bertanggungjawab (Q9, Q10, index 8..9)
+    // D4: Kemahiran Personal (Q11, Q12, index 10..11)
+    // D5: Nilai, etika dan profesionalisme (Q13, Q14, index 12..13)
+    const calcDomainAvg = (startIdx: number, endIdx: number) => {
+      let sum = 0;
+      let count = 0;
+      progs.forEach(p => {
+        for (let i = startIdx; i <= endIdx; i++) {
+          if (!isNaN(p.scores[i])) {
+            sum += p.scores[i];
+            count++;
+          }
+        }
+      });
+      return count > 0 ? Number((sum / count).toFixed(2)) : 0;
+    };
+
+    const domainScores = [
+      { name: 'kemahiran di tempat kerja', score: calcDomainAvg(0, 5) },
+      { name: 'komunikasi berkesan', score: calcDomainAvg(6, 7) },
+      { name: 'kerja berpasukan dan bertanggungjawab', score: calcDomainAvg(8, 9) },
+      { name: 'kemahiran personal', score: calcDomainAvg(10, 11) },
+      { name: 'nilai, etika dan profesionalisme', score: calcDomainAvg(12, 13) },
+    ].sort((a, b) => b.score - a.score);
+
+    const highestDomain = domainScores[0];
+    const lowestDomain = domainScores[domainScores.length - 1];
+
+    const othersText = progAvgs.length > 1
+      ? `manakala ${progAvgs.slice(1).map(p => `${p.name} mencatat purata ${p.avg.toFixed(2)}`).join(' dan ')}`
+      : 'bagi program berdaftar';
+
+    return `Secara keseluruhannya, penilaian majikan terhadap pelajar bagi sesi ${selectedSession} menunjukkan pencapaian yang positif dengan purata skor keseluruhan ${overallAvg.toFixed(2)} daripada skala 5.00 (berdasarkan ${totalEvaluatedFli01} orang pelajar dinilai). ${topProg.name} mencatatkan purata pencapaian tertinggi pada ${topProg.avg.toFixed(2)}, ${othersText}. Dari segi domain kompetensi, aspek ${highestDomain.name} mencatatkan skor purata tertinggi (${highestDomain.score.toFixed(2)}), manakala aspek ${lowestDomain.name} (${lowestDomain.score.toFixed(2)}) merupakan domain yang boleh terus diperkukuhkan bagi memantapkan kesiapsiagaan pelajar menempuh alam pekerjaan.`;
+  }, [totalEvaluatedFli01, evaluatedStats, selectedSession]);
+
+  // Reusable Component for SVG Line Chart (Hanya lukis garisan bagi program yang mempunyai data sebenar)
   const RenderLineChart = ({
     title,
     questions,
@@ -1370,7 +1328,6 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
     isHighlighted?: boolean;
   }) => {
     const n = questions.length;
-    // Dimensions
     const svgWidth = isHighlighted ? 580 : 380;
     const svgHeight = 175;
     const padLeft = 40;
@@ -1380,7 +1337,6 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
     const innerW = svgWidth - padLeft - padRight;
     const innerH = svgHeight - padTop - padBottom;
 
-    // Y mapping: scale 3.0 -> y=padTop+innerH (145), 5.0 -> y=padTop (20)
     const getY = (val: number) => {
       const clamped = Math.max(3.0, Math.min(5.0, val));
       return padTop + innerH * (1 - (clamped - 3.0) / 2.0);
@@ -1391,20 +1347,23 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
       return padLeft + (i / (n - 1)) * innerW;
     };
 
-    // Series lines
     const getPathData = (scores: number[]) => {
+      if (!scores || scores.length === 0) return '';
       return questions
         .map((q, i) => {
+          const val = scores[q.index];
+          if (val === undefined || isNaN(val)) return '';
           const x = getX(i);
-          const y = getY(scores[q.index]);
+          const y = getY(val);
           return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
         })
+        .filter(Boolean)
         .join(' ');
     };
 
-    const pathSKE = getPathData(evaluatedStats.SKE.scores);
-    const pathSKU = getPathData(evaluatedStats.SKU.scores);
-    const pathSOP = getPathData(evaluatedStats.SOP.scores);
+    const pathSKE = evaluatedStats.SKE.hasData ? getPathData(evaluatedStats.SKE.scores) : '';
+    const pathSKU = evaluatedStats.SKU.hasData ? getPathData(evaluatedStats.SKU.scores) : '';
+    const pathSOP = evaluatedStats.SOP.hasData ? getPathData(evaluatedStats.SOP.scores) : '';
 
     return (
       <div
@@ -1422,7 +1381,7 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
 
         <div className="pt-2">
           <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-auto select-none overflow-visible">
-            {/* Gridlines for 3.0, 3.5, 4.0, 4.5, 5.0 */}
+            {/* Gridlines 3.0, 3.5, 4.0, 4.5, 5.0 */}
             {[5.0, 4.5, 4.0, 3.5, 3.0].map((val) => {
               const y = getY(val);
               return (
@@ -1450,50 +1409,58 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
             })}
 
             {/* SKE Line (Green #15803d) */}
-            <path
-              d={pathSKE}
-              fill="none"
-              stroke="#15803d"
-              strokeWidth="2.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            {pathSKE && (
+              <path
+                d={pathSKE}
+                fill="none"
+                stroke="#15803d"
+                strokeWidth="2.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
 
             {/* SKU Line (Orange #f97316) */}
-            <path
-              d={pathSKU}
-              fill="none"
-              stroke="#f97316"
-              strokeWidth="2.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            {pathSKU && (
+              <path
+                d={pathSKU}
+                fill="none"
+                stroke="#f97316"
+                strokeWidth="2.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
 
             {/* SOP Line (Navy Blue #1e3a8a) */}
-            <path
-              d={pathSOP}
-              fill="none"
-              stroke="#1e3a8a"
-              strokeWidth="2.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            {pathSOP && (
+              <path
+                d={pathSOP}
+                fill="none"
+                stroke="#1e3a8a"
+                strokeWidth="2.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
 
             {/* Markers for Each Question */}
             {questions.map((q, i) => {
               const x = getX(i);
-              const ySKE = getY(evaluatedStats.SKE.scores[q.index]);
-              const ySKU = getY(evaluatedStats.SKU.scores[q.index]);
-              const ySOP = getY(evaluatedStats.SOP.scores[q.index]);
-
               return (
                 <g key={q.label}>
                   {/* SKE Dot */}
-                  <circle cx={x} cy={ySKE} r="4.5" fill="#15803d" stroke="#ffffff" strokeWidth="1.5" />
+                  {evaluatedStats.SKE.hasData && !isNaN(evaluatedStats.SKE.scores[q.index]) && (
+                    <circle cx={x} cy={getY(evaluatedStats.SKE.scores[q.index])} r="4.5" fill="#15803d" stroke="#ffffff" strokeWidth="1.5" />
+                  )}
                   {/* SKU Dot */}
-                  <circle cx={x} cy={ySKU} r="4.5" fill="#f97316" stroke="#ffffff" strokeWidth="1.5" />
+                  {evaluatedStats.SKU.hasData && !isNaN(evaluatedStats.SKU.scores[q.index]) && (
+                    <circle cx={x} cy={getY(evaluatedStats.SKU.scores[q.index])} r="4.5" fill="#f97316" stroke="#ffffff" strokeWidth="1.5" />
+                  )}
                   {/* SOP Dot */}
-                  <circle cx={x} cy={ySOP} r="4.5" fill="#1e3a8a" stroke="#ffffff" strokeWidth="1.5" />
+                  {evaluatedStats.SOP.hasData && !isNaN(evaluatedStats.SOP.scores[q.index]) && (
+                    <circle cx={x} cy={getY(evaluatedStats.SOP.scores[q.index])} r="4.5" fill="#1e3a8a" stroke="#ffffff" strokeWidth="1.5" />
+                  )}
 
                   {/* X-axis Label below */}
                   <text
@@ -1532,15 +1499,9 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
             </p>
           </div>
         </div>
-
-        {activeConfigSession && (
-          <span className="text-[11px] px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-semibold border border-slate-200">
-            Sesi Semasa Tetapan: <strong className="text-blue-900">{activeConfigSession}</strong>
-          </span>
-        )}
       </div>
 
-      {/* Main Container: Dapatan Penilaian matching Image 2 */}
+      {/* Main Container: Dapatan Penilaian */}
       <div className="bg-[#f8fafc] p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
         {/* Title and Program Legend at Top-Right */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
@@ -1553,89 +1514,105 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
             </p>
           </div>
 
-          {/* Program Legend matching Image 2 */}
+          {/* Program Legend dengan jumlah pelajar dinilai */}
           <div className="flex items-center gap-5 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-2xs">
-            <span className="flex items-center gap-2 text-xs font-black text-slate-800">
+            <span className={`flex items-center gap-2 text-xs font-black ${evaluatedStats.SKU.hasData ? 'text-slate-800' : 'text-slate-400'}`}>
               <span className="w-3.5 h-3.5 rounded-full bg-[#f97316]"></span>
-              <span>SKU</span>
+              <span>SKU {evaluatedStats.SKU.hasData ? `(${evaluatedStats.SKU.count})` : '(0)'}</span>
             </span>
-            <span className="flex items-center gap-2 text-xs font-black text-slate-800">
+            <span className={`flex items-center gap-2 text-xs font-black ${evaluatedStats.SKE.hasData ? 'text-slate-800' : 'text-slate-400'}`}>
               <span className="w-3.5 h-3.5 rounded-full bg-[#15803d]"></span>
-              <span>SKE</span>
+              <span>SKE {evaluatedStats.SKE.hasData ? `(${evaluatedStats.SKE.count})` : '(0)'}</span>
             </span>
-            <span className="flex items-center gap-2 text-xs font-black text-slate-800">
+            <span className={`flex items-center gap-2 text-xs font-black ${evaluatedStats.SOP.hasData ? 'text-slate-800' : 'text-slate-400'}`}>
               <span className="w-3.5 h-3.5 rounded-full bg-[#1e3a8a]"></span>
-              <span>SOP</span>
+              <span>SOP {evaluatedStats.SOP.hasData ? `(${evaluatedStats.SOP.count})` : '(0)'}</span>
             </span>
           </div>
         </div>
 
-        {/* 1. Kemahiran di tempat kerja (Q1 to Q6) - Featured Highlighted Chart */}
-        <div>
-          <RenderLineChart
-            title="Kemahiran di tempat kerja"
-            isHighlighted={true}
-            questions={[
-              { index: 0, label: 'Q1' },
-              { index: 1, label: 'Q2' },
-              { index: 2, label: 'Q3' },
-              { index: 3, label: 'Q4' },
-              { index: 4, label: 'Q5' },
-              { index: 5, label: 'Q6' },
-            ]}
-          />
-        </div>
+        {totalEvaluatedFli01 > 0 ? (
+          <>
+            {/* 1. Kemahiran di tempat kerja (Q1 to Q6) - Featured Highlighted Chart */}
+            <div>
+              <RenderLineChart
+                title="Kemahiran di tempat kerja"
+                isHighlighted={true}
+                questions={[
+                  { index: 0, label: 'Q1' },
+                  { index: 1, label: 'Q2' },
+                  { index: 2, label: 'Q3' },
+                  { index: 3, label: 'Q4' },
+                  { index: 4, label: 'Q5' },
+                  { index: 5, label: 'Q6' },
+                ]}
+              />
+            </div>
 
-        {/* 2x2 Grid for Remaining 4 Aspect Charts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Chart 2: Komunikasi berkesan (Q7, Q8) */}
-          <RenderLineChart
-            title="Komunikasi berkesan"
-            questions={[
-              { index: 6, label: 'Q7' },
-              { index: 7, label: 'Q8' },
-            ]}
-          />
+            {/* 2x2 Grid for Remaining 4 Aspect Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Chart 2: Komunikasi berkesan (Q7, Q8) */}
+              <RenderLineChart
+                title="Komunikasi berkesan"
+                questions={[
+                  { index: 6, label: 'Q7' },
+                  { index: 7, label: 'Q8' },
+                ]}
+              />
 
-          {/* Chart 3: Kerja berpasukan dan bertanggungjawab (Q9, Q10) */}
-          <RenderLineChart
-            title="Kerja berpasukan dan bertanggungjawab"
-            questions={[
-              { index: 8, label: 'Q9' },
-              { index: 9, label: 'Q10' },
-            ]}
-          />
+              {/* Chart 3: Kerja berpasukan dan bertanggungjawab (Q9, Q10) */}
+              <RenderLineChart
+                title="Kerja berpasukan dan bertanggungjawab"
+                questions={[
+                  { index: 8, label: 'Q9' },
+                  { index: 9, label: 'Q10' },
+                ]}
+              />
 
-          {/* Chart 4: Kemahiran Personal (Q11, Q12) */}
-          <RenderLineChart
-            title="Kemahiran Personal"
-            questions={[
-              { index: 10, label: 'Q11' },
-              { index: 11, label: 'Q12' },
-            ]}
-          />
+              {/* Chart 4: Kemahiran Personal (Q11, Q12) */}
+              <RenderLineChart
+                title="Kemahiran Personal"
+                questions={[
+                  { index: 10, label: 'Q11' },
+                  { index: 11, label: 'Q12' },
+                ]}
+              />
 
-          {/* Chart 5: Nilai, etika dan profesionalisme (Q13, Q14) */}
-          <RenderLineChart
-            title="Nilai, etika dan profesionalisme"
-            questions={[
-              { index: 12, label: 'Q13' },
-              { index: 13, label: 'Q14' },
-            ]}
-          />
-        </div>
+              {/* Chart 5: Nilai, etika dan profesionalisme (Q13, Q14) */}
+              <RenderLineChart
+                title="Nilai, etika dan profesionalisme"
+                questions={[
+                  { index: 12, label: 'Q13' },
+                  { index: 13, label: 'Q14' },
+                ]}
+              />
+            </div>
+          </>
+        ) : (
+          /* Empty State bila tiada data penilaian FLI 01 bagi sesi ini */
+          <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center flex flex-col items-center justify-center space-y-3 py-16">
+            <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center">
+              <Info className="w-7 h-7" />
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-slate-800 uppercase">Tiada Data Penilaian Industri (FLI 01)</h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-md">
+                Tiada rekod penilaian majikan industri (FLI 01) yang direkodkan bagi sesi <span className="font-semibold text-slate-700 font-mono">{selectedSession}</span>. Sila pastikan markah penilaian telah dimasukkan pada menu Penilaian Pelajar.
+              </p>
+            </div>
+          </div>
+        )}
 
-        {/* Analisis Box matching Image 2 with orange/coral border */}
+        {/* Analisis Box matching Image 2 with orange/coral border (Dinamik mengikut data sesi) */}
         <div className="border-2 border-orange-500 rounded-2xl p-5 sm:p-6 bg-white shadow-xs space-y-2">
           <h3 className="text-sm font-black text-slate-900 uppercase">
             Analisis:
           </h3>
           <p className="text-xs sm:text-sm text-slate-800 leading-relaxed text-justify">
-            Secara keseluruhannya, penilaian majikan terhadap pelajar adalah positif, dengan aspek kemahiran di tempat kerja, komunikasi, kerja berpasukan, tanggungjawab serta etika dan profesionalisme menunjukkan pencapaian yang baik. Pelajar SKE mencatat pencapaian yang lebih tinggi dalam kebanyakan aspek, manakala pelajar SKU dan SOP berada pada tahap baik. Namun, aspek kemahiran mengurus dan minda keusahawanan masih perlu diperkukuhkan bagi meningkatkan kompetensi dan kesiapsiagaan pelajar menghadapi alam pekerjaan.
+            {dynamicAnalysis}
           </p>
         </div>
       </div>
     </div>
   );
 };
-
