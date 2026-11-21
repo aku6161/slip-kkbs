@@ -937,6 +937,7 @@ export const INITIAL_LECTURERS: Lecturer[] = [
     staffId: 'KKBS/009',
     emel: 'fikri.murshidi@kkbeaufort.edu.my',
     program: 'SIJIL KULINARI',
+    noTelefon: '014-9767017',
     jawatan: 'PENSYARAH'
   },
   {
@@ -953,6 +954,7 @@ export const INITIAL_LECTURERS: Lecturer[] = [
     staffId: 'KKBS/004',
     emel: 'nurhayati_hassan@kkbeaufort.edu.my',
     program: 'SIJIL KULINARI',
+    noTelefon: '016-2402127',
     jawatan: 'PENSYARAH'
   },
   {
@@ -993,6 +995,7 @@ export const INITIAL_LECTURERS: Lecturer[] = [
     staffId: 'KKBS/027',
     emel: 'azhari@kkbeaufort.edu.my',
     program: 'SIJIL OPERASI PERHOTELAN',
+    noTelefon: '018-9744013',
     jawatan: 'PENSYARAH'
   },
   {
@@ -1033,6 +1036,7 @@ export const INITIAL_LECTURERS: Lecturer[] = [
     staffId: 'KKBS/016',
     emel: 'christoper.asok@kkbeaufort.edu.my',
     program: 'SIJIL TEKNOLOGI ELEKTRIK',
+    noTelefon: '019-8765432',
     jawatan: 'PENSYARAH'
   },
   {

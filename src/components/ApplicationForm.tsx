@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Student, SystemConfig, Lecturer, IndustryCompany, formatProgramName } from '../types';
-import { INITIAL_COMPANIES } from '../data/initialData';
+import { INITIAL_COMPANIES, INITIAL_LECTURERS } from '../data/initialData';
 import { UserPlus, Send, User, Building, Award, BookOpen, Info, Lock, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 
 interface ApplicationFormProps {
@@ -47,6 +47,53 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
     }
     return unique.sort((a, b) => (a.namaSyarikat || '').localeCompare(b.namaSyarikat || ''));
   }, [companies]);
+
+  // Senarai pensyarah (gabungkan data Firestore terkini dengan INITIAL_LECTURERS sebagai sandaran)
+  const lecturerList = useMemo(() => {
+    const map = new Map<string, Lecturer>();
+
+    INITIAL_LECTURERS.forEach(lec => {
+      const key = (lec.nama || '').trim().toUpperCase();
+      if (key) map.set(key, { ...lec });
+    });
+
+    (lecturers || []).forEach(lec => {
+      const key = (lec.nama || '').trim().toUpperCase();
+      if (key) {
+        const existing = map.get(key) || {};
+        map.set(key, { ...existing, ...lec });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+  }, [lecturers]);
+
+  // Helper untuk memadankan nama pensyarah secara fleksibel (mengambil kira gelaran, titik, dsb.)
+  const findLecturerByName = (name: string): Lecturer | undefined => {
+    if (!name) return undefined;
+    const clean = name.trim().toUpperCase();
+
+    // 1. Padanan tepat
+    let found = lecturerList.find(l => (l.nama || '').trim().toUpperCase() === clean);
+    if (found) return found;
+
+    // 2. Padanan nama dinormalkan (buang gelaran Ts/Dr/En/Pn dan tanda baca)
+    const normalize = (s: string) =>
+      s.replace(/^(TS\.?|DR\.?|EN\.?|PN\.?|CIK)\s+/i, '')
+       .replace(/[^A-Z0-9]/gi, '')
+       .toUpperCase();
+
+    const cleanNorm = normalize(clean);
+    found = lecturerList.find(l => normalize(l.nama || '') === cleanNorm);
+    if (found) return found;
+
+    // 3. Padanan separa nama
+    found = lecturerList.find(l => {
+      const lNorm = normalize(l.nama || '');
+      return lNorm.length > 5 && (lNorm.includes(cleanNorm) || cleanNorm.includes(lNorm));
+    });
+    return found;
+  };
 
   const [formData, setFormData] = useState<Partial<Student>>({
     namaPelajar: '',
@@ -575,32 +622,37 @@ JALAN MELALUGUS,
                 value={formData.namaPa || ''}
                 onChange={e => {
                   const selectedName = e.target.value;
-                  const matched = lecturers.find(
-                    l => l.nama.trim().toUpperCase() === selectedName.trim().toUpperCase()
-                  );
+                  if (!selectedName) {
+                    setFormData(prev => ({
+                      ...prev,
+                      namaPa: '',
+                      emelPa: '',
+                      noTelefonPa: ''
+                    }));
+                    return;
+                  }
+                  const matched = findLecturerByName(selectedName);
                   setFormData(prev => ({
                     ...prev,
-                    namaPa: selectedName,
-                    emelPa: matched?.emel ? matched.emel.toLowerCase() : (selectedName === '' ? '' : prev.emelPa || ''),
-                    noTelefonPa: matched?.noTelefon ? matched.noTelefon : (selectedName === '' ? '' : prev.noTelefonPa || '')
+                    namaPa: matched?.nama || selectedName,
+                    emelPa: matched?.emel ? matched.emel.toLowerCase() : '',
+                    noTelefonPa: matched?.noTelefon || ''
                   }));
                 }}
                 className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-800 outline-none font-bold text-slate-900 bg-white uppercase cursor-pointer"
               >
                 <option value="">[SILA PILIH PENASIHAT AKADEMIK]</option>
-                {lecturers && lecturers.length > 0 ? (
-                  [...lecturers]
-                    .sort((a, b) => a.nama.localeCompare(b.nama))
-                    .map(lec => (
-                      <option key={lec.id || lec.staffId || lec.nama} value={lec.nama}>
-                        {lec.nama}
-                      </option>
-                    ))
+                {lecturerList && lecturerList.length > 0 ? (
+                  lecturerList.map(lec => (
+                    <option key={lec.id || lec.staffId || lec.nama} value={lec.nama}>
+                      {lec.nama}
+                    </option>
+                  ))
                 ) : (
                   <option value="" disabled>Tiada data pensyarah</option>
                 )}
                 {/* Sertakan pilihan jika nama sedia ada tiada dalam senarai pensyarah */}
-                {formData.namaPa && !lecturers?.some(l => l.nama.trim().toUpperCase() === formData.namaPa?.trim().toUpperCase()) && (
+                {formData.namaPa && !lecturerList.some(l => (l.nama || '').trim().toUpperCase() === (formData.namaPa || '').trim().toUpperCase()) && (
                   <option value={formData.namaPa}>{formData.namaPa}</option>
                 )}
               </select>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Student, ApplicationStatus, Lecturer, IndustryCompany, formatProgramName } from '../types';
-import { INITIAL_COMPANIES } from '../data/initialData';
+import { INITIAL_COMPANIES, INITIAL_LECTURERS } from '../data/initialData';
 import * as XLSX from 'xlsx';
 import { 
   Users, 
@@ -61,6 +61,53 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
     }
     return unique.sort((a, b) => (a.namaSyarikat || '').localeCompare(b.namaSyarikat || ''));
   }, [companies]);
+
+  // Senarai pensyarah (gabungkan data Firestore terkini dengan INITIAL_LECTURERS sebagai sandaran)
+  const lecturerList = useMemo(() => {
+    const map = new Map<string, Lecturer>();
+
+    INITIAL_LECTURERS.forEach(lec => {
+      const key = (lec.nama || '').trim().toUpperCase();
+      if (key) map.set(key, { ...lec });
+    });
+
+    (lecturers || []).forEach(lec => {
+      const key = (lec.nama || '').trim().toUpperCase();
+      if (key) {
+        const existing = map.get(key) || {};
+        map.set(key, { ...existing, ...lec });
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+  }, [lecturers]);
+
+  // Helper untuk memadankan nama pensyarah secara fleksibel (mengambil kira gelaran, titik, dsb.)
+  const findLecturerByName = (name: string): Lecturer | undefined => {
+    if (!name) return undefined;
+    const clean = name.trim().toUpperCase();
+
+    // 1. Padanan tepat
+    let found = lecturerList.find(l => (l.nama || '').trim().toUpperCase() === clean);
+    if (found) return found;
+
+    // 2. Padanan nama dinormalkan (buang gelaran Ts/Dr/En/Pn dan tanda baca)
+    const normalize = (s: string) =>
+      s.replace(/^(TS\.?|DR\.?|EN\.?|PN\.?|CIK)\s+/i, '')
+       .replace(/[^A-Z0-9]/gi, '')
+       .toUpperCase();
+
+    const cleanNorm = normalize(clean);
+    found = lecturerList.find(l => normalize(l.nama || '') === cleanNorm);
+    if (found) return found;
+
+    // 3. Padanan separa nama
+    found = lecturerList.find(l => {
+      const lNorm = normalize(l.nama || '');
+      return lNorm.length > 5 && (lNorm.includes(cleanNorm) || cleanNorm.includes(lNorm));
+    });
+    return found;
+  };
 
   // Modal State for Edit Single Student
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -126,7 +173,16 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
   // Handle Edit Single Student
   const handleOpenEditModal = (student: Student) => {
     setEditingStudent(student);
-    setFormData({ ...student });
+    const matched = student.namaPa ? findLecturerByName(student.namaPa) : undefined;
+    setFormData({
+      ...student,
+      // Jika emelPa tiada, kemaskini secara automatik dari maklumat pensyarah berdaftar
+      emelPa: student.emelPa || (matched?.emel ? matched.emel.toLowerCase() : ''),
+      // Jika noTelefonPa tiada atau masih nombor dummy '012-3456789', kemaskini mengikut maklumat pensyarah jika ada
+      noTelefonPa: (!student.noTelefonPa || student.noTelefonPa === '012-3456789')
+        ? (matched?.noTelefon || student.noTelefonPa || '')
+        : student.noTelefonPa
+    });
     setIsEditModalOpen(true);
   };
 
@@ -990,31 +1046,36 @@ export const MaklumatPelajar: React.FC<MaklumatPelajarProps> = ({
                       value={formData.namaPa || ''}
                       onChange={e => {
                         const selectedName = e.target.value;
-                        const matched = lecturers.find(
-                          l => l.nama.trim().toUpperCase() === selectedName.trim().toUpperCase()
-                        );
+                        if (!selectedName) {
+                          setFormData(prev => ({
+                            ...prev,
+                            namaPa: '',
+                            emelPa: '',
+                            noTelefonPa: ''
+                          }));
+                          return;
+                        }
+                        const matched = findLecturerByName(selectedName);
                         setFormData(prev => ({
                           ...prev,
-                          namaPa: selectedName,
-                          emelPa: matched?.emel ? matched.emel.toLowerCase() : (selectedName === '' ? '' : prev.emelPa || ''),
-                          noTelefonPa: matched?.noTelefon ? matched.noTelefon : (selectedName === '' ? '' : prev.noTelefonPa || '')
+                          namaPa: matched?.nama || selectedName,
+                          emelPa: matched?.emel ? matched.emel.toLowerCase() : '',
+                          noTelefonPa: matched?.noTelefon || ''
                         }));
                       }}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg uppercase bg-white focus:ring-2 focus:ring-blue-900 font-bold cursor-pointer"
                     >
                       <option value="">[SILA PILIH PENASIHAT AKADEMIK]</option>
-                      {lecturers && lecturers.length > 0 ? (
-                        [...lecturers]
-                          .sort((a, b) => a.nama.localeCompare(b.nama))
-                          .map(lec => (
-                            <option key={lec.id || lec.staffId || lec.nama} value={lec.nama}>
-                              {lec.nama}
-                            </option>
-                          ))
+                      {lecturerList && lecturerList.length > 0 ? (
+                        lecturerList.map(lec => (
+                          <option key={lec.id || lec.staffId || lec.nama} value={lec.nama}>
+                            {lec.nama}
+                          </option>
+                        ))
                       ) : (
                         <option value="" disabled>Tiada data pensyarah</option>
                       )}
-                      {formData.namaPa && !lecturers?.some(l => l.nama.trim().toUpperCase() === formData.namaPa?.trim().toUpperCase()) && (
+                      {formData.namaPa && !lecturerList.some(l => (l.nama || '').trim().toUpperCase() === (formData.namaPa || '').trim().toUpperCase()) && (
                         <option value={formData.namaPa}>{formData.namaPa}</option>
                       )}
                     </select>
