@@ -464,7 +464,7 @@ export const PenempatanSubTab: React.FC<PenempatanSubTabProps> = ({
       setJustGenerated(true);
 
       setActionSuccessMsg(
-        `Surat penempatan No. Rujukan ${autoRuj} bagi ${selectedCompany.companyName} berjaya dijana dan disimpan! Anda boleh klik butang [Papar Surat Penempatan] untuk melihat atau mencetak surat.`
+        `Surat penempatan No. Rujukan ${autoRuj} berjaya dijana.`
       );
     } catch (err: any) {
       setActionErrorMsg(`Ralat semasa menjana & menyimpan surat: ${err.message || err}`);
