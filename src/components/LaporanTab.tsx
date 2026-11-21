@@ -781,31 +781,76 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
   const lelakiPercent = totalPemantau > 0 ? Math.round((pemantauLelaki / totalPemantau) * 100) : 50;
   const perempuanPercent = totalPemantau > 0 ? 100 - lelakiPercent : 50;
 
-  // 2. Kira Purata FLI 02 (Q1 - Q6)
-  // Skor lalai daripada lampiran bergambar sekiranya tiada markah FLI 02 disimpan dalam pangkalan data
-  const defaultFli02Averages = [4.49, 4.43, 4.26, 4.32, 4.64, 4.65];
+  // 2. Kira Purata FLI 02 (Mengikut Elemen Sesi)
+  // Sesi I 2026/2027 menggunakan 3 elemen utama:
+  // Q1 - Komunikasi Lisan (CLO 2, 10%)
+  // Q2 - Kerja Berpasukan & Tanggungjawab (CLO 3, 5%)
+  // Q3 - Kemahiran Personal (CLO 4, 5%)
+  const isSesi2026 = useMemo(() => {
+    const s = (selectedSession || '').toUpperCase().trim();
+    return s.includes('2026/2027') || s.includes('2026') || s === 'SEMUA';
+  }, [selectedSession]);
+
+  const [displayMode, setDisplayMode] = useState<'3_elements' | '6_questions'>('3_elements');
+
+  // Selaraskan mod paparan apabila sesi bertukar: Jika 2026/2027, gunakan 3 elemen secara lalai
+  React.useEffect(() => {
+    if (isSesi2026) {
+      setDisplayMode('3_elements');
+    }
+  }, [isSesi2026, selectedSession]);
 
   const fli02Scores = useMemo(() => {
     let count = 0;
-    const sums = [0, 0, 0, 0, 0, 0];
+    // 3 Elemen Utama bagi Sesi I 2026/2027
+    const sums3 = [0, 0, 0];
+    // 6 Sub-kriteria terperinci
+    const sums6 = [0, 0, 0, 0, 0, 0];
 
     students.forEach(s => {
       const m = getStudentMark ? getStudentMark(s) : null;
-      if (m && (m['FLI02-C1'] !== undefined || m['TOTAL7'] !== undefined)) {
-        const q1 = parseFloat(m['FLI02-C1']);
-        const q2 = parseFloat(m['FLI02-C2']);
-        const q3 = parseFloat(m['FLI02-C3']);
-        const q4 = parseFloat(m['FLI02-C4']);
-        const q5 = parseFloat(m['FLI02-C5']);
-        const q6 = parseFloat(m['FLI02-C6']);
+      if (m && (m['FLI02-C1'] !== undefined || m['TOTAL7'] !== undefined || m['GRAN TOTAL2'] !== undefined)) {
+        const c1_1 = parseFloat(m['FLI02-C1']);
+        const c1_2 = parseFloat(m['FLI02-C2']);
+        const c2_1 = parseFloat(m['FLI02-C3']);
+        const c2_2 = parseFloat(m['FLI02-C4']);
+        const c3_1 = parseFloat(m['FLI02-C5']);
+        const c3_2 = parseFloat(m['FLI02-C6']);
+        const total7 = parseFloat(m['TOTAL7']);
+        const total8 = parseFloat(m['TOTAL8']);
+        const total9 = parseFloat(m['TOTAL9']);
 
-        if (!isNaN(q1) && !isNaN(q2) && !isNaN(q3) && !isNaN(q4) && !isNaN(q5) && !isNaN(q6)) {
-          sums[0] += q1;
-          sums[1] += q2;
-          sums[2] += q3;
-          sums[3] += q4;
-          sums[4] += q5;
-          sums[5] += q6;
+        // 1. Q1: Komunikasi Lisan (Skala 1 - 5)
+        let q1_val = NaN;
+        if (!isNaN(c1_1) && !isNaN(c1_2)) q1_val = (c1_1 + c1_2) / 2;
+        else if (!isNaN(c1_1)) q1_val = c1_1;
+        else if (!isNaN(total7)) q1_val = total7 / 2;
+
+        // 2. Q2: Kerja Berpasukan & Tanggungjawab (Skala 1 - 5)
+        let q2_val = NaN;
+        if (!isNaN(c2_1) && !isNaN(c2_2)) q2_val = (c2_1 + c2_2) / 2;
+        else if (!isNaN(c2_1)) q2_val = c2_1;
+        else if (!isNaN(total8)) q2_val = total8;
+
+        // 3. Q3: Kemahiran Personal (Skala 1 - 5)
+        let q3_val = NaN;
+        if (!isNaN(c3_1) && !isNaN(c3_2)) q3_val = (c3_1 + c3_2) / 2;
+        else if (!isNaN(c3_1)) q3_val = c3_1;
+        else if (!isNaN(total9)) q3_val = total9;
+
+        if (!isNaN(q1_val) && !isNaN(q2_val) && !isNaN(q3_val)) {
+          sums3[0] += q1_val;
+          sums3[1] += q2_val;
+          sums3[2] += q3_val;
+
+          // Rekod 6 sub-kriteria
+          if (!isNaN(c1_1)) sums6[0] += c1_1;
+          if (!isNaN(c1_2)) sums6[1] += c1_2;
+          if (!isNaN(c2_1)) sums6[2] += c2_1;
+          if (!isNaN(c2_2)) sums6[3] += c2_2;
+          if (!isNaN(c3_1)) sums6[4] += c3_1;
+          if (!isNaN(c3_2)) sums6[5] += c3_2;
+
           count += 1;
         }
       }
@@ -815,25 +860,62 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
       return {
         isLive: true,
         evaluatedCount: count,
-        averages: sums.map(sum => Number((sum / count).toFixed(2)))
+        averages3: sums3.map(sum => Number((sum / count).toFixed(2))),
+        averages6: sums6.map(sum => Number((sum / count).toFixed(2)))
       };
     }
 
     return {
       isLive: false,
       evaluatedCount: 0,
-      averages: defaultFli02Averages
+      // Benchmark: Q1 (4.46), Q2 (4.65), Q3 (4.29)
+      averages3: [4.46, 4.65, 4.29],
+      averages6: [4.49, 4.43, 4.26, 4.32, 4.64, 4.65]
     };
   }, [students, getStudentMark]);
 
-  const questionsList = [
-    { code: 'Q1', text: 'Kemahiran menjawab soalan', score: fli02Scores.averages[0] },
-    { code: 'Q2', text: 'Penyampaian idea', score: fli02Scores.averages[1] },
-    { code: 'Q3', text: 'Organisasi idea', score: fli02Scores.averages[2] },
-    { code: 'Q4', text: 'Visi', score: fli02Scores.averages[3] },
-    { code: 'Q5', text: 'Kerja berpasukan', score: fli02Scores.averages[4] },
-    { code: 'Q6', text: 'Tanggungjawab kerja', score: fli02Scores.averages[5] },
-  ];
+  // Senarai kriteria aktif mengikut mod (3 Elemen Utama atau 6 Sub-kriteria)
+  const isThreeElements = displayMode === '3_elements';
+
+  const questionsList = useMemo(() => {
+    if (isThreeElements) {
+      return [
+        { 
+          code: 'Q1', 
+          text: 'Komunikasi Lisan', 
+          desc: '1.1 & 1.2 Kemahiran menjawab soalan & penyampaian idea', 
+          clo: 'CLO 2', 
+          weight: '10%',
+          score: fli02Scores.averages3[0] 
+        },
+        { 
+          code: 'Q2', 
+          text: 'Kerja Berpasukan & Tanggungjawab', 
+          desc: '2.1 & 2.2 Hubungan rakan sekerja & tanggungjawab tugasan', 
+          clo: 'CLO 3', 
+          weight: '5%',
+          score: fli02Scores.averages3[1] 
+        },
+        { 
+          code: 'Q3', 
+          text: 'Kemahiran Personal', 
+          desc: '3.1 & 3.2 Organisasi maklumat & inisiatif bermotivasi', 
+          clo: 'CLO 4', 
+          weight: '5%',
+          score: fli02Scores.averages3[2] 
+        },
+      ];
+    }
+
+    return [
+      { code: 'Q1', text: 'Kemahiran menjawab soalan', desc: 'Kefahaman dan ketepatan menjawab', clo: 'CLO 2', weight: '5%', score: fli02Scores.averages6[0] },
+      { code: 'Q2', text: 'Penyampaian idea', desc: 'Penyampaian yang teratur dan berkesan', clo: 'CLO 2', weight: '5%', score: fli02Scores.averages6[1] },
+      { code: 'Q3', text: 'Organisasi idea', desc: 'Kebolehan menyusun maklumat kerja', clo: 'CLO 4', weight: '2.5%', score: fli02Scores.averages6[2] },
+      { code: 'Q4', text: 'Visi', desc: 'Bermotivasi dan berpandangan jauh', clo: 'CLO 4', weight: '2.5%', score: fli02Scores.averages6[3] },
+      { code: 'Q5', text: 'Kerja berpasukan', desc: 'Membina hubungan baik dalam organisasi', clo: 'CLO 3', weight: '2.5%', score: fli02Scores.averages6[4] },
+      { code: 'Q6', text: 'Tanggungjawab kerja', desc: 'Melaksanakan tugasan dengan proaktif', clo: 'CLO 3', weight: '2.5%', score: fli02Scores.averages6[5] },
+    ];
+  }, [isThreeElements, fli02Scores]);
 
   // SVG Donut calculation
   // Angle for Lelaki
@@ -1019,29 +1101,63 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
       </div>
 
       {/* =====================================================================
-       * DAPATAN PEMANTAUAN (FLI 02) - MENGIKUT LAMPIRAN BERGAMBAR (IMAGE 1)
+       * DAPATAN PEMANTAUAN (FLI 02) - MENGIKUT ELEMEN SESI
+       * Sesi I 2026/2027: Q1, Q2, Q3
        * ===================================================================== */}
       <div className="bg-[#f8fafc] p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-        {/* Title */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Dapatan Pemantauan
-          </h2>
-          {fli02Scores.isLive ? (
-            <span className="text-xs px-3 py-1 bg-emerald-100 text-emerald-900 font-bold rounded-full border border-emerald-300">
-              Data Sebenar: {fli02Scores.evaluatedCount} Pelajar Dinilai
-            </span>
-          ) : (
-            <span className="text-xs px-3 py-1 bg-amber-100 text-amber-900 font-bold rounded-full border border-amber-300">
-              Data Penanda Aras (Benchmark)
-            </span>
-          )}
+        {/* Title and Element Mode Switcher */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Dapatan Pemantauan
+              </h2>
+              {fli02Scores.isLive ? (
+                <span className="text-xs px-3 py-1 bg-emerald-100 text-emerald-900 font-bold rounded-full border border-emerald-300">
+                  Data Sebenar: {fli02Scores.evaluatedCount} Pelajar Dinilai
+                </span>
+              ) : (
+                <span className="text-xs px-3 py-1 bg-amber-100 text-amber-900 font-bold rounded-full border border-amber-300">
+                  Data Penanda Aras (Benchmark)
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              {isThreeElements 
+                ? 'Penilaian 3 Elemen Utama bagi Sesi I 2026/2027 berasaskan skala 1.00 hingga 5.00'
+                : 'Pecahan 6 Sub-Kriteria Terperinci Borang FLI 02'}
+            </p>
+          </div>
+
+          {/* Elemen Selector Toggle */}
+          <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-slate-200 shadow-2xs self-start sm:self-auto">
+            <button
+              onClick={() => setDisplayMode('3_elements')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                displayMode === '3_elements'
+                  ? 'bg-[#14532d] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              3 Elemen Utama (Sesi I 2026/2027)
+            </button>
+            <button
+              onClick={() => setDisplayMode('6_questions')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                displayMode === '6_questions'
+                  ? 'bg-[#14532d] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              6 Sub-Kriteria
+            </button>
+          </div>
         </div>
 
-        {/* Layout: Chart on Left, Legend on Right (Exactly matching Image 1) */}
+        {/* Layout: Chart on Left, Legend on Right */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
           {/* Bar Chart Section */}
-          <div className="md:col-span-7 bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
+          <div className="md:col-span-7 bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
             <svg viewBox="0 0 500 280" className="w-full h-auto select-none overflow-visible">
               {/* Ticks & Horizontal Lines (3.0, 3.5, 4.0, 4.5, 5.0) */}
               {[
@@ -1074,11 +1190,16 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
                 </g>
               ))}
 
-              {/* 6 Bars: Q1 to Q6 */}
+              {/* Bars: 3 Elemen Utama atau 6 Sub-kriteria */}
               {questionsList.map((q, idx) => {
-                const barWidth = 48;
-                const barGap = 24;
-                const x = 65 + (idx * (barWidth + barGap));
+                // Konfigurasi saiz dan kedudukan bar
+                const barWidth = isThreeElements ? 74 : 46;
+                const totalBars = questionsList.length;
+                const availableWidth = 435; // 480 - 45
+                const totalBarWidth = totalBars * barWidth;
+                const gap = (availableWidth - totalBarWidth) / (totalBars + 1);
+                const x = 45 + gap + (idx * (barWidth + gap));
+
                 // Skala: 3.0 -> y=210, 5.0 -> y=30 (tinggi penuh = 180px bagi julat 2.0)
                 const clampedScore = Math.max(3.0, Math.min(5.0, q.score));
                 const barHeight = ((clampedScore - 3.0) / 2.0) * 180;
@@ -1092,8 +1213,8 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
                       y={y}
                       width={barWidth}
                       height={Math.max(barHeight, 2)}
-                      rx="6"
-                      ry="6"
+                      rx="7"
+                      ry="7"
                       fill="#14532d"
                       className="transition-all duration-300 group-hover:fill-[#15803d]"
                     />
@@ -1102,7 +1223,7 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
                       x={x + barWidth / 2}
                       y={y + 24}
                       textAnchor="middle"
-                      fontSize="12"
+                      fontSize={isThreeElements ? "13" : "11"}
                       fontWeight="bold"
                       fill="#ffffff"
                       fontFamily="monospace"
@@ -1114,7 +1235,7 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
                       x={x + barWidth / 2}
                       y="235"
                       textAnchor="middle"
-                      fontSize="11"
+                      fontSize="12"
                       fontWeight="bold"
                       fill="#64748b"
                     >
@@ -1126,17 +1247,30 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
             </svg>
           </div>
 
-          {/* Right Legend Section (Exactly matching Image 1) */}
+          {/* Right Legend Section */}
           <div className="md:col-span-5 space-y-4 pl-0 md:pl-4">
             {questionsList.map((q) => (
-              <div key={q.code} className="flex items-center gap-2">
-                <span className="font-extrabold text-[#14532d] text-sm tracking-wide">
-                  {q.code}
-                </span>
-                <span className="text-slate-400 font-bold">-</span>
-                <span className="font-semibold text-slate-800 text-sm">
-                  {q.text}
-                </span>
+              <div key={q.code} className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-[#14532d] text-base tracking-wide">
+                      {q.code}
+                    </span>
+                    <span className="text-slate-400 font-bold">-</span>
+                    <span className="font-bold text-slate-900 text-sm">
+                      {q.text}
+                    </span>
+                  </div>
+                  <span className="text-xs font-black px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-mono border border-emerald-200">
+                    {q.score.toFixed(2)}
+                  </span>
+                </div>
+                {q.clo && (
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                    <span>{q.desc || q.text}</span>
+                    <span className="font-semibold text-slate-700">{q.clo} ({q.weight})</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1159,7 +1293,7 @@ const StatistikPemantauanSubTab: React.FC<SubTabProps> = ({
           </h3>
         </div>
         <p className="text-xs sm:text-sm text-slate-700 leading-relaxed text-justify">
-          Secara keseluruhannya, dapatan penilaian pemantauan pensyarah (FLI 02) menunjukkan tahap prestasi pelajar yang sangat memuaskan dengan purata skor melebihi <strong>4.20 daripada 5.00</strong>. Aspek <strong>Tanggungjawab Kerja (Q6: {questionsList[5].score.toFixed(2)})</strong> dan <strong>Kerja Berpasukan (Q5: {questionsList[4].score.toFixed(2)})</strong> mencatatkan skor tertinggi, membuktikan pelajar mempunyai tahap disiplin dan komitmen yang terpuji di tempat kerja. Walau bagaimanapun, aspek <strong>Organisasi Idea (Q3: {questionsList[2].score.toFixed(2)})</strong> dan <strong>Visi (Q4: {questionsList[3].score.toFixed(2)})</strong> masih mempunyai ruang untuk penambahbaikan melalui latihan penyampaian lisan dan pemikiran strategik sebelum melangkah ke alam industri secara profesional.
+          Secara keseluruhannya, dapatan penilaian pemantauan pensyarah (FLI 02) bagi <strong>{selectedSession}</strong> menunjukkan tahap pencapaian kompetensi pelajar yang sangat memuaskan dengan purata skor keseluruhan melebihi <strong>4.20 daripada 5.00</strong>. Aspek <strong>{questionsList[1]?.text || 'Kerja Berpasukan & Tanggungjawab'} (Skor: {questionsList[1]?.score.toFixed(2)})</strong> mencatatkan pencapaian tertinggi, disusuli oleh <strong>{questionsList[0]?.text || 'Komunikasi Lisan'} (Skor: {questionsList[0]?.score.toFixed(2)})</strong> yang membuktikan kemahiran berkomunikasi dan interaksi pelajar bersama pensyarah serta rakan sekerja di tempat latihan berada pada standard terpuji. Manakala aspek <strong>{questionsList[2]?.text || 'Kemahiran Personal'} (Skor: {questionsList[2]?.score.toFixed(2)})</strong> turut menunjukkan kesiapsiagaan kendiri yang baik dengan ruang penambahbaikan dari sudut inisiatif berterusan dan pengurusan organisasi idea.
         </p>
       </div>
     </div>
@@ -1504,3 +1638,4 @@ const StatistikMaklumBalasIndustriSubTab: React.FC<SubTabProps> = ({
     </div>
   );
 };
+
